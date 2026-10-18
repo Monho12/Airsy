@@ -1687,6 +1687,8 @@ interface conflicts before integration.
 15. **Stop and wait for explicit developer approval** before beginning the next phase.
 16. Keep this document truthful: if implementation must deviate from it, propose the change, get approval, and
     update the relevant section and Appendix B.
+17. **Code comments are written in Mongolian** (simple, correct Mongolian that the developer can read and explain).
+    Identifiers (variables, functions, types, files) and commit messages stay in **English**.
 
 ### 14.7 Quality gates (after each phase)
 
@@ -1801,3 +1803,4 @@ Record significant decisions here (date, decision, reason, alternatives consider
 | D6 | 2026-10-18 | One sensor per metric per area; one 3D marker per area. | Clear data model; uncluttered 3D. | Multi-metric "sensor node" entity (deferred). |
 | D7 | 2026-10-18 | Emergency triggered only by a simulated alarm signal, never inferred from readings. | Safety realism and honesty. | Auto-detect fire from PM2.5 (rejected). |
 | D8 | — | Exact dependency versions | *To be recorded in Phase 1.* | — |
+| D9 | 2026-10-18 | Code comments in Mongolian; identifiers in English. | Developer's request: comments must be easy for the developer to read and explain. | English comments. |
