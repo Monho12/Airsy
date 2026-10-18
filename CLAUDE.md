@@ -121,7 +121,7 @@ These are **explicitly out of scope** for Phases 1–7 unless the developer appr
 - ❌ Dehumidification, heating, or cooling-coil modeling (humidity raises alerts only; see §6.5).
 - ❌ Multiple buildings, multiple tenants, or concurrent-user collaboration.
 - ❌ Detailed architectural modeling (BIM import, realistic interiors, furniture).
-- ❌ Internationalization (UI is English only) and native mobile apps.
+- ❌ Multi-language support / language switching (the UI is **Mongolian only**, §8.9) and native mobile apps.
 - ❌ Claims of production scalability ("thousands of users") — not until a backend and load tests exist.
 
 ---
@@ -180,8 +180,8 @@ Requirements are tagged with the phase in which they are first implemented. **[F
 - **FR-M2** (P2) Classification thresholds live in **one configuration module** (§5.5); no numeric thresholds in components.
 - **FR-M3** (P2) Each non-normal classification includes a short human-readable explanation.
 - **FR-M4** (P4) Readings update continuously from the simulation runtime.
-- **FR-M5** (P4) Offline or invalid sensors are never treated as a value of zero; they show "No data" / "Invalid" and the last valid value (greyed, with its time) where helpful.
-- **FR-M6** (P2) A persistent "SIMULATED DATA" indicator is always visible.
+- **FR-M5** (P4) Offline or invalid sensors are never treated as a value of zero; they show «Өгөгдөлгүй» / «Буруу утга» ("No data" / "Invalid") and the last valid value (greyed, with its time) where helpful.
+- **FR-M6** (P2) A persistent «СИМУЛЯЦИ» ("SIMULATED DATA") indicator is always visible.
 
 ### 4.3 Control
 
@@ -845,6 +845,60 @@ phase, the control is **absent**, not disabled-forever.
 - [ ] Reduced-motion preference respected (§8.5).
 - [ ] Dialogs (scenario confirm, emergency disclaimer) trap focus and close with Escape.
 
+### 8.9 UI language: Mongolian
+
+**All text shown to the user is in Mongolian** (Cyrillic): buttons, headings, labels, alert titles and messages,
+event-history messages, control-decision explanations, tooltips, empty/error states, `aria-label`s, and the page
+`<title>`. The document root uses `<html lang="mn">`.
+
+- **English UI strings elsewhere in this document are illustrative only.** When implementing, use the Mongolian
+  equivalent (see the term table below). Example: the CO₂ explanation in §5.6 becomes
+  «CO₂ 1 240 ppm байна. Анхааруулах босго (1 000 ppm)-оос өндөр.»
+- Write simple, correct Mongolian. Prefer plain words an operator understands over literal technical translations.
+- **Units and chemical symbols stay as-is:** °C, ppm, %, µg/m³, CO₂, PM2.5. "VOC Index" is shown as
+  «VOC индекс (симуляци)».
+- **Numbers** are formatted with `Intl.NumberFormat('mn-MN')`; times with `Intl.DateTimeFormat('mn-MN')` (24-hour clock).
+- **Fonts** must support Mongolian Cyrillic letters **Ө ө Ү ү**. Verify the chosen font (e.g. Inter) renders them in Phase 1.
+- **Where strings live:** all UI text is kept in one module (`src/domain/i18n/mn.ts`, a plain object of strings and small
+  formatting functions — no i18n library). Components import from it instead of hard-coding text. This keeps
+  wording consistent and easy to review.
+- Domain code (`src/domain/**`) produces **Mongolian** `message`/`reason`/`explanation` strings through helper
+  functions that import from `src/domain/i18n/mn.ts`, so event history and the "Why?" inspector read naturally.
+- Internal identifiers (`ScenarioId`, `RuleId`, event `type` enums like `ALERT_RAISED`) stay English; they are never
+  shown raw in the UI — always mapped to Mongolian labels.
+
+**Core term table** (extend during Phase 2; keep it the single reference):
+
+| English (concept) | Mongolian (UI) |
+|-------------------|----------------|
+| Simulated data | Симуляци |
+| Building status | Барилгын төлөв |
+| Floor 7 | 7-р давхар |
+| Area | Бүс |
+| Normal / Warning / Critical | Хэвийн / Анхааруулга / Ноцтой |
+| Offline / Invalid reading / No data | Холболтгүй / Буруу утга / Өгөгдөлгүй |
+| Temperature / Humidity | Температур / Чийгшил |
+| Supply fan / Exhaust fan | Агаар оруулах сэнс / Агаар гаргах сэнс |
+| Outdoor-air damper | Гадна агаарын хаалт |
+| Off / Low / Medium / High / Boost | Унтраалттай / Бага / Дунд / Их / Хамгийн их |
+| Closed / Minimum / Partial / Open | Хаалттай / Бага зэрэг / Хагас / Бүрэн нээлттэй |
+| Automatic mode / Manual | Автомат горим / Гар удирдлага |
+| Return to auto | Автомат руу буцаах |
+| Alert / Active alerts | Дохио / Идэвхтэй дохио |
+| Acknowledge | Хүлээн авсан |
+| Event history | Үйл явдлын түүх |
+| Why? (decision inspector) | Яагаад? |
+| Scenario / Start / Stop | Сценари / Эхлүүлэх / Зогсоох |
+| Reset simulation | Симуляцийг эхнээс нь |
+| Play / Pause / Speed | Үргэлжлүүлэх / Түр зогсоох / Хурд |
+| Emergency (simulated) | Яаралтай байдал (симуляци) |
+| End emergency simulation | Яаралтай симуляцийг дуусгах |
+| Reset view | Харагдацыг сэргээх |
+
+**Emergency disclaimer (required wording, §6.9):**
+«Энэ бол сургалтын симуляци. Батлагдсан гал, утааны хамгаалалтын систем биш. Жинхэнэ гал мэдээллийн дохиолол,
+нүүлгэн шилжүүлэх журам, аврах албыг орлохгүй.»
+
 ---
 
 ## 9. Technical Architecture
@@ -945,6 +999,7 @@ changing the UI.
    │  ├─ events/                 ← event factory + bounded ring buffer
    │  ├─ scenarios/              ← definitions/, scenario engine
    │  ├─ history/                ← bounded trend buffers
+   │  ├─ i18n/                   ← mn.ts: ALL Mongolian UI strings + formatters (§8.9); pure TS, used by domain and UI
    │  └─ runtime/                ← AerisRuntime interface, LocalSimulationRuntime, commands
    ├─ store/                     ← liveStore, uiStore, selectors, runtime→store adapter
    ├─ styles/                    ← tokens.css, globals.css
@@ -1710,7 +1765,9 @@ interface conflicts before integration.
 
 The developer is a third-year AI/ML student learning web development through practical work.
 
-- Explain important architectural decisions **in plain English**, connected to concrete examples in this project
+- The developer writes in Mongolian; reply and explain in **simple Mongolian** (technical terms may stay in English
+  with a short Mongolian explanation).
+- Explain important architectural decisions **in plain language**, connected to concrete examples in this project
   (e.g. "the control engine is a pure function, so we can test 'CO₂ at 1,240 ppm' without opening a browser").
 - Don't assume expert full-stack knowledge; define jargon on first use (Appendix A helps).
 - Keep summaries step-by-step and focused on visible progress.
@@ -1727,7 +1784,7 @@ The developer is a third-year AI/ML student learning web development through pra
 | A1 | The repository was empty except for a one-line `README.md` (`# Airsy`) at the time of planning; no existing code, config, or constraints. |
 | A2 | Single developer, solo project; no deadline was provided — phases are sized for roughly 1–2 weeks of part-time work each. |
 | A3 | The demo runs on a modern laptop in the latest Chrome or Edge with WebGL2; Node.js current LTS (≥ 20) for development. |
-| A4 | English UI only; metric units only (°C, ppm, % RH, µg/m³). |
+| A4 | Mongolian UI only (§8.9); metric units only (°C, ppm, % RH, µg/m³). |
 | A5 | One fictional building ("AERIS Tower"), 12 floors, 2 areas per floor, 3 devices per floor. |
 | A6 | Thresholds (§5.5) are demonstration values, not compliance standards. |
 | A7 | The simulation model (§5.8) is illustrative, not physically accurate. |
@@ -1804,3 +1861,4 @@ Record significant decisions here (date, decision, reason, alternatives consider
 | D7 | 2026-10-18 | Emergency triggered only by a simulated alarm signal, never inferred from readings. | Safety realism and honesty. | Auto-detect fire from PM2.5 (rejected). |
 | D8 | — | Exact dependency versions | *To be recorded in Phase 1.* | — |
 | D9 | 2026-10-18 | Code comments in Mongolian; identifiers in English. | Developer's request: comments must be easy for the developer to read and explain. | English comments. |
+| D10 | 2026-10-18 | UI text in Mongolian only, from one strings module (`src/domain/i18n/mn.ts`), no i18n library. | Developer's request; one module keeps wording consistent without extra dependencies. | English UI; react-i18next (unneeded for one language). |
