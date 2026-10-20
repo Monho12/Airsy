@@ -5,12 +5,46 @@ import { useMemo } from 'react';
 import { EmptyState, HealthIndicator, MetricValue, Panel, Skeleton } from '@/components/ui';
 import { METRICS } from '@/domain/config/building';
 import { metricSpecs } from '@/domain/config/thresholds';
-import { floorLabelMn, mn } from '@/domain/i18n/mn';
+import { floorLabelMn, formatTimeMn, mn } from '@/domain/i18n/mn';
 import { useLiveStore } from '@/store/liveStore';
-import { selectAreaSummary, selectFloorSummary, type AreaSummary } from '@/store/selectors';
+import {
+  selectAreaSummary,
+  selectFloorSummary,
+  type AreaConnectionSummary,
+  type AreaSummary,
+} from '@/store/selectors';
 import { useUiStore } from '@/store/uiStore';
 
 import './FloorDetails.css';
+
+/** Бүсийн холболтын бичвэр. Нэг ч мэдрэгч холболтгүй/хуучирсан бол «Холбогдсон» гэж хэзээ ч бичихгүй (FR-M1, FR-M5). */
+function connectionText({ total, stale, offline }: AreaConnectionSummary): string {
+  const { connection, sensorsOffline, sensorsStale } = mn.common;
+  if (offline === total) return connection.offline;
+  const parts: string[] = [];
+  if (offline > 0) parts.push(sensorsOffline(offline));
+  if (stale > 0) parts.push(stale === total ? connection.stale : sensorsStale(stale));
+  return parts.length > 0 ? parts.join(', ') : connection.online;
+}
+
+/** «Хэмжсэн: 09:10:00 · Холбогдсон» — хугацаа нь мэдрэгчийн утгын `timestamp`-аас (симуляцийн цаг) */
+function AreaMeasurementMeta({ connection }: { connection: AreaConnectionSummary }) {
+  const state = connection.offline > 0 ? 'offline' : connection.stale > 0 ? 'stale' : 'online';
+  return (
+    <p className="floor-details__area-meta" data-connection={state}>
+      {connection.measuredAt !== null && (
+        <>
+          {mn.common.measuredAt}:{' '}
+          <time dateTime={new Date(connection.measuredAt).toISOString()}>
+            {formatTimeMn(connection.measuredAt)}
+          </time>
+          {' · '}
+        </>
+      )}
+      {connectionText(connection)}
+    </p>
+  );
+}
 
 export function FloorDetails() {
   const snapshot = useLiveStore((state) => state.snapshot);
@@ -59,12 +93,13 @@ export function FloorDetails() {
           </h3>
           <HealthIndicator {...summary.health} />
         </div>
-        {areas.map(({ area, readings, health }) => (
+        {areas.map(({ area, readings, health, connection }) => (
           <section key={area.id} className="floor-details__area" aria-label={area.name}>
             <div className="floor-details__area-heading">
               <h4 className="floor-details__area-name">{area.name}</h4>
               <HealthIndicator {...health} />
             </div>
+            <AreaMeasurementMeta connection={connection} />
             <div className="floor-details__metrics">
               {METRICS.map((metric) => (
                 <MetricValue

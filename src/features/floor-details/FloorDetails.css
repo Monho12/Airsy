@@ -26,9 +26,23 @@
 }
 
 .floor-details__area-name {
+  /* globals.css нь h1–h3-ыг л тэглэдэг — h4-ийн хөтчийн анхдагч margin гарчгийг сунгахгүй */
+  margin: 0;
   color: var(--color-text-primary);
   font-size: var(--font-size-14);
   font-weight: var(--font-weight-medium);
+}
+
+/* Хэмжилтийн хугацаа ба холболт (FR-M1). Хэвийн үед бүдэг, асуудалтай үед илүү тод (хоёулаа surface-1 дээр, §8.3) */
+.floor-details__area-meta {
+  margin-top: calc(-1 * var(--space-2));
+  color: var(--color-text-muted);
+  font-size: var(--font-size-12);
+  font-variant-numeric: tabular-nums;
+}
+
+.floor-details__area-meta:not([data-connection='online']) {
+  color: var(--color-text-secondary);
 }
 
 .floor-details__metrics {

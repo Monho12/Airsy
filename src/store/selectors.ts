@@ -15,6 +15,7 @@ import type {
   MetricType,
   OutdoorConditions,
   SensorReading,
+  SimTimeMs,
   SystemEvent,
   VentilationDevice,
 } from '@/domain/types';
@@ -68,11 +69,49 @@ function floorReadings(snapshot: LiveSnapshot, floorId: FloorId, config: Buildin
     .filter((reading): reading is SensorReading => reading !== undefined);
 }
 
+/** Бүсийн мэдрэгчүүдийн холболт ба хэмжилтийн хугацаа (FR-M1) — `SensorReading.connection` ба `timestamp`-аас. */
+export interface AreaConnectionSummary {
+  /** Холболтгүй биш утгуудын хамгийн сүүлийн хэмжилтийн хугацаа; бүгд холболтгүй бол `null` (зохиохгүй) */
+  measuredAt: SimTimeMs | null;
+  /** Тохиргоонд энэ бүсэд бүртгэлтэй мэдрэгчийн тоо */
+  total: number;
+  online: number;
+  stale: number;
+  /** Холболтгүй ба snapshot-д утга огт байхгүй мэдрэгч (хэзээ ч «холбогдсон» гэж тооцохгүй) */
+  offline: number;
+}
+
 export interface AreaSummary {
   area: Area;
   readings: Partial<Record<MetricType, SensorReading>>;
   /** Бүсийн төлөв = 5 мэдрэгчийн хамгийн муу (өгөгдлийн асуудлыг тусад нь, §5.6) */
   health: HealthSummary;
+  connection: AreaConnectionSummary;
+}
+
+function summarizeAreaConnection(
+  snapshot: LiveSnapshot,
+  areaId: AreaId,
+  config: BuildingConfig,
+): AreaConnectionSummary {
+  const summary: AreaConnectionSummary = {
+    measuredAt: null,
+    total: 0,
+    online: 0,
+    stale: 0,
+    offline: 0,
+  };
+  for (const sensor of Object.values(config.sensors)) {
+    if (sensor.areaId !== areaId) continue;
+    summary.total += 1;
+    const reading = snapshot.readings[sensor.id];
+    const connection = reading?.connection ?? 'offline';
+    summary[connection] += 1;
+    if (reading !== undefined && connection !== 'offline') {
+      summary.measuredAt = Math.max(summary.measuredAt ?? reading.timestamp, reading.timestamp);
+    }
+  }
+  return summary;
 }
 
 export function selectAreaSummary(
@@ -83,7 +122,12 @@ export function selectAreaSummary(
   const area = config.areas[areaId];
   if (area === undefined) return undefined;
   const readings = selectAreaReadings(snapshot, areaId, config);
-  return { area, readings, health: summarizeHealth(Object.values(readings).map((r) => r.status)) };
+  return {
+    area,
+    readings,
+    health: summarizeHealth(Object.values(readings).map((r) => r.status)),
+    connection: summarizeAreaConnection(snapshot, areaId, config),
+  };
 }
 
 /** Давхрын идэвхтэй (хүлээн авсан орно) дохионы тоо */

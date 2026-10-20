@@ -101,6 +101,67 @@ describe('selectAreaSummary', () => {
   });
 });
 
+describe('selectAreaSummary — холболт ба хэмжилтийн хугацаа (FR-M1)', () => {
+  const areaSensorIds = (areaId: string) =>
+    Object.values(buildingConfig.sensors)
+      .filter((sensor) => sensor.areaId === areaId)
+      .map((sensor) => sensor.id);
+
+  it('бүх мэдрэгч холбогдсон: хугацаа = утгын timestamp (simTime)', () => {
+    expect(selectAreaSummary(snapshot, 'F02-A')!.connection).toEqual({
+      measuredAt: snapshot.simTime,
+      total: 5,
+      online: 5,
+      stale: 0,
+      offline: 0,
+    });
+  });
+
+  it('нэг мэдрэгч салсан (F04-A): холболтгүйг тоолно, хугацаа үлдсэн утгуудаас', () => {
+    expect(
+      selectAreaSummary(snapshot, MOCK_SAMPLE.offlineSensorId.slice(0, 5))!.connection,
+    ).toEqual({
+      measuredAt: snapshot.simTime,
+      total: 5,
+      online: 4,
+      stale: 0,
+      offline: 1,
+    });
+  });
+
+  it('бүгд салсан: хугацаа null (зохиохгүй), бүгд холболтгүй', () => {
+    const readings = { ...snapshot.readings };
+    for (const id of areaSensorIds('F04-B')) {
+      readings[id] = { ...readings[id]!, connection: 'offline', status: 'offline', value: null };
+    }
+    expect(selectAreaSummary({ ...snapshot, readings }, 'F04-B')!.connection).toEqual({
+      measuredAt: null,
+      total: 5,
+      online: 0,
+      stale: 0,
+      offline: 5,
+    });
+  });
+
+  it('хуучирсан утгыг тусад нь тоолно; snapshot-д байхгүй утга холболтгүй гэж тооцогдоно', () => {
+    const [staleId, missingId] = areaSensorIds('F03-A');
+    const readings = { ...snapshot.readings };
+    readings[staleId!] = {
+      ...readings[staleId!]!,
+      connection: 'stale',
+      timestamp: snapshot.simTime - 15_000,
+    };
+    delete readings[missingId!];
+    expect(selectAreaSummary({ ...snapshot, readings }, 'F03-A')!.connection).toEqual({
+      measuredAt: snapshot.simTime,
+      total: 5,
+      online: 3,
+      stale: 1,
+      offline: 1,
+    });
+  });
+});
+
 describe('selectOutdoorConditions (§10)', () => {
   it('OUT-* утгаас, CO₂ нь тохиргооны тогтмол', () => {
     expect(selectOutdoorConditions(snapshot)).toEqual({
