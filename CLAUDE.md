@@ -451,7 +451,9 @@ ID-ууд **тогтвортой мөр (string)**. Массивын индек�
 
 `classifyReading(metric, value, connection, previous, thresholds)` нь **цэвэр функц** (`previous: ReadingClassification | null`
 — тухайн мэдрэгчийн өмнөх ангилал; D49)
-(`src/domain/classification/`). Алгоритм:
+(`src/domain/classification/`). `thresholds` нь дотоод мэдрэгчид `indoorThresholds`; **гадна** мэдрэгчид `null` — тэгвэл
+1–2-р алхам (холболтгүй, хуучирсан, буруу утга / §5.4-ийн муж) хэвээр үйлчилж, зөв утга `status: 'normal'`, `levels`,
+`condition`, `explanation` нь `null` болно (3–7-р алхам буюу дотоод босгын ангилал хэрэглэгдэхгүй; §5.5). Алгоритм:
 
 1. `connection` нь `offline` бол → төлөв `offline`, `levels` ба `condition` нь `null`. Симуляцийн салгалтын үед энэ төлөвийг
    команд эсвэл сценарийн алхам ангиллыг хүлээлгүй шууд тавина (§9.4.1). `stale` бол → `previous` байвал түүнийг **бүхэлд нь** (`status`, `levels`, `condition`, `explanation`) буцааж, UI-д хуучирсан
@@ -1871,8 +1873,9 @@ export interface UiState {
 
 ### 11.2 React-ийн зурах стратеги
 
-- Store adapter нь **publish бүрт нэг удаа** `liveStore.setState(snapshot)` дуудна (React үр дүнгийн зурагдалтыг багцална).
-- Компонентууд **нарийн selector**-оор захиална (жишээ нь `useLiveStore(s => s.readings['F07-A-co2'])`), жижиг
+- Store adapter нь **publish бүрт нэг удаа** `applySnapshot(snapshot)` → `useLiveStore.setState({ snapshot })` дуудна (React
+  үр дүнгийн зурагдалтыг багцална). Store-ийн хэлбэр `{ snapshot: LiveSnapshot | null }` — эхний snapshot-оос өмнө `null` (§8.7).
+- Компонентууд **нарийн selector**-оор захиална (жишээ нь `useLiveStore(s => s.snapshot?.readings['F07-A-co2'])`), жижиг
   объект/массивт `useShallow` хэрэглэнэ. Ингэснээр компонент зөвхөн *өөрийн* өгөгдөл өөрчлөгдөхөд дахин зурагдана.
 - Snapshot нь **structural sharing** ашиглана (өөрчлөгдөөгүй төхөөрөмж/дохио ижил лавлагаатай), selector хямд хэвээр.
 - Өртөг өндөртэй гаргаж авах өгөгдөл (шүүсэн дохионы жагсаалт, давхрын нэгтгэл) memoized selector ашиглана.
@@ -2410,7 +2413,7 @@ interface-ийн зөрчлийг шийднэ.
 | D5 | 2026-10-18 | Төлөвт Zustand; CSS хувьсагчийн дизайны токен + Tailwind. *2026-10-20: Tailwind хойшлогдсон — D43.* | Хөнгөн; selector; UI ба 3D-д токены нэг эх сурвалж. | Redux Toolkit (хүнд); CSS-in-JS (ажиллах үеийн зардал). |
 | D6 | 2026-10-18 | Бүс бүрт хэмжигдэхүүн тус бүрийн нэг мэдрэгч; бүс бүрт нэг 3D тэмдэг. | Тодорхой өгөгдлийн загвар; цэгцтэй 3D. | Олон хэмжигдэхүүнтэй «мэдрэгчийн зангилаа» объект (хойшлуулсан). |
 | D7 | 2026-10-18 | Яаралтай байдал зөвхөн симуляцийн дохиоллын сигналаар эхэлнэ, утгаас хэзээ ч таамаглахгүй. | Аюулгүй байдлын бодит байдал ба үнэнч байдал. | PM2.5-аас галыг автоматаар илрүүлэх (татгалзсан). |
-| D8 | 2026-10-20 | Dependency-ийн яг хувилбарууд (exact, `^`/`~`-гүй; `.npmrc` `save-exact=true`, `engine-strict=true`). **Runtime:** react 19.3.0, react-dom 19.3.0, zustand 5.0.15, lucide-react 1.52.0, @fontsource/inter 5.3.0. **Хөгжүүлэлт:** typescript 6.0.3, vite 8.3.3, @vitejs/plugin-react 6.1.2, vitest 5.0.3, jsdom 29.1.1, @testing-library/react 16.3.3, @testing-library/dom 10.4.2, @testing-library/jest-dom 7.0.1, eslint 10.12.0, @eslint/js 10.0.1, typescript-eslint 8.71.1, eslint-plugin-react-hooks 7.1.1, eslint-plugin-boundaries 7.2.0, eslint-import-resolver-typescript 4.4.5, prettier 3.9.9, @types/react 19.3.0, @types/react-dom 19.3.0, @types/node 24.19.1. **overrides:** handlebars 4.7.10 (D40). Орчин: Node 24.13.0, npm 11.6.2. | `npm install` peer зөрчилгүй (`--force`/`--legacy-peer-deps` хэрэглээгүй); D39-ийн бодлогоор сонгосон. | Хамгийн сүүлийн хувилбарууд (D39-ийг үз). |
+| D8 | 2026-10-20 | Dependency-ийн яг хувилбарууд (exact, `^`/`~`-гүй; `.npmrc` `save-exact=true`, `engine-strict=true`). **Runtime:** react 19.3.0, react-dom 19.3.0, zustand 5.0.15, lucide-react 1.52.0, @fontsource/inter 5.3.0. **Хөгжүүлэлт:** typescript 6.0.3, vite 8.3.3, @vitejs/plugin-react 6.1.2, vitest 5.0.3, jsdom 29.1.1, @testing-library/react 16.3.3, @testing-library/dom 10.4.2, @testing-library/jest-dom 7.0.1, eslint 10.12.0, @eslint/js 10.0.1, typescript-eslint 8.71.1, eslint-plugin-react-hooks 7.1.1, eslint-plugin-boundaries 7.2.0, eslint-import-resolver-typescript 4.4.5, prettier 3.9.9, @types/react 19.3.0, @types/react-dom 19.3.0, @types/node 24.19.1, @testing-library/user-event 14.6.7 (2026-10-21-нд нэмэв, D46). **overrides:** handlebars 4.7.10 (D40). Орчин: Node 24.13.0, npm 11.6.2. | `npm install` peer зөрчилгүй (`--force`/`--legacy-peer-deps` хэрэглээгүй); D39-ийн бодлогоор сонгосон. | Хамгийн сүүлийн хувилбарууд (D39-ийг үз). |
 | D9 | 2026-10-18 | Кодын тайлбар Монголоор; таних нэр англиар. | Хөгжүүлэгчийн хүсэлт: тайлбарыг хөгжүүлэгч уншиж, тайлбарлахад хялбар байх. | Англи тайлбар. |
 | D10 | 2026-10-18 | UI бичвэр зөвхөн Монгол, нэг бичвэрийн модулиас (одоо `src/domain/i18n/mn/`, D25), i18n сангүй. | Хөгжүүлэгчийн хүсэлт; нэг модуль нэмэлт dependency-гүйгээр үг хэллэгийг нэгдмэл байлгана. | Англи UI; react-i18next (нэг хэлэнд шаардлагагүй). |
 | D11 | 2026-10-18 | `CLAUDE.md`-г Монгол хэлээр бичив. | Хөгжүүлэгчийн хүсэлт: баримтыг бүрэн ойлгож, хянах. Код, таних нэр, техникийн тэмдэглэгээ англиар үлдэв. | Англи баримт. |
