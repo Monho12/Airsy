@@ -1,0 +1,6 @@
+# Гараар засварладаг том баримт — Prettier хүснэгтүүдийг дахин форматлахгүй (D42)
+CLAUDE.md
+package-lock.json
+dist/
+coverage/
+node_modules/

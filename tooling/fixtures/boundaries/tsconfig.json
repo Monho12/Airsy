@@ -1,0 +1,12 @@
+{
+  "//": "Зөвхөн lint-ийн хилийн тестэд: fixture дотрох `@/` alias-ийг fixture-ийн src руу тайлна.",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"]
+}

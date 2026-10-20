@@ -1,0 +1,26 @@
+# Dependency
+node_modules/
+
+# Build ба тестийн гаралт
+dist/
+coverage/
+*.tsbuildinfo
+
+# Орчны хувьсагч (нууц мэдээлэл хэзээ ч commit хийхгүй)
+.env
+.env.*
+!.env.example
+
+# Лог
+npm-debug.log*
+*.log
+
+# Редактор ба үйлдлийн систем
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Браузерын автомат шалгалтын түр гаралт
+.playwright-mcp/
