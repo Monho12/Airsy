@@ -5,7 +5,7 @@
 >
 > **Баримтын төлөв:** Phase 0 (Төлөвлөлт), 2-р хувилбар — Phase 0-ийн хяналтын шийдвэрүүдийг (Хавсралт B, D12–D38)
 > оруулсан; *хөгжүүлэгч 2026-10-19-нд баталсан.*
-> **Апп-ын код одоогоор байхгүй.** Phase 1-ийг хөгжүүлэгчийн тодорхой зөвшөөрлөөр л эхлүүлнэ.
+> **Phase 1 (Frontend суурь) дууссан** — хөгжүүлэгч 2026-10-21-нд баталсан. Phase 2-ыг хөгжүүлэгчийн тодорхой зөвшөөрлөөр л эхлүүлнэ.
 
 ---
 
@@ -14,7 +14,7 @@
 | Phase | Нэр | Төлөв | Хөгжүүлэгч баталсан |
 |------:|-----|-------|---------------------|
 | 0 | Төлөвлөлт (энэ баримт) | 🟢 Дууссан, батлагдсан | ☑ (2026-10-19) |
-| 1 | Frontend суурь | ⚪ Эхлээгүй | ☐ |
+| 1 | Frontend суурь | 🟢 Дууссан, батлагдсан | ☑ (2026-10-21) |
 | 2 | Dashboard UI (жишээ өгөгдөлтэй) | ⚪ Эхлээгүй | ☐ |
 | 3 | Интерактив 3D барилга | ⚪ Эхлээгүй | ☐ |
 | 4 | Мэдрэгчийн шууд симуляци | ⚪ Эхлээгүй | ☐ |
@@ -937,7 +937,7 @@ PM2.5 52 µg/m³ (хязгаар ≥ 35) тул гадна агаарын хаа
 
 ### 8.3 Өнгөний токен
 
-`src/styles/tokens.css`-д CSS custom property болгон тодорхойлж (нэг эх сурвалж), Tailwind theme-д холбоно. 3D код
+`src/styles/tokens.css`-д CSS custom property болгон тодорхойлж (нэг эх сурвалж), компонентууд `var(--…)`-ээр шууд ашиглана (Tailwind батлагдвал theme-д холбоно, D43). 3D код
 ижил хувьсагчийг дүрслэл ачаалах үед жижиг туслах функцээр уншина (`readCssToken('--color-status-warning')`),
 ингэснээр 3D ба UI хэзээ ч зөрөхгүй.
 
@@ -1147,7 +1147,7 @@ offline 4.89; `--color-on-emergency` нь emergency дээр 4.83. Цагаан 
 | UI сан | **React** | Компонентын загвар; React Three Fiber-т шаардлагатай экосистем. |
 | Хэл | **TypeScript (`strict: true`)** | Симуляци, удирдлага, 3D, UI хоорондын нийтлэг, шалгагдсан гэрээ. Алдааг эрт барина. |
 | Build хэрэгсэл | **Vite** | Хурдан dev сервер, энгийн тохиргоо, React + TS-ийн бүрэн дэмжлэг. |
-| Загвар (styling) | **Tailwind CSS v4** (хөгжүүлэгч 2026-10-19-нд **түр баталсан**; нийцлийг суулгахаас өмнө шалгана — §15.1 A9) + CSS custom property | Токен CSS хувьсагчид байна (нэг эх сурвалж, 3D-ээс ч уншина); Tailwind олон CSS бичихгүйгээр нэгдмэл зай, үсгийн хэвийн utility өгнө. |
+| Загвар (styling) | **Цэвэр CSS + CSS custom property** (Phase 1). Tailwind CSS v4 **хойшлогдсон** — хичээлийн шаардлагатай нийцэл батлагдвал тусдаа commit-оор нэмнэ (D43, §15.1 A9) | Токен CSS хувьсагчид байна (нэг эх сурвалж, 3D-ээс ч уншина); Tailwind нэмэгдсэн ч токенууд өөрчлөгдөхгүй. |
 | 3D | **Three.js + React Three Fiber + Drei** | R3F нь 3D дүрслэлийг React компонентоор бүтээх боломж өгнө; Drei камерын удирдлага, `Html` шошго, туслах хэрэгслүүд өгнө. |
 | Төлөв (state) | **Zustand** | Жижиг, илүү код шаардахгүй, selector-ийг дэмжинэ (компонент зөвхөн хэрэглэж буй өгөгдлөө өөрчлөгдөхөд дахин зурагдана), 3D-ийн render давталтад React-гүйгээр уншина (`getState()`). |
 | График | **Recharts** | React-д зориулсан график; босгын зурвастай шугаман графикт хангалттай. |
@@ -1243,6 +1243,8 @@ WebSocket-оор snapshot хүлээн авдаг `RemoteRuntime` нь UI-г ө�
    └─ test/                      ← тестийн туслах (domain тест эх кодын хажууд *.test.ts байж болно)
       ├─ domain/                 ← domain тестийн fixture, builder (зөвхөн domain + vitest)
       └─ ui/                     ← UI тестийн setup (jest-dom), render туслах, store fixture
+tooling/                         ← архитектурын давхаргаас гадуурх хэрэгслийн тест (node): lint-ийн хил, токены контраст
+   └─ fixtures/boundaries/       ← lint-ийн хилийн тестийн зорилтот файлууд (src-ийн бүтцийг давтана; апп импортлохгүй)
 ```
 
 **Хилийн дүрэм (Phase 1-ээс ESLint-ээр сахиулна — импортын замын болон синтаксийн дүрмээр):**
@@ -1250,9 +1252,10 @@ WebSocket-оор snapshot хүлээн авдаг `RemoteRuntime` нь UI-г ө�
 1. **Импортын хэлбэр.** `src/`-ийн дээд хавтас (`domain`, `store`, `components`, `features/<нэр>`, `app`) хооронд импортыг
    `@/` alias-аар (`@/domain/types`, `@/store/selectors`) бичнэ; ийм хил давах харьцангуй `../` импорт хориотой. Alias-ийг
    `tsconfig` ба `vite.config.ts`-д тохируулна. Core `no-restricted-imports` нь импортын бичвэрийг л тааруулдаг тул файлын
-   байршилд суурилсан хилийг **нэг** import-boundary plugin-оор (`eslint-plugin-import`-ийн `no-restricted-paths` эсвэл
-   `eslint-plugin-boundaries`) сахиулна. Аль нэгийг Phase 1-д peer нийцлийг шалгасны дараа сонгож D8-д бүртгэнэ
-   (одоогоор **шалгагдаагүй**).
+   байршилд суурилсан хилийг **нэг** import-boundary plugin-оор сахиулна: `eslint-plugin-boundaries` 7.2.0 +
+   `eslint-import-resolver-typescript` (D40; `eslint-plugin-import` ESLint 10-ийг дэмжихгүй). `src/`-ийн файл бүр доорх
+   давхаргын аль нэгэнд эсвэл тестийн файлд хамаарах ёстой — ангилагдаагүй файл lint алдаа (`boundaries/no-unknown-files`).
+   Үл хамаарал зөвхөн `src/main.tsx` (эхлэх цэг) ба `src/vite-env.d.ts` (Vite-ийн ambient төрөл; юу ч импортлохгүй).
 2. **Давхарга бүрийн зөвшөөрөгдөх импорт:**
 
    | Давхарга | Импортолж болно | Хориотой |
@@ -1260,13 +1263,14 @@ WebSocket-оор snapshot хүлээн авдаг `RemoteRuntime` нь UI-г ө�
    | `domain/**` | зөвхөн `domain/**` | React, Zustand, Three/R3F, `app`, `components`, `features`, `store` |
    | `store/**` | `domain/**` (`LocalSimulationRuntime`-ээс бусад), Zustand | `app`, `components`, `features` |
    | `components/ui/**` | `domain/types`, `domain/i18n`, React, lucide-react, `styles` | `domain`-ийн бусад хэсэг, `store`, `features`, `app` |
-   | `features/<нэр>/**` | өөрийн хавтас, `components/ui`, `store`, `domain/types`, `domain/i18n`, `domain/config`, `domain/runtime/AerisRuntime.ts` (interface ба командын төрөл) | бусад feature, `domain`-ийн бусад хэсэг, `app` |
-   | `app/**` | `features/<нэр>/index.ts`, `components/ui`, `store`, `domain/types`, `domain/i18n`, `domain/config` | feature-ийн дотоод файл, `LocalSimulationRuntime` |
+   | `features/<нэр>/**` | өөрийн хавтас, `components/ui`, `store`, `domain/types`, `domain/i18n`, `domain/config`, `domain/runtime/AerisRuntime.ts` (interface ба командын төрөл), React, lucide-react, Zustand (selector, `useShallow`; §11.2) | бусад feature, `domain`-ийн бусад хэсэг, `app` |
+   | `app/**` | `features/<нэр>/index.ts`, `components/ui`, `store`, `domain/types`, `domain/i18n`, `domain/config`, React, lucide-react | feature-ийн дотоод файл, `LocalSimulationRuntime` |
    | `src/main.tsx` | бүгд (`LocalSimulationRuntime`-ийг үүсгэх цорын ганц газар) | — |
    | Domain тест `src/domain/**/*.test.ts` | `domain/**`, `vitest`, `src/test/domain/**` | React, `@testing-library/*`, Zustand, `store`, `components`, `features`, `app`, `src/test/ui/**` |
    | Бусад тест `**/*.test.ts(x)` | тухайн давхаргын зөвшөөрөгдсөн импорт **дээр нь** `vitest`, `@testing-library/*`, `src/test/domain/**`, `src/test/ui/**` | тухайн давхаргын бусад хориг (жишээ нь `components/ui` тест `features` импортлохгүй) |
    | `src/test/domain/**` (domain fixture, builder) | `domain/**`, `vitest` | React, `@testing-library/*`, Zustand, `store`, `components`, `features`, `app`, `src/test/ui/**` |
    | `src/test/ui/**` (setup, render туслах, store fixture) | `domain/**`, `store/**`, `components/ui/**`, `src/test/domain/**`, `vitest`, `@testing-library/*` | `features`, `app` |
+   | `tooling/**/*.test.ts` (lint, токены контраст) | `vitest`, `eslint`, Node-ийн модуль; `src/`-ийн файлыг **импортлохгүй** (зөвхөн `fs`-ээр уншиж болно; lint `no-restricted-imports`) | — (boundaries-ийн давхаргад хамаарахгүй) |
 
    **Тестийн үл хамаарал хамгийн нарийн:** `vitest`, `@testing-library/*`, `src/test/domain/**`, `src/test/ui/**`-ийг
    **зөвхөн** дээрх тест мөрүүд импортолно; тест бус (production) файл аль ч давхаргад импортолбол lint алдаа.
@@ -1294,8 +1298,9 @@ WebSocket-оор snapshot хүлээн авдаг `RemoteRuntime` нь UI-г ө�
    feature хоорондын дотоод импорт, feature-ээс `domain/control` импорт, хил давсан харьцангуй `../` импорт,
    `components/ui`-аас `store` импорт, тест бус domain файлаас `vitest` импорт, domain тестээс `@testing-library/react`
    эсвэл `src/test/ui/**` импорт, `src/test/domain/**`-аас `store` импорт; харин domain-ийн `*.test.ts`-аас `vitest`
-   импорт **зөвшөөрөгдөж** буйг мөн шалгана) lint алдаа өгч буйг шалгана. Түр fixture файл
-   ашиглаад дараа нь устгана, эсвэл ESLint-ийн `Linter`/`ESLint` API-аар кодын хэсгийг шалгадаг автомат тест бичнэ.
+   импорт **зөвшөөрөгдөж** буйг мөн шалгана) lint алдаа өгч буйг шалгана. Хэрэгжүүлэлт (D40): `tooling/lint-boundaries.test.ts`
+   нь ESLint API-ийн `lintText`-ээр зөрчсөн кодыг `tooling/fixtures/boundaries/src/`-д байгаа мэт lint хийнэ — түр файл үүсгэхгүй;
+   импортын зорилтот жижиг файлууд fixture-д байнга байна (resolver тэдгээрийг олох ёстой).
 
 ### 9.4 Runtime-ийн гэрээ
 
@@ -1760,8 +1765,11 @@ export interface UiState {
   reducedMotion: boolean;                   // эцсийн утга (override ?? системийн тохиргоо)
   cameraResetToken: number;                 // «Харагдацыг сэргээх» бүрт +1; CameraRig өөрчлөлтийг ажиглана
 }
-// Үйлдэл: selectFloor(id), selectArea(id) (давхрыг нь хамт сонгоно), hoverFloor(id), setReducedMotionOverride(v),
-// requestCameraReset(). Өөр давхар сонгоход selectedAreaId цэвэрлэгдэнэ.
+// Үйлдэл: selectFloor(id), selectArea(id) (давхрыг нь §5.2-ын `{floorId}-{үсэг}` дүрмээр хамт сонгоно; `null` бол давхрыг
+// хадгалж зөвхөн бүсийн сонголтыг цуцална), hoverFloor(id),
+// setReducedMotionOverride(v), requestCameraReset(). Өөр давхар сонгоход selectedAreaId цэвэрлэгдэнэ.
+// Хэрэгжүүлэлтийн нэмэлт (Phase 1): дотоод `systemReducedMotion` + `setSystemReducedMotion(v)` — системийн
+// prefers-reduced-motion-ыг `app/` давхарга сонсож дамжуулна (store DOM-д хүрэхгүй).
 ```
 
 ---
@@ -1855,8 +1863,10 @@ export interface UiState {
 | Build | `npm run build` + `npm run typecheck` | Төрлийн алдаагүй; production багц build хийгдэнэ. |
 | Гараар үзүүлэх шалгалт | Жагсаалт (§12.4) | 8 сценари бүгд браузерт тодорхойлсны дагуу ажиллана. |
 
-Төлөвлөсөн npm скрипт (Phase 1-д үүснэ): `dev`, `build`, `preview`, `typecheck` (`tsc --noEmit`), `lint`, `format`,
-`test` (watch), `test:run` (CI маягийн нэг удаагийн ажиллуулалт), `test:coverage` (заавал биш).
+npm скрипт (Phase 1-д үүссэн): `dev`, `build` (`tsc -b && vite build`), `preview`, `typecheck` (`tsc -b` — project
+references-ийн app ба node tsconfig-ийг хоёуланг шалгана; үндсэн tsconfig `"files": []` тул `tsc --noEmit` юу ч шалгахгүй),
+`lint`, `format`, `format:check` (`prettier --check .`), `test` (watch), `test:run` (CI маягийн нэг удаагийн ажиллуулалт),
+`test:coverage` (заавал биш; одоогоор нэмээгүй).
 
 ### 12.2 Заавал байх тестүүд
 
@@ -1980,7 +1990,7 @@ Phase бүрийн дараа хөгжүүлэгчийн хяналтад зог
 - **Үр дүн:** `CLAUDE.md`.
 - **Хүлээн авах:** [x] Хөгжүүлэгч энэ баримтыг хянаж баталсан (2026-10-19).
 
-### Phase 1 — Frontend суурь
+### Phase 1 — Frontend суурь 🟢 (хөгжүүлэгч 2026-10-21-нд баталсан)
 
 - **Хариуцагч:** Ахлах архитектор (тохиргоо, хил) + Ахлах frontend инженер (UI/UX-тэй хавсарсан).
 - **Хамрах хүрээ:**
@@ -1988,15 +1998,14 @@ Phase бүрийн дараа хөгжүүлэгчийн хяналтад зог
   - [ ] Dependency-ийн хувилбар ба peer нийцлийг суулгахаас **өмнө** шалгаж, яг суулгасан хувилбарыг Хавсралт B (D8)-д
     бүртгэх. Phase 1-д зөвхөн дараахыг суулгана (3D ба графикийн санг тухайн phase-д нь):
     - **Runtime:** `react`, `react-dom`, `zustand`, `lucide-react`; Inter фонтын багц — glyph шалгалтад (§8.4) тэнцвэл л.
-    - **Хөгжүүлэлт:** `typescript`, `vite` + React plugin, Tailwind CSS v4 ба түүний Vite/PostCSS интеграц (түр
-      батлагдсан; хичээлийн шаардлага ба Vite/React/TypeScript-тэй нийцлийг суулгахаас өмнө шалгана, §15.1 A9), `vitest`, `@testing-library/react` + `@testing-library/jest-dom` (+ хэрэгтэй бол
+    - **Хөгжүүлэлт:** `typescript`, `vite` + React plugin, `vitest`, `@testing-library/react` + `@testing-library/jest-dom` (+ хэрэгтэй бол
       `@testing-library/user-event`), `jsdom`, `eslint` + `typescript-eslint` + React hooks-ийн дүрэм, нэг
-      import-boundary plugin (§9.3), `prettier`.
+      import-boundary plugin (§9.3), `prettier`. Tailwind CSS v4 **хойшлогдсон** (D43).
     - Энэ жагсаалтаас гадуурх dependency хэрэгтэй болбол суулгахаас өмнө тайланд нэг өгүүлбэрээр үндэслэнэ.
   - [ ] Хавтасны бүтэц (§9.3) ба ESLint-ийн хилийн дүрэм (импорт, `Date.now`/`Math.random`/timer хориг, feature хоорондын
-    хил, давхаргын импортын хүснэгт, `@/` alias); зориуд зөрчлөөр шалгаж, fixture-ийг устгах (§9.3, 8-р дүрэм).
-  - [ ] Бүх дизайны токентой `tokens.css` (§8.3–8.5), Tailwind-д холбосон (Tailwind v4 түр батлагдсан, нийцлийн шалгалт §15.1 A9);
-    §8.3-ын контрастын матрицын автомат тест.
+    хил, давхаргын импортын хүснэгт, `@/` alias); зориуд зөрчлөөр шалгах (§9.3, 8-р дүрэм; ESLint API, D40).
+  - [ ] Бүх дизайны токентой `tokens.css` (§8.3–8.5), цэвэр CSS-ээр (Tailwind хойшлогдсон, D43);
+    §8.3-ын контрастын матрицын автомат тест (`tooling/tokens-contrast.test.ts`).
   - [ ] `domain/types` модулийн суурь — зөвхөн `uiStore`-д хэрэгтэй хамгийн бага ID төрлүүдийг (`FloorId`, `AreaId`, §10)
     тодорхойлж болно; бусад төрөл, тохиргоо, domain логик Phase 2-т; `uiStore`-ийн суурь; `domain/i18n/mn/`-ийн суурь (`index.ts` + `common.ts`).
   - [ ] Inter-ийг локал багцалж **Ө ө Ү ү** glyph-ийг шалгах (§8.4, §8.9); тэнцэхгүй бол системийн фонт руу буцах.
@@ -2004,10 +2013,10 @@ Phase бүрийн дараа хөгжүүлэгчийн хяналтад зог
   - [ ] npm скриптүүд (§12.1); нэг smoke тест (shell зурагдана) ба нэг энгийн domain тест.
   - [ ] Vitest-ийн орчныг тестийн төрлөөр салгах (§9.3): domain тест (`src/domain/**/*.test.ts`) `node` орчинд ажиллаж,
     UI-д зориулсан setup файлыг (jest-dom г.м.) **ачаалахгүй**; UI тест `jsdom` орчинд `src/test/ui/setup`-ийг ачаална.
-    Үүнийг хэрхэн тохируулах (Vitest-ийн `projects`/workspace эсвэл өөр арга) Phase 1-д суулгасан хувилбараар сонгоно —
-    **шалгагдаагүй**. `setupFiles` нь импорт биш тул import-boundary lint үүнийг барихгүй; тохиргоогоор хангана.
+    Хэрэгжүүлэлт (D41): `vite.config.ts`-ийн `test.projects` — `domain` (node), `ui` (jsdom + setup), `tooling` (node).
+    `setupFiles` нь импорт биш тул import-boundary lint үүнийг барихгүй; тохиргоогоор хангана.
   - [ ] `.gitignore` (node_modules, dist, coverage, env файлууд).
-- **Хүлээн авах:** [ ] `npm run dev` shell-ийг console алдаагүй харуулна · [ ] typecheck, lint, test, build амжилттай · [ ] хилийн lint дүрэм зориуд хийсэн зөрчил бүрийг барина (шалгаад устгана) · [ ] layout 375 / 768 / 1280 / 1920 px-д хэвтээ гүйлгэлтгүй · [ ] токены контрастын тест амжилттай · [ ] domain тест `node` орчинд, UI setup-гүй ажилладаг; UI тест `jsdom` + `src/test/ui/setup` · [ ] Ө/Ү glyph шалгасан · [ ] яг суулгасан хувилбарууд Хавсралт B (D8)-д · [ ] ажил `phase-1-foundation` салбарт, push хийгээгүй.
+- **Хүлээн авах:** [x] `npm run dev` shell-ийг console алдаагүй харуулна · [x] typecheck, lint, test, build амжилттай · [x] хилийн lint дүрэм зориуд хийсэн зөрчил бүрийг барина (`tooling/lint-boundaries.test.ts`, D40) · [x] layout 375 / 768 / 1280 / 1920 px-д хэвтээ гүйлгэлтгүй · [x] токены контрастын тест амжилттай · [x] domain тест `node` орчинд, UI setup-гүй ажилладаг; UI тест `jsdom` + `src/test/ui/setup` · [x] Ө/Ү glyph шалгасан · [x] яг суулгасан хувилбарууд Хавсралт B (D8)-д · [x] ажил `phase-1-foundation` салбарт, push хийгээгүй.
 
 ### Phase 2 — Dashboard UI (жишээ өгөгдөлтэй)
 
@@ -2138,7 +2147,7 @@ Phase 8+ (зөвхөн тодорхой зөвшөөрлөөр): Node.js backend
 | `src/features/building3d/` | 3D дүрслэлийн инженер |
 | `src/app/`, `src/components/ui/`, бусад `src/features/*`, `src/store/` (runtime → store adapter орно), `i18n/mn/` дахь `metrics.ts`, `devices.ts`, `format.ts` | Frontend инженер |
 | `src/styles/tokens.css` | UI/UX мэргэжилтэн (өөрчлөлтийг Архитектор батална) |
-| `**/*.test.ts(x)`, `src/test/` | QA инженер (хариуцагч өөрийн кодын тестийг нэмж болно) |
+| `**/*.test.ts(x)`, `src/test/`, `tooling/` | QA инженер (хариуцагч өөрийн кодын тестийг нэмж болно) |
 
 ### 14.4 Интеграцийн гэрээ
 
@@ -2225,13 +2234,13 @@ interface-ийн зөрчлийг шийднэ.
 |---|-----------|
 | A1 | Төлөвлөх үед репозиторид зөвхөн нэг мөр `README.md` (`# Airsy`) байсан; одоо байгаа код, тохиргоо, хязгаарлалт байхгүй. |
 | A2 | Ганц хөгжүүлэгч, бие даасан төсөл; эцсийн хугацаа өгөгдөөгүй — phase бүр цагийн ажлаар ойролцоогоор 1–2 долоо хоногийн хэмжээтэй. |
-| A3 | Үзүүлэлт WebGL2-той орчин үеийн laptop-ийн Chrome эсвэл Edge-ийн сүүлийн хувилбарт явагдана; хөгжүүлэлтэд Node.js-ийн одоогийн LTS (≥ 20). |
+| A3 | Үзүүлэлт WebGL2-той орчин үеийн laptop-ийн Chrome эсвэл Edge-ийн сүүлийн хувилбарт явагдана; хөгжүүлэлтэд Node.js **≥ 24** (`package.json` `engines` + `.npmrc` `engine-strict=true`; vitest 5 нь Node ^22.12 \|\| ^24 шаардана — D8, D39). Шалгасан орчин: Node 24.13.0, npm 11.6.2. |
 | A4 | UI зөвхөн Монгол (§8.9); зөвхөн метрийн нэгж (°C, ppm, % RH, µg/m³). |
 | A5 | Нэг зохиомол барилга («AERIS Tower»), 12 давхар, давхар бүрт 2 бүс, 3 төхөөрөмж. |
 | A6 | Босго (§5.5) нь стандартын утга биш, үзүүлэх утга. |
 | A7 | Симуляцийн загвар (§5.8) дүрслэх зориулалттай, физикийн хувьд нарийн биш. |
 | A8 | Phase 1–7-д backend, хадгалалт, нэвтрэлт байхгүй; хуудсыг дахин ачаалахад симуляци суурь төлөвөөс дахин эхэлнэ. |
-| A9 | Багц менежер npm. **Tailwind CSS v4 — хөгжүүлэгч 2026-10-19-нд түр баталсан.** Суулгахаас **өмнө** (1) хичээлийн шаардлагатай, (2) сонгосон Vite, React, TypeScript хувилбартай нийцлийг шалгана; шалгахаас өмнө нийцнэ гэж мэдэгдэхгүй (репозиторид хичээлийн шаардлагын баримт байхгүй). Хичээлийн шаардлагатай зөрчилдвөл (өөр хувилбар эсвэл цэвэр CSS/SCSS) **хичээлийн шаардлагыг дагаж**, токеныг CSS хувьсагч хэвээр үлдээнэ — токены дизайнд нөлөөлөхгүй. |
+| A9 | Багц менежер npm. **Tailwind CSS v4 — 2026-10-20-нд хойшлуулсан (D43); Phase 1 цэвэр CSS.** Нэмэх бол: Суулгахаас **өмнө** (1) хичээлийн шаардлагатай, (2) сонгосон Vite, React, TypeScript хувилбартай нийцлийг шалгана; шалгахаас өмнө нийцнэ гэж мэдэгдэхгүй (репозиторид хичээлийн шаардлагын баримт байхгүй). Хичээлийн шаардлагатай зөрчилдвөл (өөр хувилбар эсвэл цэвэр CSS/SCSS) **хичээлийн шаардлагыг дагаж**, токеныг CSS хувьсагч хэвээр үлдээнэ — токены дизайнд нөлөөлөхгүй. |
 | A10 | Хичээл орчин үеийн вэб технологиос өөр тодорхой framework шаардахгүй; React + TypeScript зөвшөөрөгдөнө. |
 | A11 | Хүний ачаалал прототипт өдрийн цагаас хамаарахгүй (тогтмол суурь + сценари); өдрийн хуваарь бол ирээдүйн өргөтгөл. |
 
@@ -2304,10 +2313,10 @@ interface-ийн зөрчлийг шийднэ.
 | D2 | 2026-10-18 | UI ба өгөгдлийн эх сурвалжийн хооронд `AerisRuntime` interface. | Ирээдүйн WebSocket backend-ийг UI дахин бичихгүйгээр нэмэх боломж. | UI симуляцийг шууд унших (татгалзсан: хэт холбоотой). |
 | D3 | 2026-10-18 | Seed-тэй PRNG-тэй, тогтмол алхамтай тодорхой симуляци. | Давтагдах үзүүлэлт ба тест. | `Math.random` + бодит цаг (татгалзсан: давтагдахгүй). |
 | D4 | 2026-10-18 | Lint-ээр сахиулсан хилтэй цэвэр TS domain давхарга. | Тестлэх боломж; сервер рүү зөөх боломж. | Логикийг компонент/hook-д (татгалзсан). |
-| D5 | 2026-10-18 | Төлөвт Zustand; CSS хувьсагчийн дизайны токен + Tailwind. | Хөнгөн; selector; UI ба 3D-д токены нэг эх сурвалж. | Redux Toolkit (хүнд); CSS-in-JS (ажиллах үеийн зардал). |
+| D5 | 2026-10-18 | Төлөвт Zustand; CSS хувьсагчийн дизайны токен + Tailwind. *2026-10-20: Tailwind хойшлогдсон — D43.* | Хөнгөн; selector; UI ба 3D-д токены нэг эх сурвалж. | Redux Toolkit (хүнд); CSS-in-JS (ажиллах үеийн зардал). |
 | D6 | 2026-10-18 | Бүс бүрт хэмжигдэхүүн тус бүрийн нэг мэдрэгч; бүс бүрт нэг 3D тэмдэг. | Тодорхой өгөгдлийн загвар; цэгцтэй 3D. | Олон хэмжигдэхүүнтэй «мэдрэгчийн зангилаа» объект (хойшлуулсан). |
 | D7 | 2026-10-18 | Яаралтай байдал зөвхөн симуляцийн дохиоллын сигналаар эхэлнэ, утгаас хэзээ ч таамаглахгүй. | Аюулгүй байдлын бодит байдал ба үнэнч байдал. | PM2.5-аас галыг автоматаар илрүүлэх (татгалзсан). |
-| D8 | — | Dependency-ийн яг хувилбарууд | *Phase 1-д бүртгэнэ.* | — |
+| D8 | 2026-10-20 | Dependency-ийн яг хувилбарууд (exact, `^`/`~`-гүй; `.npmrc` `save-exact=true`, `engine-strict=true`). **Runtime:** react 19.3.0, react-dom 19.3.0, zustand 5.0.15, lucide-react 1.52.0, @fontsource/inter 5.3.0. **Хөгжүүлэлт:** typescript 6.0.3, vite 8.3.3, @vitejs/plugin-react 6.1.2, vitest 5.0.3, jsdom 29.1.1, @testing-library/react 16.3.3, @testing-library/dom 10.4.2, @testing-library/jest-dom 7.0.1, eslint 10.12.0, @eslint/js 10.0.1, typescript-eslint 8.71.1, eslint-plugin-react-hooks 7.1.1, eslint-plugin-boundaries 7.2.0, eslint-import-resolver-typescript 4.4.5, prettier 3.9.9, @types/react 19.3.0, @types/react-dom 19.3.0, @types/node 24.19.1. **overrides:** handlebars 4.7.10 (D40). Орчин: Node 24.13.0, npm 11.6.2. | `npm install` peer зөрчилгүй (`--force`/`--legacy-peer-deps` хэрэглээгүй); D39-ийн бодлогоор сонгосон. | Хамгийн сүүлийн хувилбарууд (D39-ийг үз). |
 | D9 | 2026-10-18 | Кодын тайлбар Монголоор; таних нэр англиар. | Хөгжүүлэгчийн хүсэлт: тайлбарыг хөгжүүлэгч уншиж, тайлбарлахад хялбар байх. | Англи тайлбар. |
 | D10 | 2026-10-18 | UI бичвэр зөвхөн Монгол, нэг бичвэрийн модулиас (одоо `src/domain/i18n/mn/`, D25), i18n сангүй. | Хөгжүүлэгчийн хүсэлт; нэг модуль нэмэлт dependency-гүйгээр үг хэллэгийг нэгдмэл байлгана. | Англи UI; react-i18next (нэг хэлэнд шаардлагагүй). |
 | D11 | 2026-10-18 | `CLAUDE.md`-г Монгол хэлээр бичив. | Хөгжүүлэгчийн хүсэлт: баримтыг бүрэн ойлгож, хянах. Код, таних нэр, техникийн тэмдэглэгээ англиар үлдэв. | Англи баримт. |
@@ -2325,10 +2334,10 @@ interface-ийн зөрчлийг шийднэ.
 | D23 | 2026-10-19 | 3D координат (Y дээш, метр, суурийн төв, урд-баруун cutaway) ба агааржуулалтын байрлал тохиргоонд (§5.1.1); бөөмсийн төсөв давхрын тоогоор. | FR-B1; 3D-д geometry хатуу бичихгүй. | — |
 | D24 | 2026-10-19 | `--color-text-muted` `#8A93A2`, `--color-status-offline` `#7A818E` (зөвхөн UI элемент); `#EF4444` дээр бараан бичвэр. | WCAG AA тооцоонд тэнцээгүй байсан. | — |
 | D25 | 2026-10-19 | i18n-ийг сэдвээр `src/domain/i18n/mn/` болгож хуваах; runtime хэрэгжүүлэлт (Симуляци) ба store adapter (Frontend) эзэмшил. | Нэг файлын зөрчлөөс сэргийлэх. | Нэг `mn.ts` (татгалзсан). |
-| D26 | 2026-10-19 | **Tailwind CSS v4 — түр батлагдсан** (хөгжүүлэгч, 2026-10-19): хичээлийн шаардлага ба Vite/React/TypeScript-тэй нийцлийг суулгахаас өмнө шалгана; зөрчилдвөл хичээлийн шаардлагыг дагана. **Inter локал — хүлээгдэж буй** (Phase 1-ийн Ө/Ү glyph шалгалтын дараа). | Тогтвортой харагдац; хичээлийн шаардлага тодорхойгүй. | CDN фонт; Tailwind v3. |
+| D26 | 2026-10-19 | **Tailwind CSS v4 — түр батлагдсан** (хөгжүүлэгч, 2026-10-19): хичээлийн шаардлага ба Vite/React/TypeScript-тэй нийцлийг суулгахаас өмнө шалгана; зөрчилдвөл хичээлийн шаардлагыг дагана. **Inter локал — хүлээгдэж буй** (Phase 1-ийн Ө/Ү glyph шалгалтын дараа). *2026-10-20: Tailwind хойшлогдож, Inter батлагдсан — D43.* | Тогтвортой харагдац; хичээлийн шаардлага тодорхойгүй. | CDN фонт; Tailwind v3. |
 | D27 | 2026-10-19 | `CLAUDE.md` цорын ганц эх сурвалж хэвээр; хэт томровол дэлгэрэнгүйг `docs/` руу шилжүүлж, холбоос үлдээнэ (одоохондоо шилжүүлээгүй). | Давхардлаас зайлсхийх. | Одоо хуваах (шаардлагагүй). |
 | D28 | 2026-10-19 | Phase 1-ийн dependency-ийг runtime/хөгжүүлэлт гэж нэрлэн жагсаав (typescript-eslint, jest-dom, plugin-ууд орно), гадуурх бүрийг үндэслэнэ (B1). | Хаалттай жагсаалт зайлшгүй хэрэгслийг орхисон байсан. | — |
-| D29 | 2026-10-19 | `@/` alias + замд суурилсан нэг import-boundary plugin (сонголт Phase 1-д, **шалгагдаагүй**) + давхаргын импортын хүснэгт (B2). | Core `no-restricted-imports` харьцангуй замыг найдвартай барихгүй. | Зөвхөн core дүрэм (хангалтгүй). |
+| D29 | 2026-10-19 | `@/` alias + замд суурилсан нэг import-boundary plugin (сонголт Phase 1-д, **шалгагдаагүй**) + давхаргын импортын хүснэгт (B2). *2026-10-20: шийдэгдсэн — `eslint-plugin-boundaries` (D40).* | Core `no-restricted-imports` харьцангуй замыг найдвартай барихгүй. | Зөвхөн core дүрэм (хангалтгүй). |
 | D30 | 2026-10-19 | `--color-on-emergency`, `--color-on-fill`, `--color-status-critical-fill` токен; border-strong зөвхөн чимэглэлд; зөвхөн тооцоолсон контрастын матриц (B3, C10). | Шалгаагүй ерөнхий мэдэгдэл ба буруу хэрэглээг арилгах. | — |
 | D31 | 2026-10-19 | 2D давхрын жагсаалт `features/floor-list`-д; орлуулах харагдацыг `app/` сонгоно (B4). | Feature хоорондын импортын хоригтой нийцүүлэх. | `building3d` дотор (татгалзсан). |
 | D32 | 2026-10-19 | Тал бүрийн түвшин `ThresholdLevels` (one-sided / two-sided discriminated union), `ReadingClassification.condition`; нэгтгэлд ерөнхий `status` хадгалахгүй (C1). | Өндөр/бага талын түлхүүр ба `R-THERMAL`-ийн нөхцөл тодорхой; тал бүрийн hysteresis. | Давхардсан `highStatus`/`lowStatus` талбар (татгалзсан). |
@@ -2338,3 +2347,8 @@ interface-ийн зөрчлийг шийднэ.
 | D36 | 2026-10-19 | PM2.5: `pmDilutionAllowed` (10/12 µg/m³ hysteresis — **түр симуляцийн утга**, баталгаажсан босго биш, §5.5), PM2.5 дүрэм `EF`-д хүсэлтгүй, 4 тохиолдлын хүснэгт (C9). | Загварт `EF` PM2.5-д нөлөөлөхгүй; дотоод утгын эргэх холбоогоор хэлбэлзэхээс сэргийлэх. | `EF`-ийг CO₂-тэй тэнцүүлэх (татгалзсан). |
 | D37 | 2026-10-19 | Phase 0-ийн баримтыг local `phase-0-review` салбарт commit хийнэ (§14.8). Нэмэлт засвар: тестийн импортын нарийн үл хамаарал (§9.3), удирдлагын төлөвийн дохио 6b үе шатанд (§9.5), салгалтын шууд ангилал (§9.4.1), debounce нь hysteresis-ийн дараах түвшинд (§6.6). | «Phase бүрт салбар» дүрэмтэй нийцүүлэх; эцсийн хяналтын зөрчлүүдийг арилгах. | `main`-д шууд commit (татгалзсан). |
 | D38 | 2026-10-19 | `emergency` төрлийн дохио (`AlertType`) ба `R-EMERGENCY` override-ийг ялгав; 6b зөвхөн дохио, idempotent, `emergency` дохиог зөвхөн үүсгэнэ, шийдэхийг §7.4 A/B командууд, хатуу шинэчлэл (D) `ALERT_RESOLVED`-гүй устгана (§9.5, §7.4). Vitest-ийн орчин: domain тест `node`, UI тест `jsdom` + `src/test/ui/setup` (Phase 1, §13). Тестийн туслахыг `src/test/domain/` ба `src/test/ui/` гэж хувааж, domain тестийн дам React/UI замыг хаав (§9.3). | Шийдэх хариуцлагын давхардал ба давхар `ALERT_RESOLVED`; domain тестийн `@testing-library/*` зөрчил. | Нийтлэг `src/test/**` хэвээр (татгалзсан). |
+| D39 | 2026-10-20 | Хувилбар сонгох бодлого: `package.json`-д exact хувилбар. «Нийтлэгдээд ≥ 14 хоног» нь **зөвлөмж** — Node, peer, security, ecosystem нийцлийг давуу харгалзана. TypeScript **6.0.3** (7.0.2 нь typescript-eslint 8.x-ийн `typescript <6.1.0` peer-ийг зөрчинө); jsdom **29.1.1** (30.x нь Node ^24.15.0 шаардана, орчин 24.13.0). | Шинэ хувилбарыг сохроор авахаас сэргийлж, бодит орчинд шалгасан нийцлийг сонгох. | Node-ийг 24.15+ болгох (одоохондоо татгалзсан); TypeScript 7 (peer зөрчил). |
+| D40 | 2026-10-20 | Импортын хил: `eslint-plugin-boundaries` 7.2.0 (`boundaries/dependencies`, `default: 'disallow'`, `checkAllOrigins: true` — гадаад багцыг ч allow-list-ээр, `checkUnknownLocals: true`) + `eslint-import-resolver-typescript` (`@/` alias). Харьцангуй `../` хил давалтыг core `no-restricted-imports` regex-ээр; deterministic хоригийг `no-restricted-properties/syntax/globals`-аар. Ангилагдаагүй `src/` файлыг `boundaries/no-unknown-files` хориглоно (`main.tsx`, `vite-env.d.ts` — файлын категориор зөвшөөрөгдсөн үл хамаарал). React hooks дүрэм `src/**/*.{ts,tsx}`-д. `tooling/` апп-ын эх кодыг импортлохгүй (`no-restricted-imports`). Шалгалт: `tooling/lint-boundaries.test.ts` (ESLint API + fixture; 36 зөрчил, 11 зөвшөөрөгдсөн тохиолдол, tooling-ийн 3 тохиолдол). boundaries нь `handlebars@4.7.9`-ийг pin хийдэг тул `overrides`-аар **4.7.10** (3 critical advisory засагдсан). Үлдсэн: `braces` (GHSA-vfj7-8cjw-p6xm, high, DoS) — засварласан хувилбар **байхгүй**, зөвхөн lint-ийн хөгжүүлэлтийн хэрэгсэлд, зөвхөн манай pattern-ээр ажиллана. | `eslint-plugin-import` 2.32 нь ESLint 10-ийг дэмжихгүй; boundaries нь давхарга, тестийн файлын категори, гадаад модулийг нэг дүрмээр илэрхийлнэ. D29-ийн «шалгагдаагүй»-г хаана. | `eslint-plugin-import-x` `no-restricted-paths` (feature бүрийг жагсаах шаардлагатай); `npm audit fix --force` (boundaries 1.x руу буулгана — татгалзсан). |
+| D41 | 2026-10-20 | Vitest-ийн 3 project (`vite.config.ts` `test.projects`): `domain` = `src/domain/**` ба `src/test/domain/**`-ийн `*.test.{ts,tsx}`, `node`, setup-гүй; `ui` = бусад `src/**/*.test.{ts,tsx}` (domain project-ийн include-ийг яг хасна), `jsdom` + `src/test/ui/setup.ts`; `tooling` = `tooling/**/*.test.ts`, `node`. Орчин бүрийг тест өөрөө баталгаажуулна (domain: `window`/jest-dom байхгүй; ui: байгаа). Токены контрастын тест `tooling/`-д (`fs`-ээр уншина — Vitest CSS-ийг анхдагчаар боловсруулдаггүй тул `?raw` хоосон буцсан). | Domain тестийг DOM ба UI setup-ээс тусгаарлах; §9.3-ын хүснэгтэд `tooling` мөр нэмэв. | Нэг jsdom орчин (domain-д DOM нууцаар орно). |
+| D42 | 2026-10-20 | Line ending: `.gitattributes` `* text=auto eol=lf` (системийн `core.autocrlf=true`-г давна), фонт/зураг `binary`; `.editorconfig` `end_of_line = lf`; Prettier `endOfLine: "lf"`; `.prettierignore`-д `CLAUDE.md`, `package-lock.json`. | Windows, Git, Prettier-ийн хооронд CRLF/LF зөрчилгүй. | `autocrlf`-д найдах (Prettier --check унана). |
+| D43 | 2026-10-20 | **Tailwind CSS v4 хойшлогдсон** (хөгжүүлэгч, 2026-10-20): Phase 1 цэвэр CSS + CSS хувьсагч; хичээлийн шаардлагатай нийцэл батлагдвал тусдаа commit-оор. **Inter локал — батлагдсан:** `@fontsource/inter` 5.3.0 (OFL-1.1), жин 400/500/600-ийн CSS-ийг `globals.css` импортолно. WOFF cmap-ийн шалгалтаар U+04E8/04E9/04AE/04AF (Ө ө Ү ү) зөвхөн `cyrillic-ext` subset-д, А–я `cyrillic`-д байна — хоёуланг `unicode-range`-ээр ачаална; браузерт (Chromium, Playwright) зурагдсаныг нүдээр шалгав. | Техникийн нийцэл нь хичээлийн зөвшөөрөл биш (A9). | Tailwind-ийг одоо суулгах; CDN фонт; зөвхөн `cyrillic` subset (Ө/Ү fallback болно). |

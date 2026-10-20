@@ -1,0 +1,180 @@
+/*
+ * App shell layout (CLAUDE.md §8.2). Өнгө, зай, үсгийн хэв, хэлбэр нь tokens.css-ийн хувьсагчаас.
+ * Layout-ийн хэмжээ (баганын өргөн 200/360px, мөрийн доод өндөр, 3D хэсгийн vh) энэ файлд тогтмол —
+ * эдгээр нь §8.4-ийн токен биш, зөвхөн энэ shell-ийн бүтцэд хамаарна.
+ */
+
+.shell {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* ---------- Дээд төлөвийн мөр ---------- */
+.shell-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-1);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.shell-header__brand {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  font-size: var(--font-size-16);
+  font-weight: var(--font-weight-semibold);
+}
+
+.shell-header__app {
+  letter-spacing: var(--letter-spacing-label);
+}
+
+.shell-header__separator,
+.shell-header__building {
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+/* «СИМУЛЯЦИ» тэмдэг үргэлж харагдана (FR-M6). Бичвэр + цэг — зөвхөн өнгөөр биш. */
+.sim-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  color: var(--color-accent);
+  font-size: var(--font-size-11);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+  white-space: nowrap;
+}
+
+.sim-badge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ---------- Гол layout ---------- */
+.shell-main {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  min-width: 0;
+  /* Утас (< 768 px): нэг багана (табтай бүтэц Phase 7-д, §8.2) */
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.shell-region {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 96px;
+  padding: var(--space-4);
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.shell-region--building3d {
+  min-height: 40vh;
+}
+
+.shell-region__title {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-11);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.shell-region__note {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-13);
+}
+
+/* Таблет (768–1279 px): 3D дээд хэсэгт (~55vh), самбарууд доор хоёр баганаар (§8.2) */
+@media (min-width: 768px) {
+  .shell-main {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      'building3d building3d'
+      'floorList floorDetails'
+      'devices alerts'
+      'trends events'
+      'scenarios scenarios';
+  }
+
+  .shell-region--building3d {
+    min-height: 55vh;
+  }
+}
+
+/* Desktop (≥ 1280 px): давхрын жагсаалт + 3D гол хэсэг, баруун самбар, доод хэсэг (§8.2) */
+@media (min-width: 1280px) {
+  .shell-main {
+    grid-template-columns: 200px minmax(0, 1fr) 360px;
+    grid-template-rows: repeat(3, minmax(120px, auto)) repeat(2, minmax(96px, auto));
+    grid-template-areas:
+      'floorList building3d floorDetails'
+      'floorList building3d devices'
+      'floorList building3d alerts'
+      'trends trends events'
+      'trends trends scenarios';
+  }
+
+  .shell-region--building3d {
+    min-height: 0;
+  }
+}
+
+@media (min-width: 768px) {
+  .shell-region--building3d {
+    grid-area: building3d;
+  }
+  .shell-region--floorList {
+    grid-area: floorList;
+  }
+  .shell-region--floorDetails {
+    grid-area: floorDetails;
+  }
+  .shell-region--devices {
+    grid-area: devices;
+  }
+  .shell-region--alerts {
+    grid-area: alerts;
+  }
+  .shell-region--trends {
+    grid-area: trends;
+  }
+  .shell-region--events {
+    grid-area: events;
+  }
+  .shell-region--scenarios {
+    grid-area: scenarios;
+  }
+}
+
+/* Дэлгэц уншигчид зориулсан, харагдахгүй бичвэр */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

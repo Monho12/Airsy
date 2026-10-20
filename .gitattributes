@@ -1,0 +1,10 @@
+# Бүх текст файлыг git-д ба ажлын хуулбарт LF-ээр хадгална (системийн core.autocrlf-ийг давна; D42).
+* text=auto eol=lf
+
+# Хоёртын файл — хувиргахгүй
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.png binary
+*.jpg binary
+*.ico binary
