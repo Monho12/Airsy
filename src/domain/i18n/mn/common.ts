@@ -8,6 +8,16 @@ export const common = {
   simulationBadgeDescription:
     'Бүх утга браузер дотор үүсгэсэн симуляци. Жинхэнэ мэдрэгч холбогдоогүй.',
   placeholderNote: 'Дараагийн шатанд нэмэгдэнэ',
+  loading: 'Ачаалж байна…',
+  noData: 'Өгөгдөлгүй',
+  lastValue: 'Сүүлийн утга',
+  stale: 'Хуучирсан',
+  dataIssue: 'Өгөгдлийн асуудал',
+  buildingStatus: 'Барилгын төлөв',
+  activeAlertCount: (count: number) => `${count} идэвхтэй дохио`,
+  floorAlertCount: (count: number) => `${count} дохио`,
+  noFloorSelected: 'Жагсаалтаас давхар сонгоно уу.',
+  floorListHint: '↑/↓ — давхар солих, Home/End — эхний/сүүлийн давхар',
   regions: {
     building3d: 'Барилгын 3D загвар',
     floorList: 'Давхрын жагсаалт',

@@ -1,6 +1,6 @@
 // Ангиллын Монгол тайлбар (CLAUDE.md §5.6-ийн 7-р алхам, §8.9). Эзэмшигч: Ахлах архитектор (§14.3).
 // Тоо форматлагч (`format.ts`, D44) ба хэмжигдэхүүний нэрийг (`metrics.ts`) хуваалцана — давхар формат үүсгэхгүй.
-import type { MetricType, MetricUnit, ThresholdLevel } from '@/domain/types';
+import type { HealthStatus, MetricType, MetricUnit, ThresholdLevel } from '@/domain/types';
 
 import { formatMetricValueMn, formatNumberMn } from './format';
 import { metrics } from './metrics';
@@ -24,6 +24,15 @@ export interface ThresholdExplanationInput {
 }
 
 export const classification = {
+  /** Төлөвийн шошго (§8.9-ийн нэр томьёо) — UI-д үргэлж тэмдэгтэй хамт (§8.3) */
+  statusLabel: {
+    normal: 'Хэвийн',
+    warning: 'Анхааруулга',
+    critical: 'Ноцтой',
+    offline: 'Холболтгүй',
+    invalid: 'Буруу утга',
+  } satisfies Record<HealthStatus, string>,
+
   /** Холболтгүй мэдрэгч (FR-M5) — хэзээ ч 0 гэж үзэхгүй. */
   offline: 'Өгөгдөлгүй — мэдрэгчээс утга ирэхгүй байна.',
 

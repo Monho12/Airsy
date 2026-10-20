@@ -43,6 +43,9 @@ export const events = {
     operator: 'Оператор',
   } satisfies Record<SystemEvent['category'], string>,
 
+  /** Хоосон төлөв (§8.7) */
+  empty: 'Үйл явдал алга.',
+
   simulationStarted: 'Симуляци эхэлсэн — бүх утга браузер дотор үүсгэсэн симуляци.',
 
   sensorDisconnected(floorLabel: string, areaName: string, metricShortLabel: string): string {

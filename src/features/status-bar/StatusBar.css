@@ -1,0 +1,29 @@
+.status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-5);
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-13);
+}
+
+.status-bar--loading {
+  color: var(--color-text-muted);
+}
+
+.status-bar__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.status-bar__item dt {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-12);
+}
+
+.status-bar__item dd {
+  margin: 0;
+}

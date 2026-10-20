@@ -1,5 +1,5 @@
 // Төхөөрөмжийн Монгол нэр ба төлөв (CLAUDE.md §5.7, §8.9-ийн нэр томьёо). Эзэмшигч: Frontend (§14.3).
-import type { DamperPosition, DeviceKind, FanLevel, FloorId } from '@/domain/types';
+import type { DamperPosition, DeviceKind, DeviceState, FanLevel, FloorId } from '@/domain/types';
 
 const kind = {
   supply_fan: 'Агаар оруулах сэнс',
@@ -29,6 +29,15 @@ export const devices = {
   deviceName(deviceKind: DeviceKind, floorId: FloorId): string {
     return `${kind[deviceKind]} ${floorId}`;
   },
+
+  /** Төхөөрөмжийн одоогийн төлөвийн шошго (сэнсний түвшин эсвэл хаалтын байрлал) */
+  stateLabel(state: DeviceState): string {
+    return state.kind === 'outdoor_air_damper'
+      ? devices.damperPosition[state.position]
+      : devices.fanLevel[state.level];
+  },
+
+  readOnlyNote: 'Зөвхөн харах — удирдлага Phase 5-д нэмэгдэнэ.',
 
   /** Удирдлагын engine байхгүй (Phase 2) үеийн эхний төлөвийн шалтгаан */
   initialStateReason: 'Эхлэх төлөв (суурь агааржуулалт).',
