@@ -1,6 +1,14 @@
-// Phase 1-ийн app shell: дээд төлөвийн мөр ба гол layout-ийн орлуулагч хэсгүүд (CLAUDE.md §8.2, §13 Phase 1).
-// Хэсгүүд зөвхөн шошготой, интерактив биш — хуурамч товч, удирдлага байхгүй (§8.7).
+// App shell: дээд төлөвийн мөр ба гол layout (CLAUDE.md §8.2). Phase 2-т dashboard самбарууд жишээ snapshot-оор;
+// хараахан хэрэгжээгүй хэсэг (3D, хандлага, сценари) нь зөвхөн шошготой орлуулагч — хуурамч удирдлагагүй (§8.7).
+import type { ComponentType } from 'react';
+
 import { mn } from '@/domain/i18n/mn';
+import { AlertList } from '@/features/alerts';
+import { DeviceList } from '@/features/devices';
+import { EventTimeline } from '@/features/events';
+import { FloorDetails } from '@/features/floor-details';
+import { FloorList } from '@/features/floor-list';
+import { StatusBar } from '@/features/status-bar';
 
 import './AppShell.css';
 
@@ -19,6 +27,15 @@ const REGION_ORDER: readonly RegionKey[] = [
   'events',
   'scenarios',
 ];
+
+/** Phase 2-т хэрэгжсэн самбарууд; бусад нь орлуулагч хэвээр (3D — Phase 3, хандлага ба сценари — Phase 6) */
+const PANELS: Partial<Record<RegionKey, ComponentType>> = {
+  floorList: FloorList,
+  floorDetails: FloorDetails,
+  devices: DeviceList,
+  alerts: AlertList,
+  events: EventTimeline,
+};
 
 function PlaceholderRegion({ region }: { region: RegionKey }) {
   const headingId = `region-${region}-title`;
@@ -43,6 +60,7 @@ export function AppShell() {
           </span>
           <span className="shell-header__building">{common.buildingName}</span>
         </h1>
+        <StatusBar />
         <p className="sim-badge">
           <span className="sim-badge__dot" aria-hidden="true" />
           {common.simulationBadge}
@@ -51,9 +69,16 @@ export function AppShell() {
       </header>
 
       <main className="shell-main">
-        {REGION_ORDER.map((region) => (
-          <PlaceholderRegion key={region} region={region} />
-        ))}
+        {REGION_ORDER.map((region) => {
+          const Panel = PANELS[region];
+          if (Panel === undefined) return <PlaceholderRegion key={region} region={region} />;
+          // Wrapper нь зөвхөн grid-ийн байрлалыг өгнө; самбар өөрөө region (section) болно
+          return (
+            <div key={region} className={`shell-slot shell-region--${region}`}>
+              <Panel />
+            </div>
+          );
+        })}
       </main>
     </div>
   );

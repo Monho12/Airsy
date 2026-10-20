@@ -1,0 +1,44 @@
+.alert-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Зүүн хүрээ нь төлөвийн өнгө (surface-2 дээр ≥ 3:1, §8.3); утгыг StatusBadge-ийн тэмдэг + бичвэр илэрхийлнэ */
+.alert-list__item {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-2);
+  border-left: 3px solid var(--color-status-warning);
+  border-radius: var(--radius-md);
+}
+
+.alert-list__item[data-severity='critical'] {
+  border-left-color: var(--color-status-critical);
+}
+
+.alert-list__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.alert-list__title {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.alert-list__message {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-13);
+}
+
+.alert-list__meta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-12);
+  font-variant-numeric: tabular-nums;
+}

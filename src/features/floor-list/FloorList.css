@@ -1,0 +1,101 @@
+/*
+ * 2D давхрын жагсаалт. Жагсаалт өөрөө босоо гүйлгэлттэй — олон давхартай үед (1–20, §5.1) dashboard-ыг бүхэлд нь
+ * гүйлгэхгүйгээр давхруудыг харна. Дээд өндөр нь дэлгэцийн өндрийн хувь, дээд хязгаартай (layout-ийн хэмжээ,
+ * §8.4-ийн токен биш). Сонгосон мөр: surface-2 дэвсгэр + accent хүрээ (§8.3 — матрицад шалгагдсан хослол).
+ */
+.floor-list {
+  display: grid;
+  /* Хамгийн өргөн мөрийн min-content бүх мөрийг сунгаж хэвтээ гүйлгэлт үүсгэхгүй */
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+  margin: 0;
+  /* Focus-ийн хүрээ (2px + 2px зай, globals.css) гүйлгэх хэсгийн ирмэгт таслагдахгүй */
+  padding: var(--space-1);
+  list-style: none;
+  /* Утас (< 768 px): нэг баганад бусад самбарыг хэт доош түлхэхгүй */
+  max-height: min(45vh, 22rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  /* Жагсаалтын төгсгөлд хүрэхэд хуудас руу гүйлгэлт дамжихгүй */
+  overscroll-behavior: contain;
+  scroll-padding-block: var(--space-1);
+  scrollbar-gutter: stable;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+
+/* Таблет: давхрын дэлгэрэнгүйн хажууд */
+@media (min-width: 768px) {
+  .floor-list {
+    max-height: min(55vh, 30rem);
+  }
+}
+
+/* Desktop: 3D-ийн хажуугийн өндөр багана */
+@media (min-width: 1280px) {
+  .floor-list {
+    max-height: min(70vh, 44rem);
+  }
+}
+
+.floor-list__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-left-width: 3px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
+}
+
+.floor-list__item:hover {
+  background: var(--color-surface-2);
+}
+
+.floor-list__item--selected {
+  background: var(--color-surface-2);
+  border-color: var(--color-accent);
+}
+
+.floor-list__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.floor-list__level {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.floor-list__usage {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-12);
+  overflow-wrap: anywhere;
+}
+
+.floor-list__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* Desktop-ийн нарийн баганад (200px) «Өгөгдлийн асуудал» зэрэг урт шошго мөрөөс гарахгүй, ороогдоно */
+.floor-list__status .ui-status {
+  white-space: normal;
+}
+
+.floor-list__alerts {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-12);
+}
