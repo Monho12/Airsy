@@ -1446,7 +1446,7 @@ LocalSimulationRuntime.step(dt):
                                          Idempotent: дохио аль хэдийн хүссэн төлөвтэй бол үйл явдал гаргахгүй
   7. history.push(давхрын нэгтгэл)     → хязгаартай хандлагын buffer
   8. дараагийн LiveSnapshot-ийг үүсгэнэ (structural sharing: өөрчлөгдөөгүй хэсэг ижил объектын лавлагааг хадгална)
-publish(snapshot) → store adapter → liveStore.setState(snapshot)  (publish бүрт нэг удаа, §11.2)
+publish(snapshot) → store adapter applySnapshot(snapshot) → liveStore  (publish бүрт нэг удаа; цорын ганц бичих зам, D53, §11.2)
 ```
 
 **`emergency` төрлийн дохионы эзэмшил (нэг зам — нэг эзэн):**
