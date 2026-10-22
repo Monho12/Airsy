@@ -40,6 +40,11 @@ const DEVICE_KINDS: readonly DeviceKind[] = ['supply_fan', 'exhaust_fan', 'outdo
 const FOOTPRINT = { width: 40, depth: 24 } as const;
 const FLOOR_HEIGHT = 3.6;
 const CEILING_HEIGHT = 3.0; // зөвхөн эзлэхүүний тооцоонд
+/**
+ * Лифт/шатны хонгил (D59): арын хананд, хоёр агааржуулалтын сувгийн дунд; cutaway, төхөөрөмж, мэдрэгчийн тэмдэг,
+ * агаарын урсгалын замаас ≥ 2 м зайтай. Зөвхөн дүрслэлд — бүсийн эзлэхүүн (`volumeM3`) үүнийг хасахгүй.
+ */
+const CORE = { x: -4, z: -12, width: 8, depth: 4 } as const;
 
 type Usage = Floor['usage'];
 type Baseline = Record<MetricType, number>;
@@ -275,6 +280,7 @@ export function createBuildingConfig(floorCount: number = DEFAULT_FLOOR_COUNT): 
     floorHeight: FLOOR_HEIGHT,
     outdoorSensorIds,
     shafts: { supply: { x: -6, y: 0, z: -6 }, exhaust: { x: 6, y: 0, z: -6 } },
+    core: { ...CORE },
   };
 
   return { building, floors, areas, sensors, devices };

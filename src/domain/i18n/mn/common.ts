@@ -28,6 +28,22 @@ export const common = {
   } satisfies Record<ConnectionStatus, string>,
   sensorsOffline: (count: number) => `${count} мэдрэгч холболтгүй`,
   sensorsStale: (count: number) => `${count} мэдрэгч хуучирсан`,
+  /** 3D барилга (FR-B9, §8.6, §8.7, D57). Орлуулах шалтгааны түлхүүр нь `Building3DFallbackReason`-тэй ижил. */
+  building3d: {
+    canvasLabel: 'AERIS Tower-ийн 3D загвар. Давхрыг давхрын жагсаалтаас ч сонгож болно.',
+    loading: '3D загварыг ачаалж байна…',
+    fallback: {
+      'webgl-unavailable':
+        'Энэ хөтөч эсвэл төхөөрөмж WebGL дэмжихгүй тул 3D загвар харагдахгүй. Давхрын жагсаалтыг ашиглана уу.',
+      'context-lost':
+        '3D дүрслэлийн холболт (WebGL context) тасарлаа. Давхрын жагсаалтыг ашиглах эсвэл дахин оролдоно уу.',
+      'render-error':
+        '3D загварыг зурахад алдаа гарлаа. Давхрын жагсаалтыг ашиглах эсвэл дахин оролдоно уу.',
+    },
+    retry: 'Дахин оролдох',
+    /** «Reset view» (§8.9-ийн нэр томьёо, FR-B3) */
+    resetView: 'Харагдацыг сэргээх',
+  },
   regions: {
     building3d: 'Барилгын 3D загвар',
     floorList: 'Давхрын жагсаалт',

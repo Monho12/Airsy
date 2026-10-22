@@ -1,5 +1,6 @@
 // App shell: дээд төлөвийн мөр ба гол layout (CLAUDE.md §8.2). Phase 2-т dashboard самбарууд жишээ snapshot-оор;
-// хараахан хэрэгжээгүй хэсэг (3D, хандлага, сценари) нь зөвхөн шошготой орлуулагч — хуурамч удирдлагагүй (§8.7).
+// Phase 3-т 3D барилга (lazy, WebGL-гүй үед орлуулалттай). Хараахан хэрэгжээгүй хэсэг (хандлага, сценари) нь зөвхөн
+// шошготой орлуулагч — хуурамч удирдлагагүй (§8.7).
 import type { ComponentType } from 'react';
 
 import { mn } from '@/domain/i18n/mn';
@@ -9,6 +10,8 @@ import { EventTimeline } from '@/features/events';
 import { FloorDetails } from '@/features/floor-details';
 import { FloorList } from '@/features/floor-list';
 import { StatusBar } from '@/features/status-bar';
+
+import { Building3DRegion } from './Building3DRegion';
 
 import './AppShell.css';
 
@@ -28,8 +31,9 @@ const REGION_ORDER: readonly RegionKey[] = [
   'scenarios',
 ];
 
-/** Phase 2-т хэрэгжсэн самбарууд; бусад нь орлуулагч хэвээр (3D — Phase 3, хандлага ба сценари — Phase 6) */
+/** Хэрэгжсэн самбарууд; бусад нь орлуулагч хэвээр (хандлага ба сценари — Phase 6) */
 const PANELS: Partial<Record<RegionKey, ComponentType>> = {
+  building3d: Building3DRegion,
   floorList: FloorList,
   floorDetails: FloorDetails,
   devices: DeviceList,

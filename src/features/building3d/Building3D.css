@@ -1,0 +1,51 @@
+/*
+ * 3D canvas-ийн хайрцаг (CLAUDE.md §8.2, §8.6). Өндрийг самбараас авна; доод өндөр нь desktop-ийн grid мөр
+ * богино үед canvas хумигдахаас сэргийлнэ (layout-ийн хэмжээ — §8.4-ийн токен биш).
+ */
+.building3d {
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-height: 240px;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+}
+
+/*
+ * Мэдрэгчийн зангилааны шошго (§8.6, Drei `Html`). surface-2 дэвсгэр — бичвэр ба төлөвийн өнгө §8.3-ын матрицад
+ * шалгагдсан хослол. Хөдөлгөөнгүй; canvas-ийн удирдлагад саад болохгүй (pointer-events: none).
+ */
+.sensor-label {
+  display: grid;
+  gap: var(--space-1);
+  width: max-content;
+  max-width: 280px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-12);
+  pointer-events: none;
+}
+
+.sensor-label__title {
+  font-size: var(--font-size-13);
+  font-weight: var(--font-weight-semibold);
+}
+
+.sensor-label__metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-1) var(--space-3);
+}
+
+/*
+ * Нягт шошго: зөвхөн энэ шошгон доторх утгын хэмжээ 16 → 14 px (§8.4-ийн шатлалд). 2D самбарын `MetricValue`
+ * өөрчлөгдөхгүй; бүх 5 утга, «Өгөгдөлгүй»/«Буруу утга», сүүлийн утга ба хугацаа, холболт хэвээр.
+ */
+.sensor-label .ui-metric__value {
+  font-size: var(--font-size-14);
+}

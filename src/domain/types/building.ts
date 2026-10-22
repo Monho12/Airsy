@@ -25,7 +25,8 @@ export interface Building {
   footprint: { width: number; depth: number }; // метрээр, 3D-д
   floorHeight: number; // метрээр
   outdoorSensorIds: SensorId[];
-  shafts: { supply: Vec3; exhaust: Vec3 }; // босоо сувгийн x/z (y-г 3D тооцно), §5.1.1
+  shafts: { supply: Vec3; exhaust: Vec3 }; // агааржуулалтын босоо сувгийн x/z (y-г 3D тооцно), §5.1.1
+  core: Rect2D; // лифт/шатны хонгил — давхрын координатаар, бүх өндрөөр; shafts-аас тусдаа (§5.1.1, D59)
 }
 
 export interface Floor {
