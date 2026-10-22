@@ -35,6 +35,14 @@ export const alerts = {
     return `${areaName}: ${metricShortLabel} мэдрэгчээс утга ирэхгүй байна (өгөгдөлгүй, 0 биш).`;
   },
 
+  sensorInvalidTitle(locationLabel: string): string {
+    return `Буруу утга — ${locationLabel}`;
+  },
+
+  sensorInvalidMessage(areaName: string, metricShortLabel: string, explanation: string): string {
+    return `${areaName}: ${metricShortLabel} мэдрэгч. ${explanation}`;
+  },
+
   /** Хоосон төлөв (§8.7) */
   emptyActive: 'Идэвхтэй дохио алга — бүх давхар хэвийн.',
 } as const;

@@ -1,5 +1,5 @@
 // Төхөөрөмжийн түвшин → тоон утга ба удирдлагын хамгаалалтын тогтмол (CLAUDE.md §5.7, §6.6, §6.7).
-import type { DamperPosition, FanLevel } from '@/domain/types';
+import type { DamperPosition, DeviceKind, DeviceState, FanLevel } from '@/domain/types';
 
 /** Сэнсний түвшний дараалал (§6.4): бага → их. */
 export const fanLevelOrder: readonly FanLevel[] = ['OFF', 'LOW', 'MEDIUM', 'HIGH', 'BOOST'];
@@ -27,6 +27,16 @@ export const damperOutdoorFraction: Record<DamperPosition, number> = {
   MINIMUM: 0.2,
   PARTIAL: 0.5,
   OPEN: 1.0,
+};
+
+/**
+ * Суурь агааржуулалт (§6.3 R-BASELINE; §7.2 S1): SF LOW, EF LOW, OAD MINIMUM. Phase 4-т төхөөрөмж энэ төлөвтөө үлдэнэ
+ * (удирдлагын engine Phase 5-д); загварын тэнцвэрийн тохируулга ч үүн дээр тооцогдоно (D68).
+ */
+export const baselineDeviceStates: Readonly<Record<DeviceKind, DeviceState>> = {
+  supply_fan: { kind: 'supply_fan', level: 'LOW' },
+  exhaust_fan: { kind: 'exhaust_fan', level: 'LOW' },
+  outdoor_air_damper: { kind: 'outdoor_air_damper', position: 'MINIMUM' },
 };
 
 export const controlConfig = {

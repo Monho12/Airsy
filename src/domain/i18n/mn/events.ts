@@ -55,4 +55,37 @@ export const events = {
   alertRaised(alertTitle: string): string {
     return `Дохио үүссэн: ${alertTitle}.`;
   },
+
+  // ---------- Phase 4 (D72) ----------
+  simulationResumed: 'Симуляци үргэлжилсэн.',
+  simulationPaused: 'Симуляци түр зогссон.',
+
+  speedChanged(from: number, to: number): string {
+    return `Симуляцийн хурд ${from}× → ${to}×.`;
+  },
+
+  /** `location` нь «7-р давхар, Нээлттэй оффис (хойд)» эсвэл гадна станц */
+  sensorDisconnectedAt(location: string, metricShortLabel: string): string {
+    return `${location}: ${metricShortLabel} мэдрэгч салсан (симуляцийн эвдрэл).`;
+  },
+
+  sensorReconnected(location: string, metricShortLabel: string): string {
+    return `${location}: ${metricShortLabel} мэдрэгч дахин холбогдсон.`;
+  },
+
+  sensorInvalidReading(location: string, metricShortLabel: string, valueText: string): string {
+    return `${location}: ${metricShortLabel} мэдрэгч буруу утга (${valueText}) илгээв.`;
+  },
+
+  alertEscalated(alertTitle: string): string {
+    return `Дохио ноцтой болж хүндэрсэн: ${alertTitle}.`;
+  },
+
+  alertDeescalated(alertTitle: string): string {
+    return `Дохио анхааруулга болж хөнгөрсөн: ${alertTitle}.`;
+  },
+
+  alertResolved(alertTitle: string): string {
+    return `Дохио шийдэгдсэн: ${alertTitle}.`;
+  },
 } as const;
