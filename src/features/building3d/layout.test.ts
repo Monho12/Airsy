@@ -105,6 +105,73 @@ describe('createBuildingLayout — лифт/шатны хонгил (D59)', () =
   });
 });
 
+describe('createBuildingLayout — дээврийн тоног төхөөрөмж (§5.1, §8.6)', () => {
+  type Box = { center: { x: number; y: number; z: number }; size: [number, number, number] };
+  const footprintOf = ({ center, size }: Box) => ({
+    minX: center.x - size[0] / 2,
+    maxX: center.x + size[0] / 2,
+    minZ: center.z - size[2] / 2,
+    maxZ: center.z + size[2] / 2,
+  });
+  const overlaps = (a: ReturnType<typeof footprintOf>, b: ReturnType<typeof footprintOf>) =>
+    a.minX < b.maxX && b.minX < a.maxX && a.minZ < b.maxZ && b.minZ < a.maxZ;
+
+  it.each([1, 12, 20])(
+    '%i давхар: блокууд shafts-ийн x/z дээр, дээврийн хавтан дээр зогсоно',
+    (count) => {
+      const config = createBuildingConfig(count);
+      const layout = createBuildingLayout(config);
+      const roofTop = layout.height + SLAB_THICKNESS;
+      for (const unit of layout.roofEquipment.units) {
+        const shaft = config.building.shafts[unit.id];
+        expect(unit.center.x).toBe(shaft.x);
+        expect(unit.center.z).toBe(shaft.z);
+        expect(unit.center.y - unit.size[1] / 2).toBeCloseTo(roofTop);
+      }
+      expect(layout.roofEquipment.units.map((unit) => unit.id)).toEqual(['supply', 'exhaust']);
+      const { mast } = layout.roofEquipment.weatherStation;
+      expect(mast.center.y - mast.height / 2).toBeCloseTo(roofTop);
+    },
+  );
+
+  it('shafts өөрчлөгдвөл блок дагана (geometry хатуу бичээгүй)', () => {
+    const config = createBuildingConfig(12);
+    const moved = {
+      ...config,
+      building: {
+        ...config.building,
+        shafts: { supply: { x: -15, y: 0, z: 2 }, exhaust: { x: 15, y: 0, z: 2 } },
+      },
+    };
+    const units = createBuildingLayout(moved).roofEquipment.units;
+    expect(units.map((unit) => [unit.center.x, unit.center.z])).toEqual([
+      [-15, 2],
+      [15, 2],
+    ]);
+  });
+
+  it('footprint дотор, cutaway (x > 0, z > 0)-аас гадна, core ба бие биентэйгээ давхцахгүй', () => {
+    const layout = createBuildingLayout(buildingConfig);
+    const halfW = layout.width / 2;
+    const halfD = layout.depth / 2;
+    const core = footprintOf(layout.core);
+    const units = layout.roofEquipment.units.map(footprintOf);
+    const station = layout.roofEquipment.weatherStation.head;
+    for (const unit of units) {
+      expect(unit.minX).toBeGreaterThanOrEqual(-halfW);
+      expect(unit.maxX).toBeLessThanOrEqual(halfW);
+      expect(unit.minZ).toBeGreaterThanOrEqual(-halfD);
+      expect(unit.maxZ).toBeLessThanOrEqual(halfD);
+      expect(unit.maxX > 0 && unit.maxZ > 0).toBe(false);
+      expect(overlaps(unit, core)).toBe(false);
+    }
+    expect(overlaps(units[0]!, units[1]!)).toBe(false);
+    expect(Math.abs(station.x)).toBeLessThan(halfW);
+    expect(Math.abs(station.z)).toBeLessThan(halfD);
+    expect(station.x > 0 && station.z > 0).toBe(false);
+  });
+});
+
 describe('createBuildingLayout — cutaway нүүр ба анхдагч харагдац (§5.1.1, §8.6, FR-B2, FR-B3)', () => {
   it('нүүрний хавтан урд-баруун дөрөвний нэгийг (x > 0, z > 0) бүрхэхгүй', () => {
     const layout = createBuildingLayout(buildingConfig);

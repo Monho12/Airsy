@@ -11,6 +11,11 @@ export const SLAB_THICKNESS = 0.3;
 export const ZONE_INSET = 0.4;
 /** Бүсийн хавтгайг хавтан дээр z-fighting-гүй зурах өндөр, м */
 export const ZONE_LIFT = 0.02;
+/** Дээврийн агааржуулалтын блокийн хэмжээ (x, y, z), м — `Building.shafts`-ийн дээр байрлана */
+export const ROOF_UNIT_SIZE: [number, number, number] = [4, 2, 3];
+/** Цаг агаарын станцын шонгийн өндөр, м ба дээврийн ирмэгээс зай, м */
+const WEATHER_MAST_HEIGHT = 3;
+const WEATHER_STATION_INSET = 3;
 
 export interface FloorLayout {
   id: FloorId;
@@ -50,8 +55,17 @@ export interface BuildingLayout {
   /** Лифт/шатны хонгил — `Building.core`-оос, газраас дээврийн хавтангийн дээд тал хүртэл (D59; shafts биш) */
   core: { center: Vec3; size: [width: number, height: number, depth: number] };
   facade: FacadePanel[];
+  /** Дээврийн тоног төхөөрөмж (§5.1, §8.6) — зөвхөн дүрслэл, тусад нь удирдахгүй (§5.7) */
+  roofEquipment: RoofEquipmentLayout;
   /** Анхдагч харагдац: урд-баруун талаас, дээрээс (cutaway тал руу, §5.1.1) */
   camera: { position: Vec3; target: Vec3 };
+}
+
+export interface RoofEquipmentLayout {
+  /** Оруулах/гаргах агааржуулалтын блок — x/z нь `Building.shafts`-аас, дээврийн хавтан дээр */
+  units: { id: 'supply' | 'exhaust'; center: Vec3; size: [number, number, number] }[];
+  /** Гадна цаг агаарын станц: дээврийн урд-зүүн буланд шон + мэдрэгчийн толгой */
+  weatherStation: { mast: { center: Vec3; height: number }; head: Vec3 };
 }
 
 /** Камерын босоо харах өнцөг, градус (Building3D-ийн Canvas ижил утгыг ашиглана) */
@@ -141,6 +155,29 @@ export function createBuildingLayout(config: BuildingConfig): BuildingLayout {
   const { core } = building; // x, z — бага утгатай булан (Rect2D, D50)
   const coreHeight = height + SLAB_THICKNESS;
 
+  // Дээврийн хавтангийн дээд тал; тоног төхөөрөмж үүн дээр зогсоно
+  const roofTop = height + SLAB_THICKNESS;
+  const roofUnitAt = (id: 'supply' | 'exhaust') => {
+    const shaft = building.shafts[id];
+    return {
+      id,
+      center: { x: shaft.x, y: roofTop + ROOF_UNIT_SIZE[1] / 2, z: shaft.z },
+      size: [...ROOF_UNIT_SIZE] as [number, number, number],
+    };
+  };
+  // Урд-зүүн булан (x < 0, z > 0): cutaway-аас гадна, анхдагч камераас харагдана
+  const station = { x: -halfW + WEATHER_STATION_INSET, z: halfD - WEATHER_STATION_INSET };
+  const roofEquipment: RoofEquipmentLayout = {
+    units: [roofUnitAt('supply'), roofUnitAt('exhaust')],
+    weatherStation: {
+      mast: {
+        center: { x: station.x, y: roofTop + WEATHER_MAST_HEIGHT / 2, z: station.z },
+        height: WEATHER_MAST_HEIGHT,
+      },
+      head: { x: station.x, y: roofTop + WEATHER_MAST_HEIGHT, z: station.z },
+    },
+  };
+
   return {
     width,
     depth,
@@ -152,6 +189,7 @@ export function createBuildingLayout(config: BuildingConfig): BuildingLayout {
       size: [core.width, coreHeight, core.depth],
     },
     facade,
+    roofEquipment,
     camera: { position, target },
   };
 }

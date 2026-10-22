@@ -15,6 +15,12 @@ export interface SceneColors {
   hovered: string;
   facade: string;
   facadeEdge: string;
+  /** Төхөөрөмжийн хүрээ (сэнсний бүрхүүл, хаалтын хүрээ) */
+  deviceFrame: string;
+  /** Ажиллаж буй сэнсний далбаа, гэрэлтсэн түвшний заагч, хаалтын ламель */
+  deviceActive: string;
+  /** Унтраалттай сэнсний далбаа, гэрэлгүй заагч */
+  deviceIdle: string;
   /** Мэдрэгчийн зангилааны төлөвийн өнгө (§8.3); offline/invalid — саарал */
   status: Record<HealthStatus, string>;
 }
@@ -30,6 +36,11 @@ export function readSceneColors(): SceneColors {
     hovered: readCssToken('--color-accent-strong'),
     facade: readCssToken('--color-text-secondary'),
     facadeEdge: readCssToken('--color-border'),
+    // Төлөвийн өнгө (хэвийн/анхааруулга) ба accent (сонголт)-оос ялгаатай саарал шатлал — төхөөрөмж эрүүл
+    // мэндийн төлөв биш, ажиллагааны төлөв харуулна; мэдэгдэхгүй төлөв — `status.offline`.
+    deviceFrame: readCssToken('--color-text-muted'),
+    deviceActive: readCssToken('--color-text-primary'),
+    deviceIdle: readCssToken('--color-border-strong'),
     status: {
       normal: readCssToken('--color-status-normal'),
       warning: readCssToken('--color-status-warning'),

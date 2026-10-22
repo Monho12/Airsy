@@ -1,6 +1,6 @@
 // 3D digital twin-ийн canvas (CLAUDE.md §8.6, §11.3). Зөвхөн Building3DLoader-ээр lazy ачаалагдана (D57).
 // Тохиргооноос зурсан барилга, uiStore-оор давхрын сонголт/hover, камерын удирдлага (CameraRig),
-// мэдрэгчийн зангилаа (бүсийн сонголт). Төхөөрөмжийн загвар дараагийн алхамд нэмэгдэнэ.
+// мэдрэгчийн зангилаа (бүсийн сонголт), агааржуулалтын төхөөрөмжийн загвар (тогтмол төлөв, FR-B6).
 import { Canvas } from '@react-three/fiber';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -9,6 +9,7 @@ import { mn } from '@/domain/i18n/mn';
 
 import { BuildingModel } from './BuildingModel';
 import { CameraRig } from './CameraRig';
+import { DeviceModels } from './DeviceModels';
 import { CAMERA_FOV_DEG, createBuildingLayout } from './layout';
 import { readSceneColors } from './sceneColors';
 import { SensorNodes } from './SensorNodes';
@@ -55,6 +56,7 @@ export function Building3D({ onFallback, config = defaultBuildingConfig }: Build
         <CameraRig layout={layout} />
         <BuildingModel layout={layout} colors={colors} />
         <SensorNodes config={config} layout={layout} colors={colors} />
+        <DeviceModels config={config} layout={layout} colors={colors} />
       </Canvas>
     </div>
   );

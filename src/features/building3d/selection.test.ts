@@ -8,10 +8,15 @@ import { initialUiState, useUiStore } from '@/store/uiStore';
 
 import { createBuildingLayout } from './layout';
 import {
+  CEILING_SLAB_OPACITY,
   CLICK_DRAG_TOLERANCE_PX,
+  DIMMED_SLAB_OPACITY,
   floorVisualState,
   handleSensorNodeClick,
+  isCeilingOfSelected,
+  slabOverlayOpacity,
   useFloorInteraction,
+  useIsCeilingOfSelected,
   useZoneSelected,
 } from './selection';
 import { areaIdAtInstance, createSensorNodes } from './sensorNodeData';
@@ -36,6 +41,69 @@ describe('floorVisualState (§8.6)', () => {
     [F01, F01, 'selected'],
   ] as const)('сонгосон=%s, hover=%s → %s', (selected, hovered, expected) => {
     expect(floorVisualState(F01, selected, hovered)).toBe(expected);
+  });
+});
+
+describe('slabOverlayOpacity — хавтангийн тунгалаг байдал (§8.6, FR-B6)', () => {
+  it.each([
+    ['idle', false, null],
+    ['selected', false, null],
+    ['hovered', false, null], // hover хийсэн бүдэг давхар тунгалаг бус болж тодорно
+    ['dimmed', false, DIMMED_SLAB_OPACITY],
+    ['dimmed', true, CEILING_SLAB_OPACITY],
+    ['hovered', true, CEILING_SLAB_OPACITY], // тааз hover-оос давуу — төхөөрөмж далдлагдахгүй
+  ] as const)('%s, тааз=%s → %s', (visual, ceiling, expected) => {
+    expect(slabOverlayOpacity(visual, ceiling)).toBe(expected);
+  });
+
+  it('тааз бүдэг давхраас илүү тунгалаг; хоёулаа 0–1 хооронд', () => {
+    expect(CEILING_SLAB_OPACITY).toBeLessThan(DIMMED_SLAB_OPACITY);
+    expect(CEILING_SLAB_OPACITY).toBeGreaterThan(0);
+    expect(DIMMED_SLAB_OPACITY).toBeLessThan(1);
+  });
+
+  it('сонголтгүй үед ямар ч хавтан тунгалаг биш; сонголттой үед зөвхөн сонгосон давхар тунгалаг бус', () => {
+    const ids = buildingConfig.building.floorIds;
+    const overlays = (selected: string | null) =>
+      ids.map((id, i) =>
+        slabOverlayOpacity(
+          floorVisualState(id, selected, null),
+          isCeilingOfSelected(ids[i - 1] ?? null, selected),
+        ),
+      );
+    expect(overlays(null).every((o) => o === null)).toBe(true);
+    const withF07 = overlays('F07');
+    expect(withF07.filter((o) => o === null)).toHaveLength(1);
+    expect(withF07[ids.indexOf('F07')]).toBeNull();
+    expect(withF07[ids.indexOf('F08')]).toBe(CEILING_SLAB_OPACITY);
+    expect(withF07.filter((o) => o === DIMMED_SLAB_OPACITY)).toHaveLength(ids.length - 2);
+  });
+});
+
+describe('isCeilingOfSelected — сонгосон давхрын тааз (FR-B6)', () => {
+  it.each([
+    [F01, F01, true], // F02-ийн хавтан (доор нь F01) — F01 сонгогдсон
+    [F01, F02, false], // F02 сонгогдсон — түүний тааз нь F03-ийн хавтан
+    [F01, null, false], // сонголтгүй — бүх хавтан хэвээр
+    [null, F01, false], // 1-р давхрын хавтан хэзээ ч тааз биш
+    [null, null, false],
+  ] as const)('доорх давхар=%s, сонгосон=%s → %s', (below, selected, expected) => {
+    expect(isCeilingOfSelected(below, selected)).toBe(expected);
+  });
+
+  it('uiStore-ийн сонголтыг дагана — яг нэг тааз (дээд давхарт дээврийн хавтан)', () => {
+    const ids = buildingConfig.building.floorIds;
+    const top = ids.at(-1)!;
+    // Хавтан бүрийн доорх давхар (давхрын хавтангууд, дараа нь дээвэр)
+    const belows = [...ids.map((_, i) => ids[i - 1] ?? null), top];
+    for (const selected of [ids[0]!, ids[5]!, top]) {
+      act(() => useUiStore.getState().selectFloor(selected));
+      const ceilings = belows.filter((below) => {
+        const { result } = renderHook(() => useIsCeilingOfSelected(below));
+        return result.current;
+      });
+      expect(ceilings).toEqual([selected]);
+    }
   });
 });
 

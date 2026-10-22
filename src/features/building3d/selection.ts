@@ -24,6 +24,39 @@ export function floorVisualState(
   return selectedFloorId === null ? 'idle' : 'dimmed';
 }
 
+/** Сонгоогүй давхрын хавтан (§8.6: «сонгоогүй давхрууд бүдэгрэнэ») */
+export const DIMMED_SLAB_OPACITY = 0.35;
+/**
+ * Сонгосон давхрын тааз (дээд давхрын хавтан эсвэл дээвэр): таазанд өлгөгдсөн төхөөрөмж (FR-B6) тод харагдахаар
+ * илүү тунгалаг.
+ */
+export const CEILING_SLAB_OPACITY = 0.1;
+
+/**
+ * Хавтангийн тунгалаг давхаргын opacity; `null` бол тунгалаг бус үндсэн хавтан. Тааз нь hover-оос ч давуу —
+ * төхөөрөмж рүү заахад тааз дахин бүрхэгдэхгүй (hover-ийн хүрээний өнгө хэвээр). Hover хийсэн бүдэг давхар
+ * тунгалаг бус болж тодорно (өмнөх зан төлөв).
+ */
+export function slabOverlayOpacity(visual: FloorVisualState, ceiling: boolean): number | null {
+  if (ceiling) return CEILING_SLAB_OPACITY;
+  return visual === 'dimmed' ? DIMMED_SLAB_OPACITY : null;
+}
+
+/**
+ * Хавтан сонгосон давхрын тааз эсэх (`floorBelowId` — хавтангийн яг доорх давхар; дээврийн хавтанд хамгийн дээд
+ * давхар). Таазанд өлгөгдсөн төхөөрөмж (§5.1.2, FR-B6) харагдахаар энэ хавтанг илүү тунгалаг зурна.
+ */
+export function isCeilingOfSelected(
+  floorBelowId: FloorId | null,
+  selectedFloorId: FloorId | null,
+): boolean {
+  return floorBelowId !== null && floorBelowId === selectedFloorId;
+}
+
+export function useIsCeilingOfSelected(floorBelowId: FloorId | null): boolean {
+  return useUiStore((state) => isCeilingOfSelected(floorBelowId, state.selectedFloorId));
+}
+
 type FloorPointerEvent = Pick<ThreeEvent<PointerEvent>, 'stopPropagation'>;
 type FloorClickEvent = Pick<ThreeEvent<MouseEvent>, 'stopPropagation' | 'delta'>;
 
