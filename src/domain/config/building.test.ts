@@ -138,3 +138,65 @@ describe('§5.1.2-ын прототипийн утга (D50)', () => {
     expect(layouts[0]!.airflowPaths).toHaveLength(2);
   });
 });
+
+describe('§5.1.2: лифт/шатны хонгил (D59)', () => {
+  const { building, areas, floors } = buildingConfig;
+  const { core } = building;
+  const CLEARANCE = 2; // м — D59-ийн шаардлага
+  /** Цэгээс core-ийн тэгш өнцөгт хүртэлх хэвтээ зай (дотор бол 0) */
+  const distanceToCore = ({ x, z }: { x: number; z: number }) =>
+    Math.hypot(
+      Math.max(core.x - x, 0, x - (core.x + core.width)),
+      Math.max(core.z - z, 0, z - (core.z + core.depth)),
+    );
+
+  it('D59-ийн батлагдсан утга', () => {
+    expect(core).toEqual({ x: -4, z: -12, width: 8, depth: 4 });
+  });
+
+  it('footprint дотор, урд-баруун cutaway-аас (x > 0, z > 0) гадна', () => {
+    const { width, depth } = building.footprint;
+    expect(core.x).toBeGreaterThanOrEqual(-width / 2);
+    expect(core.x + core.width).toBeLessThanOrEqual(width / 2);
+    expect(core.z).toBeGreaterThanOrEqual(-depth / 2);
+    expect(core.z + core.depth).toBeLessThanOrEqual(depth / 2);
+    expect(core.z + core.depth).toBeLessThanOrEqual(0);
+  });
+
+  it('агааржуулалтын суваг (shafts) — тусдаа объект, core-той давхцахгүй', () => {
+    for (const shaft of [building.shafts.supply, building.shafts.exhaust]) {
+      expect(distanceToCore(shaft)).toBeGreaterThanOrEqual(CLEARANCE);
+    }
+  });
+
+  it('төхөөрөмж, supply/exhaust цэг, мэдрэгчийн тэмдэгтэй давхцахгүй (≥ 2 м)', () => {
+    const points = [
+      ...Object.values(floors).flatMap((floor) => [
+        ...Object.values(floor.ventilation.devicePositions),
+        ...floor.ventilation.supplyPoints,
+        ...floor.ventilation.exhaustPoints,
+      ]),
+      ...Object.values(areas).map((area) => area.markerPosition),
+    ];
+    for (const point of points) expect(distanceToCore(point)).toBeGreaterThanOrEqual(CLEARANCE);
+  });
+
+  it('агаарын урсгалын замын хэрчим бүр core-оос ≥ 2 м (airflowPaths өөрчлөгдөөгүй)', () => {
+    for (const floor of Object.values(floors)) {
+      for (const path of floor.ventilation.airflowPaths) {
+        for (let i = 1; i < path.length; i += 1) {
+          const [a, b] = [path[i - 1]!, path[i]!];
+          // Хэрчмийг нягт түүвэрлэж шалгана (замууд шулуун, богино)
+          for (let t = 0; t <= 1; t += 0.01) {
+            const point = { x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t };
+            expect(distanceToCore(point)).toBeGreaterThanOrEqual(CLEARANCE);
+          }
+        }
+      }
+    }
+  });
+
+  it.each([1, 6, 20])('давхрын тооноос хамаарахгүй (%i давхар)', (count) => {
+    expect(createBuildingConfig(count).building.core).toEqual(core);
+  });
+});

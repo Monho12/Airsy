@@ -250,6 +250,67 @@ const violations: Case[] = [
     code: 'export const handle = setTimeout(() => undefined, 10);\n',
     rule: 'no-restricted-globals',
   },
+
+  // ---------- 3D сан зөвхөн features/building3d/**-д (D56) ----------
+  ...(
+    [
+      ['өөр feature', 'features/alpha/bad.ts'],
+      ['components/ui', 'components/ui/Bad.ts'],
+      ['store', 'store/bad.ts'],
+      ['app', 'app/Bad.ts'],
+      ['domain', 'domain/control/bad.ts'],
+      ['src/test/ui', 'test/ui/bad.ts'],
+      ['өөр feature-ийн тест', 'features/alpha/bad.test.ts'],
+    ] as const
+  ).map(([layer, file]) => ({
+    name: `${layer} → three`,
+    file,
+    code: "import { Mesh } from 'three';\nexport const value = Mesh;\n",
+    rule: 'boundaries/dependencies',
+  })),
+  {
+    name: 'store → three (зөвхөн төрөл, import type)',
+    file: 'store/bad.ts',
+    code: "import type { Mesh } from 'three';\nexport type Value = Mesh;\n",
+    rule: 'boundaries/dependencies',
+  },
+  {
+    name: 'өөр feature → @react-three/fiber',
+    file: 'features/alpha/bad.tsx',
+    code: "import { Canvas } from '@react-three/fiber';\nexport const value = Canvas;\n",
+    rule: 'boundaries/dependencies',
+  },
+  {
+    name: 'өөр feature → @react-three/drei',
+    file: 'features/alpha/bad.tsx',
+    code: "import { Html } from '@react-three/drei';\nexport const value = Html;\n",
+    rule: 'boundaries/dependencies',
+  },
+  {
+    name: 'app → @react-three/drei',
+    file: 'app/Bad.tsx',
+    code: "import { Html } from '@react-three/drei';\nexport const value = Html;\n",
+    rule: 'boundaries/dependencies',
+  },
+  // building3d дотор ч зөвхөн яг гурван модулийн нэр — дэд зам ба transitive dependency хориотой
+  ...(
+    [
+      [
+        'three/examples/*',
+        "import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';",
+      ],
+      ['three/addons/*', "import { OrbitControls } from 'three/addons/controls/OrbitControls.js';"],
+      ['maath', "import { easing } from 'maath';"],
+      ['maath/easing', "import { damp3 } from 'maath/easing';"],
+      ['three-stdlib', "import { OrbitControls } from 'three-stdlib';"],
+      ['@react-three/fiber дэд зам', "import { Canvas } from '@react-three/fiber/native';"],
+    ] as const
+  ).map(([target, importLine]) => ({
+    name: `building3d → ${target}`,
+    file: 'features/building3d/bad.ts',
+    code: `${importLine}\nexport const value = 1;\n`,
+    rule: 'boundaries/dependencies',
+  })),
 ];
 
 const allowed: Omit<Case, 'rule'>[] = [
@@ -307,6 +368,28 @@ const allowed: Omit<Case, 'rule'>[] = [
     name: 'vite-env.d.ts — зөвхөн triple-slash reference (баримтжуулсан үл хамаарал)',
     file: 'vite-env.d.ts',
     code: '/// <reference types="vite/client" />\n',
+  },
+
+  // ---------- 3D сан (D56) ----------
+  {
+    name: 'building3d → three, @react-three/fiber, @react-three/drei',
+    file: 'features/building3d/good.tsx',
+    code: "import { MathUtils, type Mesh } from 'three';\nimport { Canvas } from '@react-three/fiber';\nimport { Html } from '@react-three/drei';\nexport type Value = Mesh;\nexport const value = [MathUtils, Canvas, Html];\n",
+  },
+  {
+    name: 'building3d → feature-ийн ердийн импорт (react, store, domain/config) хэвээр',
+    file: 'features/building3d/good.ts',
+    code: "import { useState } from 'react';\nimport { fixtureStore } from '@/store/uiStore';\nimport { fixtureTypes } from '@/domain/types';\nexport const value = [useState, fixtureStore, fixtureTypes];\n",
+  },
+  {
+    name: 'building3d тест → three ба vitest',
+    file: 'features/building3d/good.test.ts',
+    code: "import { Vector3 } from 'three';\nimport { expect } from 'vitest';\nexport const value = [Vector3, expect];\n",
+  },
+  {
+    name: 'app → building3d-ийн index (динамик import ч мөн)',
+    file: 'app/Good.ts',
+    code: "import { fixtureBuilding3d } from '@/features/building3d';\nexport const value = [fixtureBuilding3d, import('@/features/building3d')];\n",
   },
 ];
 

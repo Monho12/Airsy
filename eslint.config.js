@@ -47,6 +47,14 @@ const toExternal = (...sources) =>
   sources.map((source) => ({ to: { module: { origin: 'external', source } } }));
 const testFile = { file: { categories: 'test' } };
 
+// 3D сан (D56): зөвхөн features/building3d/** импортолно. Module-ийн `source` нь үндсэн нэр ('three/examples/…' → 'three')
+// тул import-ийн яг бичвэрийг (`dependency.source`) мөн шаардана — дэд зам (three/examples/*, three/addons/*) хориотой хэвээр.
+const THREE_D_MODULES = ['three', '@react-three/fiber', '@react-three/drei'];
+const toThreeD = THREE_D_MODULES.map((source) => ({
+  to: { module: { origin: 'external', source } },
+  dependency: { source },
+}));
+
 // Элементийн дотоод импорт (feature-ийн «өөрийн хавтас» гэх мэт) анхдагчаар шалгагдахгүй (checkInternals: false).
 const policies = [
   // domain/** → зөвхөн domain/** (React, store, UI, гадаад сан хориотой)
@@ -86,6 +94,12 @@ const policies = [
       { to: { element: { type: 'domain-runtime', fileInternalPath: 'AerisRuntime.ts' } } },
       ...toExternal('react', 'lucide-react', 'zustand'),
     ],
+  },
+
+  // features/building3d/** (тест файл орно) → дээр нь зөвхөн three, @react-three/fiber, @react-three/drei (D56)
+  {
+    from: { element: { type: 'feature', captured: { featureName: 'building3d' } } },
+    allow: toThreeD,
   },
 
   // app/** → features/<нэр>/index.ts, components/ui, store, domain/types|i18n|config

@@ -115,6 +115,45 @@
   font-size: var(--font-size-13);
 }
 
+/* ---------- 3D барилгын хэсэг (§8.6, D57) ---------- */
+/* Canvas нь самбарын бүх өндрийг эзэлнэ */
+.building3d-region > .ui-panel__body {
+  display: flex;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.building3d-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.building3d-fallback__message {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-13);
+}
+
+/* 3D хэсгийн товч: «Дахин оролдох» (орлуулалтад) ба «Харагдацыг сэргээх» (3D горимд) — хоёулаа бодит үйлдэлтэй (§8.7).
+   Focus-ийн хүрээ globals.css-ээс. */
+.shell-button {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-accent);
+  font: inherit;
+  font-size: var(--font-size-13);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-standard);
+}
+
+.shell-button:hover {
+  background: var(--color-surface-2);
+}
+
 /* Таблет (768–1279 px): 3D дээд хэсэгт (~55vh), самбарууд доор хоёр баганаар (§8.2) */
 @media (min-width: 768px) {
   .shell-main {
@@ -147,6 +186,19 @@
 
   .shell-region--building3d {
     min-height: 0;
+  }
+
+  /*
+   * 3D самбар баруун баганын агуулгаар (давхрын дэлгэрэнгүй, дохио) сунахгүй — хажуугийн давхрын жагсаалттай
+   * ижил дээд өндөр (FloorList.css-ийн desktop хязгаар). Grid-ийн талбай урт болсон ч 3D дээд хэсэгтээ үлдэнэ.
+   * Зөвхөн 3D горимд (`.building3d-region`); орлуулах тайлбар өөрийн өндрөөрөө.
+   */
+  .shell-slot.shell-region--building3d {
+    align-self: start;
+  }
+
+  .shell-region--building3d .building3d-region {
+    height: min(70vh, 44rem);
   }
 }
 

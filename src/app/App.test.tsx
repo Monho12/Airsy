@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { buildingConfig } from '@/domain/config/building';
 import { metricSpecs } from '@/domain/config/thresholds';
@@ -17,6 +17,10 @@ import { App } from './App';
 beforeEach(() => {
   useLiveStore.setState(initialLiveState, true);
   useUiStore.setState(initialUiState);
+  // jsdom-д WebGL байхгүй (getContext → null) — «Not implemented» анхааруулгагүйгээр яг тэр байдлыг тогтооно.
+  // Ингэснээр App нь WebGL-гүй хөтөч шиг 2D орлуулалт руу шилжинэ (§12.1, §12.2).
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+  return () => vi.restoreAllMocks();
 });
 
 const region = (name: string) => screen.getByRole('region', { name });
@@ -214,6 +218,22 @@ describe('Dashboard — жишээ snapshot-оор', () => {
     expect(items[0]).toHaveTextContent(mn.events.type[newest.type]);
     expect(items[0]).toHaveTextContent(newest.message);
     for (const item of items) expect(item.textContent).not.toMatch(/[A-Z]+_[A-Z]+/);
+  });
+});
+
+describe('3D барилга — WebGL байхгүй үеийн орлуулалт (FR-B9, §8.6, §12.2)', () => {
+  it('3D-ийн оронд тайлбар харуулж, 2D давхрын жагсаалт бүрэн ажиллана', async () => {
+    const { user } = renderWith();
+    const building = region(mn.common.regions.building3d);
+    expect(within(building).getByRole('status')).toHaveTextContent(
+      mn.common.building3d.fallback['webgl-unavailable'],
+    );
+    expect(within(building).queryByRole('img')).not.toBeInTheDocument();
+
+    // Орлуулах харагдац = features/floor-list (FloorList өөрчлөгдөөгүй)
+    await user.click(floorOption(7));
+    expect(floorOption(7)).toHaveAttribute('aria-selected', 'true');
+    expect(useUiStore.getState().selectedFloorId).toBe(buildingConfig.building.floorIds[6]);
   });
 });
 
