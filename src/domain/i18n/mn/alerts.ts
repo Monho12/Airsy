@@ -43,6 +43,21 @@ export const alerts = {
     return `${areaName}: ${metricShortLabel} мэдрэгч. ${explanation}`;
   },
 
+  // ---------- Удирдлагын төлөвийн дохио (§9.5-ын 6b, Phase 5) ----------
+  controlDegradedTitle(floorLabel: string): string {
+    return `Удирдлага нөөц горимд — ${floorLabel}`;
+  },
+  controlDegradedMessage(floorLabel: string): string {
+    return `${floorLabel}: CO₂-ийн зөв хэмжилт алга. Агааржуулалтыг доод тал нь «Дунд» түвшинд барьж байна.`;
+  },
+  outdoorAirRestrictedTitle: 'Гадна агаарыг хязгаарласан — барилга',
+  outdoorAirRestrictedMessage:
+    'Гадна PM2.5 өндөр тул бүх давхрын гадна агаарын хаалтыг «Бага зэрэг»-ээс илүү нээхгүй.',
+  emergencyTitle: 'Яаралтай байдал (симуляци) — барилга',
+  emergencyMessage(fireFloorLabel: string): string {
+    return `${fireFloorLabel}-т галын дохиоллын сигнал (симуляци). Сургалтын жишээ стратеги идэвхтэй.`;
+  },
+
   /** Хоосон төлөв (§8.7) */
   emptyActive: 'Идэвхтэй дохио алга — бүх давхар хэвийн.',
 } as const;

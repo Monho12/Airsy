@@ -94,11 +94,14 @@ export function evaluateAlerts(
   const resolvedKeys = new Set<string>();
   const raised: Alert[] = [];
   const resolved: Alert[] = [];
-  const pending: Record<string, PendingCounter> = {};
+  // Энэ дуудлагад ороогүй түлхүүрийн тоолуурыг хадгална — 5-р үе шат ба 6b (§9.5) нэг төлөвийг хуваалцана.
+  // Дамжуулсан түлхүүр бүрийн тоолуурыг доор шинээр тооцно (хэвийн / өгөгдөлгүй үед устгана).
+  const pending: Record<string, PendingCounter> = { ...state.pending };
   let nextAlertNumber = state.nextAlertNumber;
 
   for (const condition of conditions) {
     const current = activeByKey.get(condition.key);
+    delete pending[condition.key];
     if (condition.level === null) continue; // өгөгдөлгүй — хадгална, тоолуур дахин эхэлнэ
 
     if (condition.level === 'normal') {

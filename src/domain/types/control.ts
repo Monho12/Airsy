@@ -1,4 +1,4 @@
-// Удирдлагын төрөл (CLAUDE.md §6, §10). Phase 2-т зөвхөн гэрээ; engine Phase 5-д.
+// Удирдлагын төрөл (CLAUDE.md §6, §10). Phase 2-т гэрээ; engine Phase 5-д (`domain/control/`).
 import type { DeviceKind, DeviceState, VentilationDevice } from './devices';
 import type { DeviceId, FloorId, SimTimeMs } from './ids';
 import type { MetricType, ThresholdLevels } from './metrics';
@@ -18,7 +18,9 @@ export type ConstraintId = 'C-OUTDOOR-AIR';
 export interface ControlContext {
   floorId: FloorId;
   now: SimTimeMs;
-  floorAggregates: Partial<Record<MetricType, FloorMetricAggregate>>; // зөвхөн зөв хэмжилт; байхгүй = өгөгдөлгүй
+  // зөвхөн зөв хэмжилт; байхгүй = өгөгдөлгүй. `levels.high` нь дүрмийн debounce-оор БАТАЛГААЖСАН түвшин (§6.6, D78)
+  floorAggregates: Partial<Record<MetricType, FloorMetricAggregate>>;
+  sensorFallbackActive: boolean; // CO₂-ийн зөв хэмжилт алга болсныг debounce баталгаажуулсан (§6.6 `co2-missing`, D78)
   outdoor: OutdoorConditions; // зөв хэмжилтгүй талбар null
   devices: Record<DeviceKind, VentilationDevice>;
   autoMode: boolean;

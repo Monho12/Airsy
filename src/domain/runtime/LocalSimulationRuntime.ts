@@ -1,6 +1,7 @@
 // Браузер доторх симуляцийн runtime (CLAUDE.md §9.4, §9.4.1, §9.5, §11.1, D68–D73). Эзэмшигч: Симуляцийн инженер.
 // Цорын ганц timer-ийг эзэмшинэ (§11.1, D70). Бүх утга seed-тэй, deterministic — `Date.now()` / `Math.random()` байхгүй.
-// Phase 4: удирдлагын engine, сценари, яаралтай байдал байхгүй — төхөөрөмж суурь төлөвтөө (§13, D71, D72).
+// Phase 5: удирдлагын engine (§6, 6-р үе шат), удирдлагын дохио (6b), автомат/гар горимын командууд (D78).
+// Сценари ба яаралтай байдлыг эхлүүлэх/дуусгах команд Phase 6-д (§13).
 import { buildAlertConditions, sensorLocationLabel } from '@/domain/alerts/conditions';
 import {
   createAlertEvaluatorState,
@@ -12,7 +13,16 @@ import {
   buildingConfig as defaultBuildingConfig,
   type BuildingConfig,
 } from '@/domain/config/building';
-import { baselineDeviceStates } from '@/domain/config/control';
+import { baselineDeviceStates, controlConfig } from '@/domain/config/control';
+import { applyDeviceCommand } from '@/domain/control/applyDeviceCommand';
+import {
+  createRuleDebounceState,
+  outdoorConditionsOf,
+  type RuleDebounceState,
+} from '@/domain/control/controlState';
+import { evaluateControl } from '@/domain/control/engine';
+import { sameState } from '@/domain/control/levels';
+import { controlSignalConditions } from '@/domain/control/signals';
 import { simulationConfig, simulationSpeeds } from '@/domain/config/simulation';
 import { metricSpecs } from '@/domain/config/thresholds';
 import {
@@ -88,7 +98,7 @@ const reject = (reason: string): CommandOutcome => ({
   changed: false,
 });
 
-/** Phase 4-т удирдлагын engine байхгүй тул шийдвэрийн мөр хоосон (Phase 5) */
+/** Эхний алхмаас өмнө шийдвэрийн мөр хоосон (engine алхам бүрт бөглөнө) */
 const NO_DECISIONS: Readonly<Record<DeviceId, ControlDecision>> = Object.freeze({});
 
 const ALERT_EVENT_TYPE: Record<AlertTransition['kind'], SystemEventType> = {
@@ -106,8 +116,11 @@ export class LocalSimulationRuntime implements AerisRuntime {
   private readonly calibrations = new Map<AreaId, AreaCalibration>();
   private readonly occupants = new Map<AreaId, number>();
   private readonly outdoor: OutdoorEnvironment = baselineOutdoor;
-  private readonly devices: Record<DeviceId, VentilationDevice>;
-  private readonly control: ControlState;
+  private devices: Record<DeviceId, VentilationDevice>;
+  private control: ControlState;
+  private decisions: Readonly<Record<DeviceId, ControlDecision>> = NO_DECISIONS;
+  /** Дүрмийн debounce (§6.6) — runtime-ийн domain төлөвт, snapshot-д биш */
+  private ruleDebounce: RuleDebounceState = createRuleDebounceState();
 
   private environment = new Map<AreaId, AreaEnvironment>();
   private readonly faults = new Map<SensorId, SensorFault>();
@@ -163,7 +176,7 @@ export class LocalSimulationRuntime implements AerisRuntime {
         lastRuleId: null,
       };
     }
-    // §7.4-ийн суурь: гадна PM2.5 8 µg/m³ < 10 тул шингэлэхийг зөвшөөрнө. Phase 4-т тооцоолохгүй (Phase 5).
+    // §7.4-ийн суурь: гадна PM2.5 8 µg/m³ < 10 тул шингэлэхийг зөвшөөрнө; алхам бүрт 0-р үе шат дахин тооцно (§6.2).
     this.control = {
       autoMode: true,
       outdoorAirRestricted: false,
@@ -255,13 +268,13 @@ export class LocalSimulationRuntime implements AerisRuntime {
     this.publish();
   }
 
-  // ---------- Алхам (§9.5; Phase 4-т 2–5, 7–8) ----------
+  // ---------- Алхам (§9.5; Phase 5-д 2–8, 1-р үе шат (сценари) Phase 6-д) ----------
 
   private step(): void {
     this.simTime += simulationConfig.stepMs;
     const dtSec = simulationConfig.stepMs / 1000;
 
-    // 2. Орчин — төхөөрөмжийн одоогийн төлөвөөр (Phase 4-т суурь)
+    // 2. Орчин — төхөөрөмжийн одоогийн төлөвөөр
     const next = new Map<AreaId, AreaEnvironment>();
     for (const area of Object.values(this.config.areas)) {
       next.set(
@@ -290,7 +303,7 @@ export class LocalSimulationRuntime implements AerisRuntime {
       }
     }
 
-    // 5. Дохио (debounce-тэй). Удирдлага ба 6b нь Phase 5-д.
+    // 5. Дохио (debounce-тэй)
     const aggregates = this.aggregates();
     const evaluation = evaluateAlerts(
       this.alerts,
@@ -299,6 +312,32 @@ export class LocalSimulationRuntime implements AerisRuntime {
     );
     this.alerts = evaluation.state;
     drafts.push(...evaluation.transitions.map((transition) => this.alertEvent(transition)));
+
+    // 6. Удирдлагын engine (§6.2): 0-р үе шат → дүрэм → шийдвэр → applyDeviceCommand
+    const control = evaluateControl({
+      config: this.config,
+      devices: this.devices,
+      aggregates,
+      outdoor: outdoorConditionsOf(this.readings, this.simTime),
+      control: this.control,
+      debounce: this.ruleDebounce,
+      now: this.simTime,
+    });
+    this.devices = control.devices;
+    this.control = control.control;
+    this.ruleDebounce = control.debounce;
+    this.decisions = control.decisions;
+    drafts.push(...control.events);
+
+    // 6b. Удирдлагын төлөвийн дохио — энэ алхмын ControlState-ээр, өөрийн debounce-гүй (§6.6, §9.5)
+    const signals = evaluateAlerts(
+      this.alerts,
+      controlSignalConditions(this.config, this.control),
+      this.simTime,
+      { debounceSteps: 1 },
+    );
+    this.alerts = signals.state;
+    drafts.push(...signals.transitions.map((transition) => this.alertEvent(transition)));
     this.eventLog = appendEvents(this.eventLog, drafts);
 
     // 7. Хандлагын buffer
@@ -462,14 +501,80 @@ export class LocalSimulationRuntime implements AerisRuntime {
         return { result: { ok: true }, changed: ids.length > 0 };
       }
 
-      // Phase 4-т хэрэгжээгүй командууд (D71): төлөв ба үйл явдал өөрчлөгдөхгүй
+      case 'control/setAutoMode': {
+        if (command.enabled === this.control.autoMode) return OK_UNCHANGED;
+        this.control = { ...this.control, autoMode: command.enabled };
+        drafts.push({
+          timestamp: this.simTime,
+          type: command.enabled ? 'AUTO_MODE_ENABLED' : 'AUTO_MODE_DISABLED',
+          category: 'operator',
+          severity: 'info',
+          message: command.enabled ? mn.events.autoModeEnabled : mn.events.autoModeDisabled,
+          actor: 'operator',
+        });
+        // Шийдвэр (зөвлөмж / хэрэгжүүлэлт) дараагийн алхамд (§6.7, §9.4.1)
+        return { result: { ok: true }, changed: true };
+      }
+
+      case 'device/setManual': {
+        const device = this.devices[command.deviceId];
+        if (device === undefined) return reject(mn.control.unknownDevice(command.deviceId));
+        if (command.state.kind !== device.kind) return reject(mn.control.stateKindMismatch);
+        if (this.control.emergency !== null) return reject(mn.control.manualBlockedByEmergency);
+        if (device.manualOverride !== null && sameState(device.state, command.state)) {
+          return OK_UNCHANGED;
+        }
+        // Гар төлөв нь шууд нөлөө (§9.4.1) — applyDeviceCommand-аар (§6.2)
+        const result = applyDeviceCommand(
+          device,
+          command.state,
+          {
+            kind: 'manual',
+            override: {
+              state: command.state,
+              setAt: this.simTime,
+              expiresAt: this.simTime + controlConfig.manualOverrideTimeoutMs,
+            },
+          },
+          this.simTime,
+        );
+        this.devices = { ...this.devices, [device.id]: result.device };
+        drafts.push(result.event);
+        return { result: { ok: true }, changed: true };
+      }
+
+      case 'device/returnToAuto': {
+        const device = this.devices[command.deviceId];
+        if (device === undefined) return reject(mn.control.unknownDevice(command.deviceId));
+        if (device.manualOverride === null) return OK_UNCHANGED;
+        this.devices = {
+          ...this.devices,
+          [device.id]: {
+            ...device,
+            mode: device.mode === 'emergency' ? 'emergency' : 'auto',
+            manualOverride: null,
+          },
+        };
+        drafts.push({
+          timestamp: this.simTime,
+          type: 'MANUAL_OVERRIDE_CLEARED',
+          category: 'operator',
+          severity: 'info',
+          message: mn.events.manualOverrideCleared(device.name),
+          floorId: device.floorId,
+          deviceId: device.id,
+          ruleId: 'R-MANUAL',
+          actor: 'operator',
+        });
+        // Төлөв дараагийн алхамд engine-ээр (өсөлт шууд, бууралт барих хугацаагаар, §6.6)
+        return { result: { ok: true }, changed: true };
+      }
+
+      // Phase 6-д хэрэгжинэ (D71, D78): төлөв ба үйл явдал өөрчлөгдөхгүй
       case 'simulation/reset':
       case 'scenario/start':
       case 'scenario/stop':
       case 'emergency/end':
-      case 'control/setAutoMode':
-      case 'device/setManual':
-      case 'device/returnToAuto':
       case 'alert/acknowledge':
         return reject(mn.common.runtime.notAvailableYet);
     }
@@ -570,7 +675,7 @@ export class LocalSimulationRuntime implements AerisRuntime {
       simulation: this.simulationView,
       readings: this.readings,
       devices: this.devices,
-      decisions: NO_DECISIONS,
+      decisions: this.decisions,
       control: this.control,
       alerts: this.alertsView,
       events: this.eventLog.events,
