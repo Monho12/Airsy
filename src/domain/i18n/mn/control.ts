@@ -106,6 +106,9 @@ export const control = {
   manualReason(stateLabel: string, untilText: string): string {
     return `Гар удирдлагатай («${stateLabel}», ${untilText} хүртэл) — автомат шийдвэр хэрэгжихгүй.`;
   },
+  autoWouldChoose(targetLabel: string): string {
+    return `Автомат шийдвэр: «${targetLabel}».`;
+  },
   recommendationReason(deviceName: string, targetLabel: string): string {
     return `Автомат горим унтраалттай: ${deviceName}-ийг «${targetLabel}» болгох байсан (хэрэгжүүлээгүй).`;
   },

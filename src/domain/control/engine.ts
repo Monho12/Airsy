@@ -306,15 +306,17 @@ export function evaluateControl(input: ControlEngineInput): ControlEngineOutput 
       };
       const withNotes = (text: string) => (notes === '' ? text : `${text} ${notes}`);
 
-      // 2-р алхам: гар удирдлага — engine команд өгөхгүй (R-MANUAL шүүлтүүр)
+      // 2-р алхам: гар удирдлага — engine команд өгөхгүй (R-MANUAL шүүлтүүр); автомат юу сонгох байсныг тайлбарлана
       if (device.manualOverride !== null) {
         decisions[device.id] = {
           ...decisionBase,
+          winningRuleId: 'R-MANUAL',
+          contributingRuleIds: [],
           outcome: 'manual',
-          reason: mn.control.manualReason(
+          reason: `${mn.control.manualReason(
             stateLabel(device.state),
             formatTimeMn(device.manualOverride.expiresAt),
-          ),
+          )} ${mn.control.autoWouldChoose(targetLabel)}`,
         };
         continue;
       }

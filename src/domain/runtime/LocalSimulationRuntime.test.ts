@@ -459,6 +459,26 @@ describe('удирдлага ба командууд (Phase 5, §6.7, §9.5-ын
     });
   });
 
+  it('10× хурдаар 10 бодит минут (6000 алхам): гараар өдөөсний дараа сэргээд, хэлбэлзэлгүй', async () => {
+    const { runtime } = started();
+    await runtime.dispatch({
+      type: 'device/setManual',
+      deviceId: 'F02-SF',
+      state: { kind: 'supply_fan', level: 'BOOST' },
+    });
+    await runtime.dispatch({ type: 'device/returnToAuto', deviceId: 'F02-SF' });
+    runtime.advance(6000);
+    const changes = runtime.getSnapshot().events.filter((e) => e.type === 'DEVICE_STATE_CHANGED');
+    // BOOST → HIGH → MEDIUM → LOW — зөвхөн 3 алхмаар буурч, дахин хэзээ ч өөрчлөгдөхгүй (§6.6)
+    expect(changes.map((e) => e.deviceId)).toEqual(['F02-SF', 'F02-SF', 'F02-SF']);
+    expect(runtime.getSnapshot().devices['F02-SF']!.state).toEqual({
+      kind: 'supply_fan',
+      level: 'LOW',
+    });
+    expect(runtime.getSnapshot().alerts.active).toEqual([]);
+    runtime.stop();
+  });
+
   it('control/setAutoMode: AUTO_MODE_DISABLED/ENABLED, давтан нь өөрчлөлтгүй', async () => {
     const { runtime } = started();
     expect(await runtime.dispatch({ type: 'control/setAutoMode', enabled: false })).toEqual({

@@ -1,14 +1,19 @@
 // Агааржуулалтын төхөөрөмжийн загвар (CLAUDE.md §8.6, FR-B6, §11.3): давхар бүрт сэнсний бүрхүүл + далбаа,
 // түвшний заагч, гадна агаарын хаалтын хүрээ + ламель. Бүгд instanced (5 draw call, давхрын тооноос үл хамаарна).
-// Хөдөлгөөнгүй — жишээ snapshot-ийн төлөвийг л харуулна; эргэлт ба шилжилт Phase 5-д. Сонгогдохгүй (handler-гүй).
+// Phase 5 (FR-B8, D78): далбаа урсгалын коэффициенттой пропорциональ хурдаар зөөлөн хурдсан эргэнэ, ламель зорилтот
+// өнцөг рүү зөөлөн шилжинэ (`THREE.MathUtils.damp`, D57). Хөдөлгөөн багасгах үед эргэхгүй, ламель шууд (§8.5).
+// Сонгогдохгүй (handler-гүй).
 // Төлөвийг 2D төхөөрөмжийн жагсаалт бичвэрээр харуулна — 3D нь цорын ганц зам биш (§8.8).
-import { useThree } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { useLayoutEffect, useMemo, useRef } from 'react';
-import { Color, Object3D, type InstancedMesh } from 'three';
+import { Color, MathUtils, Object3D, type InstancedMesh } from 'three';
 
 import type { BuildingConfig } from '@/domain/config/building';
+import { fanLevelOrder } from '@/domain/config/control';
 import { useLiveStore } from '@/store/liveStore';
+import { useUiStore } from '@/store/uiStore';
 
+import { fanAngularSpeed } from './animationData';
 import {
   createDeviceModels,
   deviceVisualStates,
@@ -41,7 +46,11 @@ const DAMPER_BARS: [number, number, number, number][] = [
   [DAMPER_SIZE / 2, 0, DAMPER_BAR, DAMPER_SIZE],
 ];
 
-// Effect бүрт шинэ объект үүсгэхгүй (§11.3)
+/** Зөөлрүүлэлтийн хурд (1/с): сэнсний хурдсалт ба ламелийн шилжилт (§8.5 «зөөлөн хурдсана») */
+const FAN_DAMPING = 1.5;
+const LOUVER_DAMPING = 3;
+
+// Effect ба frame бүрт шинэ объект үүсгэхгүй (§11.3)
 const scratch = new Object3D();
 const scratchColor = new Color();
 
@@ -76,6 +85,48 @@ function finish(mesh: InstancedMesh) {
   mesh.computeBoundingSphere();
 }
 
+/** Сэнсний далбааг `spin` өнцгөөр эргүүлж байрлуулна */
+function placeBlades(
+  blades: InstancedMesh,
+  fanIndex: number,
+  fan: FanVisual,
+  model: DeviceModelLayout,
+  spin: number,
+) {
+  const { x, y, z } = model.position;
+  for (let b = 0; b < BLADES_PER_FAN; b += 1) {
+    const angle = Math.PI / 4 + (b * Math.PI) / 2 + spin;
+    place(
+      blades,
+      fanIndex * BLADES_PER_FAN + b,
+      [x - Math.sin(angle) * BLADE_OFFSET, y + Math.cos(angle) * BLADE_OFFSET, z],
+      { rotationZ: angle, visible: fan.known },
+    );
+  }
+}
+
+/** Хаалтын ламелийг `angle` өнцгөөр байрлуулна (0 = босоо/хаалттай, π/2 = хэвтээ/нээлттэй) */
+function placeLouvers(
+  louvers: InstancedMesh,
+  damperIndex: number,
+  damper: DamperVisual,
+  model: DeviceModelLayout,
+  angle: number,
+) {
+  const { x, y, z } = model.position;
+  for (let l = 0; l < LOUVERS_PER_DAMPER; l += 1) {
+    const offsetY = (l - (LOUVERS_PER_DAMPER - 1) / 2) * LOUVER_SIZE[1];
+    place(louvers, damperIndex * LOUVERS_PER_DAMPER + l, [x, y + offsetY, z], {
+      rotationX: damper.known ? angle : 0,
+      visible: damper.known,
+    });
+  }
+}
+
+const targetSpeed = (fan: FanVisual) =>
+  fan.known ? fanAngularSpeed(fanLevelOrder[fan.litSegments] ?? 'OFF') : 0;
+const targetLouver = (damper: DamperVisual) => (damper.known ? damper.louverAngle : 0);
+
 export function DeviceModels({
   config,
   layout,
@@ -90,6 +141,7 @@ export function DeviceModels({
   const devices = useLiveStore((state) => state.snapshot?.devices ?? null);
   const visuals = useMemo(() => deviceVisualStates(devices, models), [devices, models]);
   const invalidate = useThree((state) => state.invalidate);
+  const reducedMotion = useUiStore((state) => state.reducedMotion);
 
   // Сэнс ба хаалт тусдаа instanced mesh-тэй
   const { fans, dampers } = useMemo(() => {
@@ -108,6 +160,10 @@ export function DeviceModels({
   const pipRef = useRef<InstancedMesh>(null);
   const frameRef = useRef<InstancedMesh>(null);
   const louverRef = useRef<InstancedMesh>(null);
+  // Анимацийн төлөв (React төлөв биш — frame бүрт өөрчлөгдөнө, §11.2): далбааны өнцөг/хурд, ламелийн одоогийн өнцөг
+  const spin = useRef<number[]>([]);
+  const speed = useRef<number[]>([]);
+  const louverAngle = useRef<number[]>([]);
 
   useLayoutEffect(() => {
     const shroud = shroudRef.current;
@@ -132,19 +188,13 @@ export function DeviceModels({
       paint(shroud, fanIndex, fan.known ? colors.deviceFrame : colors.status.offline);
 
       // Далбаа: ажиллаж буй бол тод, унтраалттай бол бүдэг; мэдэгдэхгүй бол зурахгүй (таамаглахгүй)
+      placeBlades(blades, fanIndex, fan, model, spin.current[fanIndex] ?? 0);
       for (let b = 0; b < BLADES_PER_FAN; b += 1) {
-        const angle = Math.PI / 4 + (b * Math.PI) / 2;
-        const index = fanIndex * BLADES_PER_FAN + b;
-        place(
+        paint(
           blades,
-          index,
-          [x - Math.sin(angle) * BLADE_OFFSET, y + Math.cos(angle) * BLADE_OFFSET, z],
-          {
-            rotationZ: angle,
-            visible: fan.known,
-          },
+          fanIndex * BLADES_PER_FAN + b,
+          fan.known && fan.running ? colors.deviceActive : colors.deviceIdle,
         );
-        paint(blades, index, fan.known && fan.running ? colors.deviceActive : colors.deviceIdle);
       }
 
       // Түвшний заагч: LOW 1 … BOOST 4 гэрэлтэнэ (§5.7)
@@ -171,21 +221,51 @@ export function DeviceModels({
         paint(frames, index, damper.known ? colors.deviceFrame : colors.status.offline);
       });
 
-      // Ламель X тэнхлэгээр эргэнэ: 0 = босоо (хаалттай), π/2 = хэвтээ (бүрэн нээлттэй)
+      // Ламель X тэнхлэгээр эргэнэ: 0 = босоо (хаалттай), π/2 = хэвтээ (бүрэн нээлттэй). Анх удаа эсвэл хөдөлгөөн
+      // багасгах үед шууд зорилтод; бусад үед одоогийн өнцгөөс `useFrame` зөөлөн шилжүүлнэ.
+      if (reducedMotion || louverAngle.current[damperIndex] === undefined) {
+        louverAngle.current[damperIndex] = targetLouver(damper);
+      }
+      placeLouvers(louvers, damperIndex, damper, model, louverAngle.current[damperIndex]!);
       for (let l = 0; l < LOUVERS_PER_DAMPER; l += 1) {
-        const index = damperIndex * LOUVERS_PER_DAMPER + l;
-        const offsetY = (l - (LOUVERS_PER_DAMPER - 1) / 2) * LOUVER_SIZE[1];
-        place(louvers, index, [x, y + offsetY, z], {
-          rotationX: damper.known ? damper.louverAngle : 0,
-          visible: damper.known,
-        });
-        paint(louvers, index, colors.deviceActive);
+        paint(louvers, damperIndex * LOUVERS_PER_DAMPER + l, colors.deviceActive);
       }
     });
 
     [shroud, blades, pips, frames, louvers].forEach(finish);
     invalidate(); // `frameloop="demand"`
-  }, [fans, dampers, colors, invalidate]);
+  }, [fans, dampers, colors, invalidate, reducedMotion]);
+
+  // Анимаци (FR-B8): хөдөлгөөн багасгах үед ажиллахгүй — сэнс эргэлгүй төлөвөө харуулна (§8.5)
+  useFrame((state, delta) => {
+    const blades = bladeRef.current;
+    const louvers = louverRef.current;
+    if (reducedMotion || blades === null || louvers === null) return;
+    const dt = Math.min(delta, 0.1); // таб нуугдсаны дараах том delta-г хязгаарлана
+    let moving = false;
+    fans.forEach(({ model, visual }, i) => {
+      const goal = targetSpeed(visual);
+      const current = MathUtils.damp(speed.current[i] ?? 0, goal, FAN_DAMPING, dt);
+      speed.current[i] = Math.abs(current - goal) < 1e-3 ? goal : current;
+      if (speed.current[i] === 0) return;
+      spin.current[i] = ((spin.current[i] ?? 0) + speed.current[i]! * dt) % (Math.PI * 2);
+      placeBlades(blades, i, visual, model, spin.current[i]!);
+      moving = true;
+    });
+    dampers.forEach(({ model, visual }, i) => {
+      const goal = targetLouver(visual);
+      const currentAngle = louverAngle.current[i] ?? goal;
+      if (currentAngle === goal) return;
+      const next = MathUtils.damp(currentAngle, goal, LOUVER_DAMPING, dt);
+      louverAngle.current[i] = Math.abs(next - goal) < 1e-3 ? goal : next;
+      placeLouvers(louvers, i, visual, model, louverAngle.current[i]!);
+      moving = true;
+    });
+    if (!moving) return;
+    blades.instanceMatrix.needsUpdate = true;
+    louvers.instanceMatrix.needsUpdate = true;
+    state.invalidate(); // `frameloop="demand"` — дараагийн frame
+  });
 
   // instance-ийн тоо үүсгэх үед тогтдог — давхрын тоо өөрчлөгдвөл `key`-ээр дахин үүсгэнэ
   const fanCount = fans.length;

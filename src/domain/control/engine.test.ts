@@ -406,6 +406,10 @@ describe('автомат/гар горим (§6.7, FR-C6, FR-C7)', () => {
     const out = step(s, aggregates({ F02: { co2: oneSided(1200, 'warning') } }), OUTDOOR, N);
     expect(state(s, 'F02', 'supply_fan')).toBe('OFF');
     expect(out.decisions[id]!.outcome).toBe('manual');
+    expect(out.decisions[id]!.winningRuleId).toBe('R-MANUAL');
+    expect(out.decisions[id]!.reason).toContain(
+      mn.control.autoWouldChoose(mn.devices.fanLevel.HIGH),
+    );
     step(s, aggregates({ F02: { co2: oneSided(1200, 'warning') } }), OUTDOOR, 3);
     expect(s.events.some((e) => e.type === 'MANUAL_OVERRIDE_EXPIRED' && e.deviceId === id)).toBe(
       true,
