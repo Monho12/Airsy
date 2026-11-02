@@ -407,12 +407,23 @@ const toolingViolations: Omit<Case, 'rule'>[] = [
   },
 ];
 
+/**
+ * Файлын эхний lint нь ESLint-ийн config, plugin, TypeScript resolver-ийг анх ачаалдаг (хүйтэн эхлэл): дангаараа ~1.8 с,
+ * бүтэн suite-д ~4.0–4.2 с — Vitest-ийн анхдагч 5 с-д ойр тул ачаалалтай машинд унаж байсан (CLAUDE.md §13 Phase 4).
+ * Зөвхөн энэ блокийн хугацааг уртасгана; шалгаж буй lint-ийн үр дүн өөрчлөгдөхгүй.
+ */
+const COLD_START_TIMEOUT_MS = 20_000;
+
 describe('§9.3-ын 8-р дүрэм: зөрчил бүр lint алдаа өгнө', () => {
-  it.each(violations)('$name → $rule', async ({ file, code, rule }) => {
-    const messages = await lint(file, code);
-    const errors = messages.filter((m) => m.severity === 2).map((m) => m.ruleId);
-    expect(errors).toContain(rule);
-  });
+  it.each(violations)(
+    '$name → $rule',
+    async ({ file, code, rule }) => {
+      const messages = await lint(file, code);
+      const errors = messages.filter((m) => m.severity === 2).map((m) => m.ruleId);
+      expect(errors).toContain(rule);
+    },
+    COLD_START_TIMEOUT_MS,
+  );
 });
 
 describe('§9.3-ын 8-р дүрэм: зөвшөөрөгдсөн импорт алдаагүй', () => {

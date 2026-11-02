@@ -1,7 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
-import { controlConfig, damperOutdoorFraction, fanAirflow, fanLevelOrder } from './control';
-import { simulationConfig } from './simulation';
+import {
+  baselineDeviceStates,
+  controlConfig,
+  damperOutdoorFraction,
+  fanAirflow,
+  fanLevelOrder,
+} from './control';
+import {
+  bufferLimits,
+  sensorNoiseAmplitude,
+  simulationConfig,
+  simulationModel,
+  simulationSpeeds,
+} from './simulation';
 import {
   conditionsByMetric,
   indoorThresholds,
@@ -51,6 +63,52 @@ describe('control.ts (§5.7, §6.6, §6.7)', () => {
     expect(flows).toEqual([0, 0.25, 0.5, 0.8, 1.0]);
     expect(damperOutdoorFraction).toEqual({ CLOSED: 0, MINIMUM: 0.2, PARTIAL: 0.5, OPEN: 1 });
     expect(controlConfig).toEqual({ minStateHoldMs: 30_000, manualOverrideTimeoutMs: 600_000 });
+  });
+
+  it('суурь агааржуулалт (§6.3 R-BASELINE): SF LOW, EF LOW, OAD MINIMUM', () => {
+    expect(baselineDeviceStates).toEqual({
+      supply_fan: { kind: 'supply_fan', level: 'LOW' },
+      exhaust_fan: { kind: 'exhaust_fan', level: 'LOW' },
+      outdoor_air_damper: { kind: 'outdoor_air_damper', position: 'MINIMUM' },
+    });
+  });
+});
+
+describe('simulation.ts (D68–D70, §11.1, §11.4 — зориуд бэхэлсэн)', () => {
+  it('seed, алхам, tick, хурд (D69, D70)', () => {
+    expect(simulationConfig.defaultSeed).toBe(20261019);
+    expect(simulationConfig.stepMs).toBe(1000);
+    expect(simulationConfig.tickMs).toBe(200);
+    expect(simulationConfig.ticksPerStep).toBe(5);
+    expect(Number.isInteger(simulationConfig.stepMs / simulationConfig.tickMs)).toBe(true);
+    expect(simulationSpeeds).toEqual([1, 2, 5, 10]);
+  });
+
+  it('загварын анхны тааруулгын утга (D68)', () => {
+    expect(simulationModel).toEqual({
+      kOutdoorAir: 1 / 18,
+      kExhaust: 1 / 18,
+      kFiltration: 1 / 18,
+      filterEfficiency: 0.5,
+      thermalMass: 1,
+      hvacRecovery: 1 / 90,
+      humidityCoupling: 1,
+    });
+  });
+
+  it('шуугиан (D69) ба buffer-ийн хязгаар (§11.4)', () => {
+    expect(sensorNoiseAmplitude).toEqual({
+      temperature: 0.05,
+      co2: 5,
+      humidity: 0.3,
+      pm25: 0.3,
+      voc: 1.5,
+    });
+    expect(bufferLimits).toEqual({
+      events: 500,
+      recentResolvedAlerts: 100,
+      trendPointsPerSeries: 300,
+    });
   });
 });
 
