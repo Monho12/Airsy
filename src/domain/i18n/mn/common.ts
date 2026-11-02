@@ -59,7 +59,6 @@ export const common = {
   /** Runtime-ийн командын татгалзлын шалтгаан (§9.4, §9.4.1, D71) */
   runtime: {
     notRunning: 'Симуляци ажиллахгүй байна — командыг гүйцэтгэх боломжгүй.',
-    notAvailableYet: 'Энэ үйлдэл одоогоор боломжгүй — дараагийн шатанд нэмэгдэнэ.',
     invalidSpeed: 'Дэмжигдээгүй хурд.',
     unknownSensor: (sensorId: string) => `Мэдрэгч олдсонгүй: ${sensorId}.`,
   },

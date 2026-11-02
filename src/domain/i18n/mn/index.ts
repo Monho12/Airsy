@@ -6,6 +6,7 @@ import { control } from './control';
 import { devices } from './devices';
 import { events } from './events';
 import { metrics } from './metrics';
+import { scenarios } from './scenarios';
 
 export const mn = {
   common,
@@ -15,6 +16,7 @@ export const mn = {
   control,
   alerts,
   events,
+  scenarios,
 } as const;
 
 export {

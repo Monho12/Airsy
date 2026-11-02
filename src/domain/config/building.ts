@@ -108,11 +108,12 @@ const SPECIAL_FLOORS: Record<number, FloorTemplate> = {
     name: 'Хурлын төв',
     usage: 'conference',
     areas: [
-      { name: 'Их танхим', capacity: 160, baselineOccupancy: 0.5, baseline: BASELINE.conference },
+      // D80: 0.45 (S3-ын CO₂ анхааруулга хүрэхүйц — D68-ийн 5)
+      { name: 'Их танхим', capacity: 160, baselineOccupancy: 0.45, baseline: BASELINE.conference },
       {
         name: 'Хурлын өрөөнүүд',
         capacity: 80,
-        baselineOccupancy: 0.5,
+        baselineOccupancy: 0.45,
         baseline: BASELINE.conference,
       },
     ],

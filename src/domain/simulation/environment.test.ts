@@ -100,10 +100,10 @@ describe('calibrateArea — тэнцвэр = Area.baseline (D68, Q1)', () => {
     },
   );
 
-  it('CO₂-ийн ялгаруулалт бүсээр ялгаатай (ганц g_co2 биш — D68): оффис 191.67, Их танхим 84, лобби 288', () => {
+  it('CO₂-ийн ялгаруулалт бүсээр ялгаатай (ганц g_co2 биш — D68): оффис 191.67, Их танхим 93.33 (D80), лобби 288', () => {
     // Зориуд бэхэлсэн утга (D68-д бүртгэсэн тооцоо)
     expect(calibrateArea(area('F07-A')).co2PerOccupant).toBeCloseTo(191.6667, 3);
-    expect(calibrateArea(area('F02-A')).co2PerOccupant).toBeCloseTo(84, 6);
+    expect(calibrateArea(area('F02-A')).co2PerOccupant).toBeCloseTo(93.3333, 3);
     expect(calibrateArea(area('F01-A')).co2PerOccupant).toBeCloseTo(288, 6);
   });
 
@@ -188,12 +188,12 @@ describe('хариу хугацаа — суурь үед (Q4: тестээр б
 });
 
 describe('бүртгэсэн хязгаарлалт (зориуд бэхэлсэн — шийдвэр гартал өөрчлөгдөхгүй)', () => {
-  it('D68-ийн 5 (F02/S3, Phase 6): тэнцвэрт ачаалал 100% үед F02-A ≈ 980 ppm (< 1000)', () => {
+  it('D68-ийн 5 шийдсэн (D80): суурь ачаалал 0.45 тул ачаалал 100% үед F02-A ≈ 1042 ppm (≥ 1000 — S3-ын анхааруулга)', () => {
     const a = area('F02-A');
     const occupants = a.occupancyCapacity * 1.0;
     const last = run(a, { ...a.baseline }, 3000, baselineRates, occupants).at(-1)!;
-    expect(last.co2).toBeCloseTo(980, 0);
-    expect(last.co2).toBeLessThan(1000);
+    expect(last.co2).toBeCloseTo(420 + (700 - 420) / 0.45, 0);
+    expect(last.co2).toBeGreaterThanOrEqual(1000);
   });
 
   it('D68-ийн 6 (Phase 5-аас өмнө шийднэ): SF OFF үед PM2.5 шугаман өсч, RH буурна; EF нөлөөлөхгүй', () => {

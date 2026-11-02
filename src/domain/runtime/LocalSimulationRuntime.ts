@@ -1,11 +1,15 @@
 // Браузер доторх симуляцийн runtime (CLAUDE.md §9.4, §9.4.1, §9.5, §11.1, D68–D73). Эзэмшигч: Симуляцийн инженер.
 // Цорын ганц timer-ийг эзэмшинэ (§11.1, D70). Бүх утга seed-тэй, deterministic — `Date.now()` / `Math.random()` байхгүй.
 // Phase 5: удирдлагын engine (§6, 6-р үе шат), удирдлагын дохио (6b), автомат/гар горимын командууд (D78).
-// Сценари ба яаралтай байдлыг эхлүүлэх/дуусгах команд Phase 6-д (§13).
+// Phase 6: сценарийн engine (1-р үе шат), зөөлөн/хатуу шинэчлэл ба яаралтай байдлыг дуусгах (§7.4), дохио хүлээн авах.
 import { buildAlertConditions, sensorLocationLabel } from '@/domain/alerts/conditions';
 import {
+  acknowledgeAlert,
+  clearAlertDebounce,
+  clearAlerts,
   createAlertEvaluatorState,
   evaluateAlerts,
+  resolveAlertsWhere,
   type AlertEvaluatorState,
   type AlertTransition,
 } from '@/domain/alerts/evaluator';
@@ -32,9 +36,20 @@ import {
   type SystemEventDraft,
 } from '@/domain/events/eventLog';
 import { appendTrendPoints, createTrendHistory } from '@/domain/history/trendHistory';
-import { formatMetricValueMn, mn } from '@/domain/i18n/mn';
+import { floorLabelMn, formatMetricValueMn, mn } from '@/domain/i18n/mn';
+import { scenarioDefinitions } from '@/domain/scenarios/definitions';
+import { dueSteps, scenarioIncompatibility, scenarioProgress } from '@/domain/scenarios/engine';
 import {
-  baselineOccupants,
+  applyInputAction,
+  createBaselineInputs,
+  isInputAction,
+  occupantsAt,
+  outdoorAt,
+  pruneInputs,
+  sourcesAt,
+  type ScenarioInputs,
+} from '@/domain/scenarios/inputs';
+import {
   baselineOutdoor,
   calibrateArea,
   stepAreaEnvironment,
@@ -65,7 +80,9 @@ import type {
   Sensor,
   SensorId,
   SensorReading,
+  ScenarioAction,
   SimTimeMs,
+  SimulationScenario,
   SimulationSpeed,
   SystemEventType,
   TrendHistory,
@@ -101,6 +118,26 @@ const reject = (reason: string): CommandOutcome => ({
 /** Эхний алхмаас өмнө шийдвэрийн мөр хоосон (engine алхам бүрт бөглөнө) */
 const NO_DECISIONS: Readonly<Record<DeviceId, ControlDecision>> = Object.freeze({});
 
+/** Идэвхтэй сценари (runtime-ийн дотоод төлөв) */
+interface ActiveScenario {
+  def: SimulationScenario;
+  startedAt: SimTimeMs;
+  /** Гүйцэтгэгдсэн алхмын тоо (`steps`-ийн эхний N) */
+  executed: number;
+}
+
+type EventActor = SystemEventDraft['actor'];
+
+/** Удирдлагын суурь төлөв (§7.4-ийн матриц): суурь гадна PM2.5 8 µg/m³ < 10 тул шингэлэхийг зөвшөөрнө */
+const baselineControlState = (): ControlState => ({
+  autoMode: true,
+  outdoorAirRestricted: false,
+  pmDilutionAllowed: true,
+  fallbackFloors: [],
+  freeCoolingFloors: [],
+  emergency: null,
+});
+
 const ALERT_EVENT_TYPE: Record<AlertTransition['kind'], SystemEventType> = {
   raised: 'ALERT_RAISED',
   escalated: 'ALERT_ESCALATED',
@@ -111,11 +148,13 @@ const ALERT_EVENT_TYPE: Record<AlertTransition['kind'], SystemEventType> = {
 export class LocalSimulationRuntime implements AerisRuntime {
   private readonly config: BuildingConfig;
   private readonly seed: number;
-  private readonly rng: Rng;
+  private rng: Rng;
   private readonly floorSensors: FloorSensorIndex;
   private readonly calibrations = new Map<AreaId, AreaCalibration>();
-  private readonly occupants = new Map<AreaId, number>();
-  private readonly outdoor: OutdoorEnvironment = baselineOutdoor;
+  /** Сценарийн оролт (§5.8, §7.1) — энэ алхмын гадна нөхцөл ба ачаалал эндээс */
+  private inputs: ScenarioInputs;
+  private outdoor: OutdoorEnvironment = baselineOutdoor;
+  private scenario: ActiveScenario | null = null;
   private devices: Record<DeviceId, VentilationDevice>;
   private control: ControlState;
   private decisions: Readonly<Record<DeviceId, ControlDecision>> = NO_DECISIONS;
@@ -157,34 +196,12 @@ export class LocalSimulationRuntime implements AerisRuntime {
 
     for (const area of Object.values(config.areas)) {
       this.calibrations.set(area.id, calibrateArea(area));
-      this.occupants.set(area.id, baselineOccupants(area));
       this.environment.set(area.id, { ...area.baseline });
     }
-
-    this.devices = {};
-    for (const device of Object.values(config.devices)) {
-      this.devices[device.id] = {
-        id: device.id,
-        floorId: device.floorId,
-        kind: device.kind,
-        name: mn.devices.deviceName(device.kind, device.floorId),
-        state: baselineDeviceStates[device.kind],
-        mode: 'auto',
-        manualOverride: null,
-        lastChangedAt: this.simTime,
-        lastChangeReason: mn.devices.initialStateReason,
-        lastRuleId: null,
-      };
-    }
-    // §7.4-ийн суурь: гадна PM2.5 8 µg/m³ < 10 тул шингэлэхийг зөвшөөрнө; алхам бүрт 0-р үе шат дахин тооцно (§6.2).
-    this.control = {
-      autoMode: true,
-      outdoorAirRestricted: false,
-      pmDilutionAllowed: true,
-      fallbackFloors: [],
-      freeCoolingFloors: [],
-      emergency: null,
-    };
+    this.inputs = createBaselineInputs(config, baselineOutdoor, this.simTime);
+    this.devices = this.baselineDevices(mn.devices.initialStateReason);
+    // Алхам бүрт 0-р үе шат дахин тооцно (§6.2)
+    this.control = baselineControlState();
 
     // Эхлэх агшны утга (simTime = startTime, бүс бүр Area.baseline-аар; D73)
     this.readings = this.readSensors();
@@ -268,13 +285,19 @@ export class LocalSimulationRuntime implements AerisRuntime {
     this.publish();
   }
 
-  // ---------- Алхам (§9.5; Phase 5-д 2–8, 1-р үе шат (сценари) Phase 6-д) ----------
+  // ---------- Алхам (§9.5) ----------
 
   private step(): void {
     this.simTime += simulationConfig.stepMs;
     const dtSec = simulationConfig.stepMs / 1000;
+    const drafts: SystemEventDraft[] = [];
 
-    // 2. Орчин — төхөөрөмжийн одоогийн төлөвөөр
+    // 1. Сценари — хугацаа нь болсон алхмууд оролт / эвдрэл / яаралтай байдлыг өөрчилнө
+    this.advanceScenario(drafts);
+    this.inputs = pruneInputs(this.inputs, this.simTime);
+    this.outdoor = outdoorAt(this.inputs, baselineOutdoor.co2, this.simTime);
+
+    // 2. Орчин — төхөөрөмжийн одоогийн төлөв ба сценарийн оролтоор
     const next = new Map<AreaId, AreaEnvironment>();
     for (const area of Object.values(this.config.areas)) {
       next.set(
@@ -283,10 +306,11 @@ export class LocalSimulationRuntime implements AerisRuntime {
           state: this.environment.get(area.id)!,
           calibration: this.calibrations.get(area.id)!,
           rates: ventilationRates(this.floorDeviceStates(area.floorId)),
-          occupants: this.occupants.get(area.id)!,
+          occupants: occupantsAt(this.inputs, area, this.simTime),
           volumeM3: area.volumeM3,
           outdoor: this.outdoor,
           dtSec,
+          extra: sourcesAt(this.inputs, area, this.simTime),
         }),
       );
     }
@@ -295,7 +319,6 @@ export class LocalSimulationRuntime implements AerisRuntime {
     // 3–4. Мэдрэгчийн утга ба ангилал
     const previous = this.readings;
     this.readings = this.readSensors();
-    const drafts: SystemEventDraft[] = [];
     for (const sensor of Object.values(this.config.sensors)) {
       const reading = this.readings[sensor.id];
       if (reading?.status === 'invalid' && previous[sensor.id]?.status !== 'invalid') {
@@ -338,6 +361,9 @@ export class LocalSimulationRuntime implements AerisRuntime {
     );
     this.alerts = signals.state;
     drafts.push(...signals.transitions.map((transition) => this.alertEvent(transition)));
+
+    // Сценари дууссан эсэх (энэ алхмын үр дүнгээр)
+    this.checkScenarioCompletion(drafts);
     this.eventLog = appendEvents(this.eventLog, drafts);
 
     // 7. Хандлагын buffer
@@ -442,26 +468,11 @@ export class LocalSimulationRuntime implements AerisRuntime {
 
       case 'sensor/disconnect': {
         const sensor = this.config.sensors[command.sensorId];
-        const reading = this.readings[command.sensorId];
-        if (sensor === undefined || reading === undefined) {
+        if (sensor === undefined || this.readings[command.sensorId] === undefined) {
           return reject(mn.common.runtime.unknownSensor(command.sensorId));
         }
-        if (this.faults.get(sensor.id)?.kind === 'disconnected') return OK_UNCHANGED;
-        this.faults.set(sensor.id, { kind: 'disconnected' });
-        // Тэр даруй offline — дохио ба удирдлага дараагийн алхамд (§9.4.1)
-        this.readings = { ...this.readings, [sensor.id]: disconnectedReading(reading) };
-        drafts.push(
-          this.sensorEvent(
-            'SENSOR_DISCONNECTED',
-            'warning',
-            sensor,
-            mn.events.sensorDisconnectedAt(
-              sensorLocationLabel(sensor, this.config),
-              mn.metrics.shortLabel[sensor.metric],
-            ),
-          ),
-        );
-        return { result: { ok: true }, changed: true };
+        const changed = this.disconnectSensor(sensor, drafts, 'operator');
+        return { result: { ok: true }, changed };
       }
 
       case 'sensor/injectInvalid': {
@@ -473,32 +484,11 @@ export class LocalSimulationRuntime implements AerisRuntime {
       }
 
       case 'sensor/reconnect': {
-        let ids: SensorId[];
-        if (command.sensorId === 'all') {
-          ids = Object.keys(this.config.sensors).filter((id) => this.faults.has(id));
-        } else {
-          if (this.config.sensors[command.sensorId] === undefined) {
-            return reject(mn.common.runtime.unknownSensor(command.sensorId));
-          }
-          ids = this.faults.has(command.sensorId) ? [command.sensorId] : [];
+        if (command.sensorId !== 'all' && this.config.sensors[command.sensorId] === undefined) {
+          return reject(mn.common.runtime.unknownSensor(command.sensorId));
         }
-        for (const id of ids) {
-          const sensor = this.config.sensors[id]!;
-          this.faults.delete(id);
-          drafts.push(
-            this.sensorEvent(
-              'SENSOR_RECONNECTED',
-              'info',
-              sensor,
-              mn.events.sensorReconnected(
-                sensorLocationLabel(sensor, this.config),
-                mn.metrics.shortLabel[sensor.metric],
-              ),
-            ),
-          );
-        }
-        // Утга дараагийн алхмын уншилтаар шинэчлэгдэнэ (тэр хүртэл offline хэвээр, §9.4.1)
-        return { result: { ok: true }, changed: ids.length > 0 };
+        const changed = this.reconnectSensors(command.sensorId, drafts, 'operator');
+        return { result: { ok: true }, changed };
       }
 
       case 'control/setAutoMode': {
@@ -570,14 +560,471 @@ export class LocalSimulationRuntime implements AerisRuntime {
         return { result: { ok: true }, changed: true };
       }
 
-      // Phase 6-д хэрэгжинэ (D71, D78): төлөв ба үйл явдал өөрчлөгдөхгүй
-      case 'simulation/reset':
       case 'scenario/start':
-      case 'scenario/stop':
-      case 'emergency/end':
-      case 'alert/acknowledge':
-        return reject(mn.common.runtime.notAvailableYet);
+        return this.startScenario(command.scenarioId, drafts);
+
+      case 'scenario/stop': {
+        if (this.scenario === null) return OK_UNCHANGED;
+        drafts.push(
+          this.scenarioEvent(
+            'SCENARIO_STOPPED',
+            mn.scenarios.stopped(this.scenario.def.name),
+            'operator',
+          ),
+        );
+        this.scenario = null;
+        // Нөхцөл (оролт) хэвээр үлдэнэ (§7.1)
+        return { result: { ok: true }, changed: true };
+      }
+
+      case 'emergency/end': {
+        if (this.control.emergency === null) return reject(mn.scenarios.noActiveEmergency);
+        // §7.4 A
+        this.endEmergency(drafts, 'operator');
+        if (this.scenario?.def.id === 'fire-emergency') {
+          drafts.push(
+            this.scenarioEvent(
+              'SCENARIO_STOPPED',
+              mn.scenarios.stopped(this.scenario.def.name),
+              'operator',
+            ),
+          );
+          this.scenario = null;
+        }
+        return { result: { ok: true }, changed: true };
+      }
+
+      case 'simulation/reset':
+        this.hardReset(drafts);
+        return { result: { ok: true }, changed: true };
+
+      case 'alert/acknowledge': {
+        const outcome = acknowledgeAlert(this.alerts, command.alertId, this.simTime);
+        if (!outcome.ok) {
+          if (outcome.reason === 'emergency') return reject(mn.scenarios.emergencyAlertCannotAck);
+          const known = this.alerts.recentResolved.some((alert) => alert.id === command.alertId);
+          return reject(
+            outcome.reason === 'not-active' || known
+              ? mn.scenarios.alertNotActive
+              : mn.scenarios.unknownAlert(command.alertId),
+          );
+        }
+        this.alerts = outcome.state;
+        drafts.push({
+          timestamp: this.simTime,
+          type: 'ALERT_ACKNOWLEDGED',
+          category: 'alert',
+          severity: 'info',
+          message: mn.scenarios.alertAcknowledged(outcome.alert.title),
+          floorId: outcome.alert.scope.floorId,
+          sensorId: outcome.alert.scope.sensorId,
+          alertId: outcome.alert.id,
+          actor: 'operator',
+        });
+        return { result: { ok: true }, changed: true };
+      }
     }
+  }
+
+  // ---------- Мэдрэгчийн эвдрэл (команд ба сценари нэг замаар, FR-S5) ----------
+
+  /** Тэр даруй offline (§9.4.1); дохио ба удирдлага дараагийн алхамд. Өөрчлөгдсөн эсэхийг буцаана. */
+  private disconnectSensor(sensor: Sensor, drafts: SystemEventDraft[], actor: EventActor): boolean {
+    const reading = this.readings[sensor.id];
+    if (reading === undefined || this.faults.get(sensor.id)?.kind === 'disconnected') return false;
+    this.faults.set(sensor.id, { kind: 'disconnected' });
+    this.readings = { ...this.readings, [sensor.id]: disconnectedReading(reading) };
+    drafts.push({
+      ...this.sensorEvent(
+        'SENSOR_DISCONNECTED',
+        'warning',
+        sensor,
+        mn.events.sensorDisconnectedAt(
+          sensorLocationLabel(sensor, this.config),
+          mn.metrics.shortLabel[sensor.metric],
+        ),
+      ),
+      actor,
+    });
+    return true;
+  }
+
+  /** Эвдрэлийг арилгана; утга дараагийн алхмын уншилтаар (тэр хүртэл offline хэвээр, §9.4.1) */
+  private reconnectSensors(
+    target: SensorId | 'all' | readonly SensorId[],
+    drafts: SystemEventDraft[],
+    actor: EventActor,
+  ): boolean {
+    const ids =
+      target === 'all'
+        ? Object.keys(this.config.sensors).filter((id) => this.faults.has(id))
+        : (typeof target === 'string' ? [target] : target).filter((id) => this.faults.has(id));
+    for (const id of ids) {
+      const sensor = this.config.sensors[id]!;
+      this.faults.delete(id);
+      drafts.push({
+        ...this.sensorEvent(
+          'SENSOR_RECONNECTED',
+          'info',
+          sensor,
+          mn.events.sensorReconnected(
+            sensorLocationLabel(sensor, this.config),
+            mn.metrics.shortLabel[sensor.metric],
+          ),
+        ),
+        actor,
+      });
+    }
+    return ids.length > 0;
+  }
+
+  // ---------- Сценари (§7, §9.5-ын 1-р алхам) ----------
+
+  private startScenario(id: SimulationScenario['id'], drafts: SystemEventDraft[]): CommandOutcome {
+    const def = scenarioDefinitions[id];
+    if (def === undefined) return reject(mn.scenarios.unknownScenario(String(id)));
+    const incompatible = scenarioIncompatibility(def, this.config);
+    if (incompatible !== null) return reject(incompatible);
+
+    if (def.startsFrom === 'current') {
+      // Сэргэлт (S8): одоогийн төлөвөөс, шинэчлэлгүй; яаралтай үед зөвшөөрөхгүй (§7.2 S8)
+      if (this.control.emergency !== null) return reject(mn.scenarios.recoveryBlockedByEmergency);
+      this.stopActiveScenario(drafts);
+    } else {
+      // §7.4 B: яаралтай байдал идэвхтэй бол эхлээд түүнийг дуусгана; дараа нь C (зөөлөн шинэчлэл)
+      this.stopActiveScenario(drafts);
+      if (this.control.emergency !== null) this.endEmergency(drafts, 'scenario');
+      this.softReset(drafts);
+    }
+    this.scenario = { def, startedAt: this.simTime, executed: 0 };
+    drafts.push(this.scenarioEvent('SCENARIO_STARTED', mn.scenarios.started(def.name), 'operator'));
+    return { result: { ok: true }, changed: true };
+  }
+
+  private stopActiveScenario(drafts: SystemEventDraft[]): void {
+    if (this.scenario === null) return;
+    drafts.push(
+      this.scenarioEvent(
+        'SCENARIO_STOPPED',
+        mn.scenarios.stopped(this.scenario.def.name),
+        'scenario',
+      ),
+    );
+    this.scenario = null;
+  }
+
+  private advanceScenario(drafts: SystemEventDraft[]): void {
+    const active = this.scenario;
+    if (active === null) return;
+    const due = dueSteps(active.def, active.executed, this.simTime - active.startedAt);
+    let lastLabel: string | null = null;
+    for (const step of due) {
+      // Ижил агшинд ижил шошготой дараалсан алхмуудад нэг л мөр
+      if (step.label !== lastLabel) {
+        drafts.push(
+          this.scenarioEvent('SCENARIO_STEP', mn.scenarios.stepEvent(step.label), 'scenario'),
+        );
+        lastLabel = step.label;
+      }
+      this.executeAction(step.action, drafts);
+    }
+    active.executed += due.length;
+  }
+
+  private executeAction(action: ScenarioAction, drafts: SystemEventDraft[]): void {
+    if (isInputAction(action)) {
+      this.inputs = applyInputAction(
+        this.inputs,
+        action,
+        this.config,
+        baselineOutdoor,
+        this.simTime,
+      );
+      return;
+    }
+    switch (action.type) {
+      case 'disconnectSensor':
+        for (const id of action.sensorIds) {
+          const sensor = this.config.sensors[id];
+          if (sensor !== undefined) this.disconnectSensor(sensor, drafts, 'scenario');
+        }
+        return;
+      case 'reconnectSensor':
+        this.reconnectSensors(action.sensorIds, drafts, 'scenario');
+        return;
+      case 'injectInvalidReading':
+        this.faults.set(action.sensorId, { kind: 'invalid', value: action.value });
+        return;
+      case 'startEmergency': {
+        if (this.control.emergency !== null) return;
+        // Симуляцийн галын дохиоллын сигнал (§6.9, D7). Ижил алхмын 6-д R-EMERGENCY, 6b-д дохио (§9.5).
+        this.control = {
+          ...this.control,
+          emergency: { fireFloorId: action.fireFloorId, startedAt: this.simTime },
+        };
+        const level = this.config.floors[action.fireFloorId]?.level ?? 0;
+        drafts.push({
+          timestamp: this.simTime,
+          type: 'EMERGENCY_STARTED',
+          category: 'control',
+          severity: 'critical',
+          message: mn.scenarios.emergencyStarted(floorLabelMn(level)),
+          floorId: action.fireFloorId,
+          ruleId: 'R-EMERGENCY',
+          actor: 'scenario',
+        });
+        return;
+      }
+    }
+  }
+
+  private checkScenarioCompletion(drafts: SystemEventDraft[]): void {
+    const active = this.scenario;
+    if (active === null || active.executed < active.def.steps.length) return;
+    const { completion } = active.def;
+    const done =
+      'afterMs' in completion
+        ? this.simTime - active.startedAt >= completion.afterMs
+        : this.allNormal();
+    if (!done) return;
+    drafts.push(
+      this.scenarioEvent('SCENARIO_COMPLETED', mn.scenarios.completed(active.def.name), 'scenario'),
+    );
+    this.scenario = null;
+  }
+
+  /** Бүх давхар хэвийн: идэвхтэй дохиогүй, эвдрэлгүй, яаралтай байдалгүй, бүх төхөөрөмж суурь төлөвтөө (§7.2 S8) */
+  private allNormal(): boolean {
+    if (this.alerts.active.length > 0 || this.faults.size > 0) return false;
+    if (this.control.emergency !== null) return false;
+    return Object.values(this.devices).every((device) =>
+      sameState(device.state, baselineDeviceStates[device.kind]),
+    );
+  }
+
+  // ---------- §7.4: яаралтай байдлыг дуусгах ба шинэчлэл ----------
+
+  /** Төхөөрөмжийг давхрын түвшин өсөх, давхар дотроо SF → EF → OAD дарааллаар (§7.4) */
+  private orderedDevices(): VentilationDevice[] {
+    return this.config.building.floorIds.flatMap((floorId) =>
+      (this.config.floors[floorId]?.deviceIds ?? [])
+        .map((id) => this.devices[id])
+        .filter((device) => device !== undefined),
+    );
+  }
+
+  /** §7.4 A-ийн 1–3 ба 5 (сценари зогсоохыг дуудагч шийднэ) */
+  private endEmergency(drafts: SystemEventDraft[], actor: EventActor): void {
+    // 1.
+    drafts.push({
+      timestamp: this.simTime,
+      type: 'EMERGENCY_ENDED',
+      category: 'control',
+      severity: 'info',
+      message:
+        actor === 'operator' ? mn.scenarios.emergencyEnded : mn.scenarios.emergencyEndedByScenario,
+      ruleId: 'R-EMERGENCY',
+      actor,
+    });
+    // 2. `emergency` төрлийн дохиог энэ команд шийднэ (6b хэзээ ч шийдэхгүй, §9.5)
+    const resolved = resolveAlertsWhere(
+      this.alerts,
+      (alert) => alert.type === 'emergency',
+      this.simTime,
+    );
+    this.alerts = resolved.state;
+    drafts.push(
+      ...resolved.transitions.map((transition) =>
+        this.alertEvent(
+          transition,
+          mn.scenarios.alertResolvedByEmergencyEnd(transition.alert.title),
+          actor,
+        ),
+      ),
+    );
+    // 3. Түр зогссон гар удирдлагыг цуцална; яаралтай горимыг буулгана (төлөв дараагийн алхамд ердийн удирдлагаар)
+    const devices = { ...this.devices };
+    for (const device of this.orderedDevices()) {
+      if (device.manualOverride !== null) {
+        drafts.push({
+          timestamp: this.simTime,
+          type: 'MANUAL_OVERRIDE_CLEARED',
+          category: 'control',
+          severity: 'info',
+          message: mn.scenarios.manualClearedByEmergencyEnd(device.name),
+          floorId: device.floorId,
+          deviceId: device.id,
+          ruleId: 'R-MANUAL',
+          actor,
+        });
+      }
+      if (device.manualOverride !== null || device.mode !== 'auto') {
+        devices[device.id] = { ...device, mode: 'auto', manualOverride: null };
+      }
+    }
+    this.devices = devices;
+    // 5. Ердийн дүрэм шинээр эхэлнэ (§7.4-ийн матриц «Дүрмийн debounce ✓»)
+    this.control = { ...this.control, emergency: null };
+    this.ruleDebounce = createRuleDebounceState();
+  }
+
+  /** §7.4 C-ийн 2–5 (зөөлөн шинэчлэл). `simTime` буцахгүй, үйл явдал ба хандлагын түүх хадгалагдана. */
+  private softReset(drafts: SystemEventDraft[]): void {
+    const reason = mn.scenarios.resetReason;
+    // 2. Үлдсэн гар удирдлага
+    for (const device of this.orderedDevices()) {
+      if (device.manualOverride === null) continue;
+      drafts.push({
+        timestamp: this.simTime,
+        type: 'MANUAL_OVERRIDE_CLEARED',
+        category: 'scenario',
+        severity: 'info',
+        message: mn.scenarios.manualClearedByReset(device.name),
+        floorId: device.floorId,
+        deviceId: device.id,
+        ruleId: 'R-MANUAL',
+        actor: 'scenario',
+      });
+    }
+    // 3. Автомат горим
+    if (!this.control.autoMode) {
+      drafts.push(
+        this.scenarioEvent('AUTO_MODE_ENABLED', mn.scenarios.autoModeByReset, 'scenario'),
+      );
+    }
+    // 4. Матрицын «Зөөлөн» багана
+    const previousControl = this.control;
+    this.resetSimulationState();
+    const devices = { ...this.devices };
+    for (const device of this.orderedDevices()) {
+      const baseline = baselineDeviceStates[device.kind];
+      if (!sameState(device.state, baseline)) {
+        const result = applyDeviceCommand(
+          device,
+          baseline,
+          { kind: 'reset', reason },
+          this.simTime,
+        );
+        devices[device.id] = result.device;
+        drafts.push(result.event);
+      } else {
+        devices[device.id] = {
+          ...device,
+          mode: 'auto',
+          manualOverride: null,
+          lastChangedAt: this.simTime,
+          lastChangeReason: reason,
+          lastRuleId: null,
+        };
+      }
+    }
+    this.devices = devices;
+    // 5. Идэвхтэй дохио «сценари шинэчлэгдсэн» шалтгаантай; хязгаарлалт ба нөөц горим
+    const resolved = resolveAlertsWhere(this.alerts, () => true, this.simTime);
+    this.alerts = clearAlertDebounce(resolved.state);
+    drafts.push(
+      ...resolved.transitions.map((transition) =>
+        this.alertEvent(
+          transition,
+          mn.scenarios.alertResolvedByReset(transition.alert.title),
+          'scenario',
+        ),
+      ),
+    );
+    if (previousControl.outdoorAirRestricted) {
+      drafts.push({
+        ...this.scenarioEvent(
+          'CONTROL_CONSTRAINT_CLEARED',
+          mn.scenarios.constraintClearedByReset,
+          'scenario',
+        ),
+        category: 'control',
+      });
+    }
+    for (const floorId of this.config.building.floorIds) {
+      if (!previousControl.fallbackFloors.includes(floorId)) continue;
+      const level = this.config.floors[floorId]?.level ?? 0;
+      drafts.push({
+        ...this.scenarioEvent(
+          'CONTROL_FALLBACK_CLEARED',
+          mn.scenarios.fallbackClearedByReset(floorLabelMn(level)),
+          'scenario',
+        ),
+        category: 'control',
+        floorId,
+      });
+    }
+  }
+
+  /**
+   * Зөөлөн ба хатуу шинэчлэлийн нийтлэг хэсэг (§7.4-ийн матриц): PRNG, сценарийн оролт, бүсийн орчин, эвдрэл,
+   * мэдрэгчийн утга (суурь утгаас, шуугиангүй), удирдлагын төлөв, шийдвэр, дүрмийн debounce.
+   */
+  private resetSimulationState(): void {
+    this.rng = createRng(this.seed);
+    this.inputs = createBaselineInputs(this.config, baselineOutdoor, this.simTime);
+    this.outdoor = baselineOutdoor;
+    this.environment = new Map(
+      Object.values(this.config.areas).map((area) => [area.id, { ...area.baseline }]),
+    );
+    this.faults.clear();
+    const readings: Record<SensorId, SensorReading> = {};
+    for (const sensor of Object.values(this.config.sensors)) {
+      readings[sensor.id] = nextReading({
+        sensor,
+        previous: null,
+        measured: this.trueValue(sensor),
+        fault: null,
+        now: this.simTime,
+      });
+    }
+    this.readings = readings;
+    this.control = baselineControlState();
+    this.decisions = NO_DECISIONS;
+    this.ruleDebounce = createRuleDebounceState();
+  }
+
+  /** §7.4 D: хатуу шинэчлэл — түүхийг цэвэрлээд ганц `SIMULATION_RESET` */
+  private hardReset(drafts: SystemEventDraft[]): void {
+    const activeName = this.scenario?.def.name ?? null;
+    const emergencyActive = this.control.emergency !== null;
+    // Түүх цэвэрлэгдэх тул энэ цэвэрлэгээний өмнөх ноорог ч бичигдэхгүй
+    drafts.length = 0;
+    this.simTime = simulationConfig.startTime;
+    this.speed = 1;
+    this.accumulator = 0;
+    this.scenario = null;
+    this.resetSimulationState();
+    this.devices = this.baselineDevices(mn.devices.initialStateReason);
+    this.alerts = clearAlerts(this.alerts);
+    // `seq` дахин эхлэхгүй (ID давхцахгүй)
+    this.eventLog = { events: [], nextSeq: this.eventLog.nextSeq };
+    this.history = createTrendHistory(this.config.building.floorIds);
+    drafts.push(
+      this.simulationEvent(
+        'SIMULATION_RESET',
+        mn.scenarios.simulationReset(activeName, emergencyActive),
+      ),
+    );
+  }
+
+  private baselineDevices(reason: string): Record<DeviceId, VentilationDevice> {
+    const devices: Record<DeviceId, VentilationDevice> = {};
+    for (const device of Object.values(this.config.devices)) {
+      devices[device.id] = {
+        id: device.id,
+        floorId: device.floorId,
+        kind: device.kind,
+        name: mn.devices.deviceName(device.kind, device.floorId),
+        state: baselineDeviceStates[device.kind],
+        mode: 'auto',
+        manualOverride: null,
+        lastChangedAt: this.simTime,
+        lastChangeReason: reason,
+        lastRuleId: null,
+      };
+    }
+    return devices;
   }
 
   // ---------- Үйл явдал ----------
@@ -634,13 +1081,34 @@ export class LocalSimulationRuntime implements AerisRuntime {
     };
   }
 
-  private alertEvent({ kind, alert }: AlertTransition): SystemEventDraft {
-    const message = {
-      raised: mn.events.alertRaised,
-      escalated: mn.events.alertEscalated,
-      deescalated: mn.events.alertDeescalated,
-      resolved: mn.events.alertResolved,
-    }[kind](alert.title);
+  private scenarioEvent(
+    type: SystemEventType,
+    message: string,
+    actor: EventActor,
+  ): SystemEventDraft {
+    return {
+      timestamp: this.simTime,
+      type,
+      category: 'scenario',
+      severity: 'info',
+      message,
+      actor,
+    };
+  }
+
+  private alertEvent(
+    { kind, alert }: AlertTransition,
+    messageOverride?: string,
+    actor: EventActor = 'system',
+  ): SystemEventDraft {
+    const message =
+      messageOverride ??
+      {
+        raised: mn.events.alertRaised,
+        escalated: mn.events.alertEscalated,
+        deescalated: mn.events.alertDeescalated,
+        resolved: mn.events.alertResolved,
+      }[kind](alert.title);
     return {
       timestamp: this.simTime,
       type: ALERT_EVENT_TYPE[kind],
@@ -650,19 +1118,41 @@ export class LocalSimulationRuntime implements AerisRuntime {
       floorId: alert.scope.floorId,
       sensorId: alert.scope.sensorId,
       alertId: alert.id,
-      actor: 'system',
+      actor,
     };
   }
 
   // ---------- Snapshot (structural sharing, §9.5-ын 8, §11.2) ----------
 
+  private activeScenarioView(): LiveSnapshot['simulation']['activeScenario'] {
+    const active = this.scenario;
+    if (active === null) return null;
+    return {
+      id: active.def.id,
+      startedAt: active.startedAt,
+      progress: scenarioProgress(active.def, this.simTime - active.startedAt),
+    };
+  }
+
   private buildSimulationView(): LiveSnapshot['simulation'] {
-    return { running: this.running, speed: this.speed, seed: this.seed, activeScenario: null };
+    return {
+      running: this.running,
+      speed: this.speed,
+      seed: this.seed,
+      activeScenario: this.activeScenarioView(),
+    };
   }
 
   private buildSnapshot(): LiveSnapshot {
     const sim = this.simulationView;
-    if (sim.running !== this.running || sim.speed !== this.speed) {
+    const scenario = this.activeScenarioView();
+    if (
+      sim.running !== this.running ||
+      sim.speed !== this.speed ||
+      sim.activeScenario?.id !== scenario?.id ||
+      sim.activeScenario?.startedAt !== scenario?.startedAt ||
+      sim.activeScenario?.progress !== scenario?.progress
+    ) {
       this.simulationView = this.buildSimulationView();
     }
     const { active, recentResolved } = this.alerts;

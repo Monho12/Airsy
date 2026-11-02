@@ -9,7 +9,6 @@ import { timingThresholds } from '@/domain/config/thresholds';
 import { mn } from '@/domain/i18n/mn';
 import type { LiveSnapshot, MetricType } from '@/domain/types';
 
-import type { AerisCommand } from './AerisRuntime';
 import { LocalSimulationRuntime } from './LocalSimulationRuntime';
 
 const N = timingThresholds.alertDebounceSteps;
@@ -204,22 +203,19 @@ describe('командын гэрээ (§9.4.1)', () => {
     runtime.stop();
   });
 
-  it('Phase 6-д хэрэгжих командууд (D71, D78) Монгол шалтгаантай татгалзаж, төлөв ба үйл явдал өөрчлөхгүй', async () => {
+  it('биелэх боломжгүй Phase 6-ын командууд Монгол шалтгаантай татгалзаж, төлөв ба үйл явдал өөрчлөхгүй', async () => {
     const { runtime, published } = started();
     const before = runtime.getSnapshot();
-    const commands: AerisCommand[] = [
-      { type: 'simulation/reset' },
-      { type: 'scenario/start', scenarioId: 'high-co2' },
-      { type: 'scenario/stop' },
-      { type: 'emergency/end' },
-      { type: 'alert/acknowledge', alertId: 'A-0001' },
-    ];
-    for (const command of commands) {
-      expect(await runtime.dispatch(command)).toEqual({
-        ok: false,
-        reason: mn.common.runtime.notAvailableYet,
-      });
-    }
+    expect(await runtime.dispatch({ type: 'emergency/end' })).toEqual({
+      ok: false,
+      reason: mn.scenarios.noActiveEmergency,
+    });
+    expect(await runtime.dispatch({ type: 'alert/acknowledge', alertId: 'A-9999' })).toEqual({
+      ok: false,
+      reason: mn.scenarios.unknownAlert('A-9999'),
+    });
+    // Идэвхтэй сценаригүй үед зогсоох — өөрчлөлтгүй
+    expect(await runtime.dispatch({ type: 'scenario/stop' })).toEqual({ ok: true });
     expect(published).toHaveLength(0);
     expect(runtime.getSnapshot()).toBe(before);
     runtime.stop();

@@ -188,3 +188,76 @@ export function evaluateAlerts(
 
   return { state: { active, recentResolved, pending, nextAlertNumber }, transitions };
 }
+
+/**
+ * Командаар дохио шийдэх (§7.4 A, B, C): `predicate`-д тохирох идэвхтэй дохио бүрийг `resolved` болгож
+ * `recentResolved` руу шилжүүлнэ. Дараалал: `raisedAt`, дараа нь `AlertId` (§7.4).
+ */
+export function resolveAlertsWhere(
+  state: AlertEvaluatorState,
+  predicate: (alert: Alert) => boolean,
+  now: SimTimeMs,
+  recentResolvedLimit: number = bufferLimits.recentResolvedAlerts,
+): { state: AlertEvaluatorState; transitions: AlertTransition[] } {
+  const targets = state.active
+    .filter(predicate)
+    .sort((a, b) => a.raisedAt - b.raisedAt || a.id.localeCompare(b.id));
+  if (targets.length === 0) return { state, transitions: [] };
+  const ids = new Set(targets.map((alert) => alert.id));
+  const resolved = targets.map((alert): Alert => ({
+    ...alert,
+    status: 'resolved',
+    resolvedAt: now,
+    updatedAt: now,
+  }));
+  const pending = { ...state.pending };
+  for (const alert of targets) delete pending[alert.key];
+  return {
+    state: {
+      ...state,
+      active: state.active.filter((alert) => !ids.has(alert.id)),
+      recentResolved: [...state.recentResolved, ...resolved].slice(-recentResolvedLimit),
+      pending,
+    },
+    transitions: resolved.map((alert) => ({ kind: 'resolved', alert })),
+  };
+}
+
+/** Debounce-ийн бүх тоолуурыг цэвэрлэнэ (§7.4-ийн матриц «Дохионы debounce тоолуур ✓») */
+export const clearAlertDebounce = (state: AlertEvaluatorState): AlertEvaluatorState =>
+  Object.keys(state.pending).length === 0 ? state : { ...state, pending: {} };
+
+/**
+ * Хатуу шинэчлэл (§7.4 D): идэвхтэй ба шийдэгдсэн дохиог шийдэлгүй устгана. Дугаарлалт өссөөр — ID давхцахгүй.
+ */
+export const clearAlerts = (state: AlertEvaluatorState): AlertEvaluatorState => ({
+  active: [],
+  recentResolved: [],
+  pending: {},
+  nextAlertNumber: state.nextAlertNumber,
+});
+
+export type AcknowledgeResult =
+  | { ok: true; state: AlertEvaluatorState; alert: Alert }
+  | { ok: false; reason: 'unknown' | 'not-active' | 'emergency' };
+
+/**
+ * Операторын хүлээн авалт (§4.4, FR-A2): `active → acknowledged`; идэвхтэй жагсаалтад үлдэнэ. Идэвхтэй `emergency`
+ * дохиог хүлээн авахгүй.
+ */
+export function acknowledgeAlert(
+  state: AlertEvaluatorState,
+  alertId: string,
+  now: SimTimeMs,
+): AcknowledgeResult {
+  const current = state.active.find((alert) => alert.id === alertId);
+  if (current === undefined) return { ok: false, reason: 'unknown' };
+  if (current.type === 'emergency') return { ok: false, reason: 'emergency' };
+  if (current.status !== 'active') return { ok: false, reason: 'not-active' };
+  const alert: Alert = { ...current, status: 'acknowledged', acknowledgedAt: now, updatedAt: now };
+  return {
+    ok: true,
+    alert,
+    state: { ...state, active: state.active.map((a) => (a.id === alertId ? alert : a)) },
+  };
+}

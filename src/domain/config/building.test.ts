@@ -100,7 +100,8 @@ describe('§5.1.2-ын прототипийн утга (D50)', () => {
       expect(markerPosition.z).toBeGreaterThan(bounds.z);
       expect(markerPosition.z).toBeLessThan(bounds.z + bounds.depth);
       expect(area.volumeM3).toBe(1440);
-      expect(area.baselineOccupancy).toBeGreaterThanOrEqual(0.5);
+      // §5.1.2: 0.5–0.7; F02 нь 0.45 (D80)
+      expect(area.baselineOccupancy).toBeGreaterThanOrEqual(area.floorId === 'F02' ? 0.45 : 0.5);
       expect(area.baselineOccupancy).toBeLessThanOrEqual(0.7);
     }
   });

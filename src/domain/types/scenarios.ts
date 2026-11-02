@@ -1,10 +1,10 @@
-// Сценарийн төрөл (CLAUDE.md §7, §10). Engine Phase 6-д.
+// Сценарийн төрөл (CLAUDE.md §7, §10). `setOccupancy`-ийн `'all'` — тохиргооны бүх бүс (D80).
 import type { OutdoorConditions } from './control';
 import type { SystemEventType } from './events';
 import type { AreaId, FloorId, ScenarioId, SensorId } from './ids';
 
 export type ScenarioAction =
-  | { type: 'setOccupancy'; areaIds: AreaId[]; fraction: number; rampMs?: number }
+  | { type: 'setOccupancy'; areaIds: AreaId[] | 'all'; fraction: number; rampMs?: number }
   | { type: 'setHeatGain'; floorIds: FloorId[]; value: number; rampMs?: number }
   | {
       type: 'pulseSource';

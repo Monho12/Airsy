@@ -113,14 +113,37 @@ export interface AreaStepInput {
   outdoor: OutdoorEnvironment;
   /** Алхмын урт, секунд (§5.8: dt = 1 с) */
   dtSec: number;
+  /** Сценарийн нэмэлт эх үүсвэр (§5.8: `heatGain(t)`, `vocSource(t)`, `pmSource(t)`); анхдагч 0 */
+  extra?: ScenarioSources;
 }
 
+/** Суурь (тохируулсан) эх үүсвэр дээр нэмэгдэх сценарийн оролт (§5.8, D68-ийн 2) */
+export interface ScenarioSources {
+  /** °C/с */
+  heatGain: number;
+  /** VOC индекс/с */
+  vocSource: number;
+  /** µg/m³/с */
+  pmSource: number;
+}
+
+export const NO_EXTRA_SOURCES: ScenarioSources = { heatGain: 0, vocSource: 0, pmSource: 0 };
+
 /**
- * §5.8-ын нэг алхам (тодорхой Euler). Phase 4-т сценарийн нэмэлт эх үүсвэр (`vocSource(t)`, `pmSource(t)`-ийн импульс,
- * `heatGain(t)`-ийн өсөлт) байхгүй — зөвхөн тохируулсан суурь эх үүсвэр (D68).
+ * §5.8-ын нэг алхам (тодорхой Euler). Тохируулсан суурь эх үүсвэр (D68) дээр сценарийн нэмэлт эх үүсвэр (`extra`)
+ * нэмэгдэнэ.
  */
 export function stepAreaEnvironment(
-  { state, calibration: c, rates, occupants, volumeM3, outdoor, dtSec: dt }: AreaStepInput,
+  {
+    state,
+    calibration: c,
+    rates,
+    occupants,
+    volumeM3,
+    outdoor,
+    dtSec: dt,
+    extra = NO_EXTRA_SOURCES,
+  }: AreaStepInput,
   model: SimulationModel = simulationModel,
 ): AreaEnvironment {
   const dilution = rates.outdoorAir + rates.exhaust;
@@ -128,18 +151,18 @@ export function stepAreaEnvironment(
     co2:
       state.co2 +
       dt * ((c.co2PerOccupant * occupants) / volumeM3 - dilution * (state.co2 - outdoor.co2)),
-    // vocSource(t) = 0 — сценарийн импульс Phase 6-д
-    voc: state.voc + dt * -(dilution * (state.voc - c.vocBaseline)),
+    voc: state.voc + dt * (extra.vocSource - dilution * (state.voc - c.vocBaseline)),
     pm25:
       state.pm25 +
       dt *
         (rates.outdoorAir * (outdoor.pm25 - state.pm25) * (1 - model.filterEfficiency) -
           rates.filtration * state.pm25 +
-          c.pmSource),
+          c.pmSource +
+          extra.pmSource),
     temperature:
       state.temperature +
       dt *
-        (c.heatGain / model.thermalMass -
+        ((c.heatGain + extra.heatGain) / model.thermalMass -
           rates.outdoorAir * (state.temperature - outdoor.temperature) -
           model.hvacRecovery * (state.temperature - c.setpoint)),
     humidity:
