@@ -37,6 +37,10 @@ export function EventTimeline() {
                   {event.severity !== 'info' && <StatusBadge status={event.severity} />}
                 </span>
                 <span className="event-timeline__message">{event.message}</span>
+                {/* Удирдлагын шийдвэрийн шалтгаан (FR-C5, §6.2) — мессежээс ялгаатай бол */}
+                {event.reason !== undefined && event.reason !== event.message && (
+                  <span className="event-timeline__reason">{event.reason}</span>
+                )}
               </div>
             </li>
           ))}

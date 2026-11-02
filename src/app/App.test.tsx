@@ -168,22 +168,23 @@ describe('Dashboard — жишээ snapshot-оор', () => {
     ).toHaveTextContent(floorLabelMn(top));
   });
 
-  it('сонгосон давхрын төхөөрөмж SF → EF → OAD дарааллаар, Монгол шошготой, зөвхөн харах', async () => {
+  it('сонгосон давхрын төхөөрөмж SF → EF → OAD дарааллаар, Монгол шошготой; runtime-гүй үед удирдлагагүй', async () => {
     const { user } = renderWith();
     await user.click(floorOption(2));
     const devices = region(mn.common.regions.devices);
-    const kinds = within(devices)
-      .getAllByRole('term')
-      .map((term) => term.textContent);
-    expect(kinds).toEqual([
-      mn.devices.kind.supply_fan,
-      mn.devices.kind.exhaust_fan,
-      mn.devices.kind.outdoor_air_damper,
+    const items = within(devices).getAllByRole('listitem');
+    expect(items.map((item) => item.getAttribute('data-device-kind'))).toEqual([
+      'supply_fan',
+      'exhaust_fan',
+      'outdoor_air_damper',
     ]);
+    expect(within(items[0]!).getByText(mn.devices.kind.supply_fan)).toBeVisible();
     expect(within(devices).getAllByText(mn.devices.fanLevel.LOW)).toHaveLength(2);
     expect(within(devices).getByText(mn.devices.damperPosition.MINIMUM)).toBeVisible();
-    expect(within(devices).getAllByText(mn.control.mode.auto)).toHaveLength(3);
+    expect(within(devices).getAllByText(mn.devices.modeBadge.auto)).toHaveLength(3);
+    // Runtime бүртгэгдээгүй (жишээ snapshot) — ажиллахгүй удирдлага зурахгүй (§8.7)
     expect(within(devices).queryAllByRole('button')).toHaveLength(0);
+    expect(within(devices).queryAllByRole('combobox')).toHaveLength(0);
   });
 
   it('ноцтой дохио эхэнд харагдана', () => {
