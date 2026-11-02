@@ -121,3 +121,24 @@
     animation: none;
   }
 }
+
+/* Автомат горимын товч (D78): асаалттай үед accent дүүргэлт + бараан бичвэр (§8.3 on-fill 10.61:1) */
+.auto-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.auto-mode__toggle {
+  padding: var(--space-1) var(--space-2);
+}
+
+.auto-mode__toggle--on {
+  background: var(--color-accent);
+  color: var(--color-on-fill);
+}
+
+.auto-mode__toggle--on:hover {
+  /* .ui-button:hover-ийн surface-2 дэвсгэрийг дарна — on-fill бичвэр зөвхөн accent дээр шалгагдсан (§8.3) */
+  background: var(--color-accent);
+}

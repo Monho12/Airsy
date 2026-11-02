@@ -42,3 +42,8 @@
   font-size: var(--font-size-13);
   overflow-wrap: anywhere;
 }
+
+.event-timeline__reason {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-12);
+}

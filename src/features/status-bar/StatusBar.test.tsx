@@ -120,3 +120,26 @@ describe('StatusBar — симуляцийн удирдлага', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(reason);
   });
 });
+
+describe('StatusBar — автомат горимын товч (FR-C6, D78)', () => {
+  it('aria-pressed-тэй; дарахад control/setAutoMode илгээнэ', async () => {
+    const { runtime, dispatch } = fakeRuntime();
+    registerRuntime(runtime);
+    applySnapshot(createMockSnapshot());
+    render(<StatusBar />);
+    const toggle = screen.getByRole('button', { name: mn.control.autoModeLabel });
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    expect(toggle).toHaveTextContent(mn.control.autoModeOn);
+    await userEvent.setup().click(toggle);
+    expect(dispatch).toHaveBeenCalledWith({ type: 'control/setAutoMode', enabled: false });
+  });
+
+  it('татгалзвал Монгол шалтгааныг харуулна', async () => {
+    const { runtime } = fakeRuntime({ ok: false, reason: 'Шалтгаан' });
+    registerRuntime(runtime);
+    applySnapshot(createMockSnapshot());
+    render(<StatusBar />);
+    await userEvent.setup().click(screen.getByRole('button', { name: mn.control.autoModeLabel }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Шалтгаан');
+  });
+});

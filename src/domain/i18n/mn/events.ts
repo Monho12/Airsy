@@ -88,4 +88,32 @@ export const events = {
   alertResolved(alertTitle: string): string {
     return `Дохио шийдэгдсэн: ${alertTitle}.`;
   },
+
+  // ---------- Phase 5 — удирдлага (§6.2, §6.7) ----------
+
+  /** Автомат шийдвэрийн мөр: «Агаар оруулах сэнс F02: Бага → Их (Агаарын чанар — анхааруулга).» */
+  deviceStateChanged(deviceName: string, from: string, to: string, ruleName: string): string {
+    return `${deviceName}: ${from} → ${to} (${ruleName}).`;
+  },
+  manualOverrideSet(deviceName: string, from: string, to: string): string {
+    return `${deviceName}: гар удирдлага, ${from} → ${to}.`;
+  },
+  manualOverrideCleared(deviceName: string): string {
+    return `${deviceName}: автомат руу буцаав.`;
+  },
+  manualOverrideExpired(deviceName: string): string {
+    return `${deviceName}: гар удирдлагын хугацаа дуусч, автомат руу буцав.`;
+  },
+  autoModeEnabled: 'Автомат горимыг асаав.',
+  autoModeDisabled: 'Автомат горимыг унтраав — систем зөвхөн зөвлөмж харуулна.',
+  constraintActive(outdoorPmText: string): string {
+    return `Гадна агаар бохир (PM2.5 ${outdoorPmText}) — гадна агаарын хаалтыг «Бага зэрэг»-ээр хязгаарлав.`;
+  },
+  constraintCleared: 'Гадна агаарын хязгаарлалт арилав.',
+  fallbackActive(floorLabel: string): string {
+    return `${floorLabel}: CO₂-ийн зөв хэмжилт алга — удирдлага нөөц горимд орлоо.`;
+  },
+  fallbackCleared(floorLabel: string): string {
+    return `${floorLabel}: CO₂-ийн хэмжилт сэргэж, нөөц горим дуусав.`;
+  },
 } as const;

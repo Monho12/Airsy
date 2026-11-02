@@ -1,12 +1,13 @@
 // 3D digital twin-ийн canvas (CLAUDE.md §8.6, §11.3). Зөвхөн Building3DLoader-ээр lazy ачаалагдана (D57).
 // Тохиргооноос зурсан барилга, uiStore-оор давхрын сонголт/hover, камерын удирдлага (CameraRig),
-// мэдрэгчийн зангилаа (бүсийн сонголт), агааржуулалтын төхөөрөмжийн загвар (тогтмол төлөв, FR-B6).
+// мэдрэгчийн зангилаа (бүсийн сонголт), агааржуулалтын төхөөрөмж (FR-B6) ба анимаци + агаарын урсгал (FR-B8, Phase 5).
 import { Canvas } from '@react-three/fiber';
 import { useEffect, useMemo, useState } from 'react';
 
 import { buildingConfig as defaultBuildingConfig } from '@/domain/config/building';
 import { mn } from '@/domain/i18n/mn';
 
+import { Airflow } from './Airflow';
 import { BuildingModel } from './BuildingModel';
 import { CameraRig } from './CameraRig';
 import { DeviceModels } from './DeviceModels';
@@ -39,7 +40,8 @@ export function Building3D({ onFallback, config = defaultBuildingConfig }: Build
       <Canvas
         dpr={DPR_RANGE}
         shadows={false}
-        // Хэрэглэгчийн үйлдэл эсвэл камерын шилжилт байхад л зурна (§11.3)
+        // Хэрэглэгчийн үйлдэл, камерын шилжилт эсвэл төхөөрөмжийн анимаци байхад л зурна (§11.3).
+        // Анимаци `useFrame` дотроос `invalidate()`-ээр frame хүснэ; хөдөлгөөн багасгах үед зогсоно (§8.5).
         frameloop="demand"
         camera={{
           fov: CAMERA_FOV_DEG,
@@ -57,6 +59,7 @@ export function Building3D({ onFallback, config = defaultBuildingConfig }: Build
         <BuildingModel layout={layout} colors={colors} />
         <SensorNodes config={config} layout={layout} colors={colors} />
         <DeviceModels config={config} layout={layout} colors={colors} />
+        <Airflow config={config} layout={layout} colors={colors} />
       </Canvas>
     </div>
   );

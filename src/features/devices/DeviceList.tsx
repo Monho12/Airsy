@@ -1,18 +1,24 @@
-// Сонгосон давхрын агааржуулалтын төхөөрөмж — зөвхөн харах (FR-B6, CLAUDE.md §5.7, §8.2).
-// Гар удирдлага ба «Яагаад?» Phase 5-д (§13); энд хуурамч товч байхгүй (§8.7).
+// Сонгосон давхрын агааржуулалтын төхөөрөмж (FR-B6, FR-C7, FR-C8, CLAUDE.md §5.7, §6.7, §6.8, §8.2, D78).
+// Мөр бүрт: төлөв, горимын тэмдэг (АВТ/ГАР), гар удирдлагын dropdown, «Автомат руу буцаах» (зөвхөн гар үед), мөрийн
+// доор задрах «Яагаад?» шалгагч. Командыг зөвхөн `AerisRuntime.dispatch`-аар; runtime байхгүй бол удирдлага огт
+// зурагдахгүй (§8.7 — ажиллахгүй товч байхгүй).
 import { useMemo } from 'react';
 
 import { EmptyState, Panel, Skeleton } from '@/components/ui';
 import { mn } from '@/domain/i18n/mn';
 import { useLiveStore } from '@/store/liveStore';
+import { useRuntime } from '@/store/runtime';
 import { selectFloorDevices } from '@/store/selectors';
 import { useUiStore } from '@/store/uiStore';
+
+import { DeviceRow } from './DeviceRow';
 
 import './DeviceList.css';
 
 export function DeviceList() {
   const snapshot = useLiveStore((state) => state.snapshot);
   const selectedFloorId = useUiStore((state) => state.selectedFloorId);
+  const runtime = useRuntime();
 
   // Тохиргооны дарааллаар: SF → EF → OAD
   const devices = useMemo(
@@ -45,16 +51,16 @@ export function DeviceList() {
 
   return (
     <Panel title={title}>
-      <dl className="device-list">
+      <ul className="device-list">
         {devices.map((device) => (
-          <div key={device.id} className="device-list__row" data-device-kind={device.kind}>
-            <dt className="device-list__kind">{mn.devices.kind[device.kind]}</dt>
-            <dd className="device-list__state">{mn.devices.stateLabel(device.state)}</dd>
-            <dd className="device-list__mode">{mn.control.mode[device.mode]}</dd>
-          </div>
+          <DeviceRow
+            key={device.id}
+            device={device}
+            decision={snapshot.decisions[device.id] ?? null}
+            runtime={runtime}
+          />
         ))}
-      </dl>
-      <p className="device-list__note">{mn.devices.readOnlyNote}</p>
+      </ul>
     </Panel>
   );
 }

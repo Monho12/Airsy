@@ -123,7 +123,7 @@ describe('давтагдах байдал (§11.1, D69)', () => {
 });
 
 describe('structural sharing (§11.2)', () => {
-  it('төхөөрөмж, удирдлага, шийдвэр, дохио, үйл явдал өөрчлөгдөөгүй бол ижил лавлагаа', () => {
+  it('төхөөрөмж, удирдлага, дохио, үйл явдал өөрчлөгдөөгүй бол ижил лавлагаа; шийдвэр алхам бүрт шинэ', () => {
     const runtime = new LocalSimulationRuntime();
     runtime.advance(1);
     const a = runtime.getSnapshot();
@@ -132,7 +132,9 @@ describe('structural sharing (§11.2)', () => {
     expect(b).not.toBe(a);
     expect(b.devices).toBe(a.devices);
     expect(b.control).toBe(a.control);
-    expect(b.decisions).toBe(a.decisions);
+    // Шийдвэрийн мөр алхам бүрт үнэлэгдэнэ (`evaluatedAt`, §6.8) — шинэ лавлагаа
+    expect(b.decisions).not.toBe(a.decisions);
+    expect(b.decisions['F07-SF']!.evaluatedAt).toBe(b.simTime);
     expect(b.alerts).toBe(a.alerts);
     expect(b.events).toBe(a.events);
     expect(b.simulation).toBe(a.simulation);
@@ -202,7 +204,7 @@ describe('командын гэрээ (§9.4.1)', () => {
     runtime.stop();
   });
 
-  it('Phase 4-т хэрэгжээгүй командууд (D71) Монгол шалтгаантай татгалзаж, төлөв ба үйл явдал өөрчлөхгүй', async () => {
+  it('Phase 6-д хэрэгжих командууд (D71, D78) Монгол шалтгаантай татгалзаж, төлөв ба үйл явдал өөрчлөхгүй', async () => {
     const { runtime, published } = started();
     const before = runtime.getSnapshot();
     const commands: AerisCommand[] = [
@@ -210,13 +212,6 @@ describe('командын гэрээ (§9.4.1)', () => {
       { type: 'scenario/start', scenarioId: 'high-co2' },
       { type: 'scenario/stop' },
       { type: 'emergency/end' },
-      { type: 'control/setAutoMode', enabled: false },
-      {
-        type: 'device/setManual',
-        deviceId: 'F07-SF',
-        state: { kind: 'supply_fan', level: 'HIGH' },
-      },
-      { type: 'device/returnToAuto', deviceId: 'F07-SF' },
       { type: 'alert/acknowledge', alertId: 'A-0001' },
     ];
     for (const command of commands) {
@@ -342,13 +337,18 @@ describe('мэдрэгчийн эвдрэл → дохио (FR-S5, §9.4.1, D72)
     runtime.stop();
   });
 
-  it('F04-ийн бүх CO₂ салвал босгын CO₂ нөхцөл үнэлэгдэхгүй (тэг биш) — зөвхөн мэдрэгчийн дохио', async () => {
+  it('F04-ийн бүх CO₂ салвал босгын CO₂ нөхцөл үнэлэгдэхгүй (тэг биш) — мэдрэгчийн ба нөөц горимын дохио', async () => {
     const { runtime } = started();
     await runtime.dispatch({ type: 'sensor/disconnect', sensorId: 'F04-A-co2' });
     await runtime.dispatch({ type: 'sensor/disconnect', sensorId: 'F04-B-co2' });
     runtime.advance(N + 5);
     const keys = runtime.getSnapshot().alerts.active.map((a) => a.key);
-    expect(keys).toEqual(['sensor_offline:F04-A-co2', 'sensor_offline:F04-B-co2']);
+    // Босгын `threshold:co2:F04` үүсэхгүй (D75); удирдлага нөөц горимд (§6.3 R-SENSOR-FALLBACK, 6b)
+    expect(keys).toEqual([
+      'sensor_offline:F04-A-co2',
+      'sensor_offline:F04-B-co2',
+      'control_degraded:F04',
+    ]);
     expect(runtime.getSnapshot().history['F04']!.co2.at(-1)!.value).toBeNull();
     runtime.stop();
   });
@@ -440,6 +440,182 @@ describe('timer (D70, §11.1)', () => {
     expect(runtime.getSnapshot().simTime).toBe(t0);
     vi.advanceTimersByTime(200);
     expect(runtime.getSnapshot().simTime).toBe(t0 + STEP);
+    runtime.stop();
+  });
+});
+
+describe('удирдлага ба командууд (Phase 5, §6.7, §9.5-ын 6–6b, D78)', () => {
+  it('суурь төлөвт 10× хурдаар 10 минут (600 алхам) — төхөөрөмжийн өөрчлөлт ба дохио үгүй', () => {
+    const runtime = new LocalSimulationRuntime();
+    runtime.advance(600);
+    const snapshot = runtime.getSnapshot();
+    expect(eventTypes(snapshot)).toEqual(['SIMULATION_STARTED']);
+    expect(
+      Object.values(snapshot.devices).every((d) => d.state === baselineDeviceStates[d.kind]),
+    ).toBe(true);
+    expect(snapshot.decisions['F07-SF']).toMatchObject({
+      outcome: 'unchanged',
+      winningRuleId: 'R-BASELINE',
+    });
+  });
+
+  it('10× хурдаар 10 бодит минут (6000 алхам): гараар өдөөсний дараа сэргээд, хэлбэлзэлгүй', async () => {
+    const { runtime } = started();
+    await runtime.dispatch({
+      type: 'device/setManual',
+      deviceId: 'F02-SF',
+      state: { kind: 'supply_fan', level: 'BOOST' },
+    });
+    await runtime.dispatch({ type: 'device/returnToAuto', deviceId: 'F02-SF' });
+    runtime.advance(6000);
+    const changes = runtime.getSnapshot().events.filter((e) => e.type === 'DEVICE_STATE_CHANGED');
+    // BOOST → HIGH → MEDIUM → LOW — зөвхөн 3 алхмаар буурч, дахин хэзээ ч өөрчлөгдөхгүй (§6.6)
+    expect(changes.map((e) => e.deviceId)).toEqual(['F02-SF', 'F02-SF', 'F02-SF']);
+    expect(runtime.getSnapshot().devices['F02-SF']!.state).toEqual({
+      kind: 'supply_fan',
+      level: 'LOW',
+    });
+    expect(runtime.getSnapshot().alerts.active).toEqual([]);
+    runtime.stop();
+  });
+
+  it('control/setAutoMode: AUTO_MODE_DISABLED/ENABLED, давтан нь өөрчлөлтгүй', async () => {
+    const { runtime } = started();
+    expect(await runtime.dispatch({ type: 'control/setAutoMode', enabled: false })).toEqual({
+      ok: true,
+    });
+    expect(runtime.getSnapshot().control.autoMode).toBe(false);
+    await runtime.dispatch({ type: 'control/setAutoMode', enabled: false });
+    await runtime.dispatch({ type: 'control/setAutoMode', enabled: true });
+    const operator = runtime.getSnapshot().events.filter((e) => e.category === 'operator');
+    expect(operator.map((e) => e.type)).toEqual(['AUTO_MODE_DISABLED', 'AUTO_MODE_ENABLED']);
+    runtime.stop();
+  });
+
+  it('device/setManual: тэр даруй төлөв, ГАР горим, яг нэг MANUAL_OVERRIDE_SET (өмнөх/шинэ төлөвтэй)', async () => {
+    const { runtime, published } = started();
+    const result = await runtime.dispatch({
+      type: 'device/setManual',
+      deviceId: 'F07-SF',
+      state: { kind: 'supply_fan', level: 'HIGH' },
+    });
+    expect(result).toEqual({ ok: true });
+    expect(published).toHaveLength(1);
+    const device = runtime.getSnapshot().devices['F07-SF']!;
+    expect(device).toMatchObject({
+      state: { kind: 'supply_fan', level: 'HIGH' },
+      mode: 'manual',
+      lastRuleId: 'R-MANUAL',
+    });
+    expect(device.manualOverride!.expiresAt - device.manualOverride!.setAt).toBe(10 * 60_000);
+    const events = runtime.getSnapshot().events.filter((e) => e.deviceId === 'F07-SF');
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      type: 'MANUAL_OVERRIDE_SET',
+      actor: 'operator',
+      previousState: { kind: 'supply_fan', level: 'LOW' },
+      newState: { kind: 'supply_fan', level: 'HIGH' },
+    });
+    // Engine гар төхөөрөмжид хүрэхгүй
+    runtime.advance(10);
+    expect(runtime.getSnapshot().devices['F07-SF']!.state).toEqual({
+      kind: 'supply_fan',
+      level: 'HIGH',
+    });
+    expect(runtime.getSnapshot().decisions['F07-SF']!.outcome).toBe('manual');
+    runtime.stop();
+  });
+
+  it('device/setManual: үл мэдэгдэх төхөөрөмж ба төрөл зөрсөн төлөв Монгол шалтгаантай татгалзана', async () => {
+    const { runtime } = started();
+    expect(
+      await runtime.dispatch({
+        type: 'device/setManual',
+        deviceId: 'F99-SF',
+        state: { kind: 'supply_fan', level: 'HIGH' },
+      }),
+    ).toEqual({ ok: false, reason: mn.control.unknownDevice('F99-SF') });
+    expect(
+      await runtime.dispatch({
+        type: 'device/setManual',
+        deviceId: 'F07-OAD',
+        state: { kind: 'supply_fan', level: 'HIGH' },
+      }),
+    ).toEqual({ ok: false, reason: mn.control.stateKindMismatch });
+    expect(eventTypes(runtime.getSnapshot())).toEqual(['SIMULATION_STARTED']);
+    runtime.stop();
+  });
+
+  it('device/returnToAuto: MANUAL_OVERRIDE_CLEARED; дараагийн алхамд engine барих хугацааны дараа суурь руу буулгана', async () => {
+    const { runtime } = started();
+    await runtime.dispatch({
+      type: 'device/setManual',
+      deviceId: 'F07-SF',
+      state: { kind: 'supply_fan', level: 'BOOST' },
+    });
+    await runtime.dispatch({ type: 'device/returnToAuto', deviceId: 'F07-SF' });
+    let snapshot = runtime.getSnapshot();
+    expect(snapshot.devices['F07-SF']!).toMatchObject({ mode: 'auto', manualOverride: null });
+    expect(eventTypes(snapshot).slice(-2)).toEqual([
+      'MANUAL_OVERRIDE_SET',
+      'MANUAL_OVERRIDE_CLEARED',
+    ]);
+    runtime.advance(1);
+    expect(runtime.getSnapshot().decisions['F07-SF']!.outcome).toBe('held_by_dwell');
+    runtime.advance(30);
+    snapshot = runtime.getSnapshot();
+    expect(snapshot.devices['F07-SF']!.state).toEqual({ kind: 'supply_fan', level: 'HIGH' });
+    expect(snapshot.events.at(-1)).toMatchObject({
+      type: 'DEVICE_STATE_CHANGED',
+      ruleId: 'R-BASELINE',
+    });
+    runtime.stop();
+  });
+
+  it('гар удирдлагын хугацаа (симуляцийн 10 мин) дуусахад MANUAL_OVERRIDE_EXPIRED', async () => {
+    const { runtime } = started();
+    await runtime.dispatch({
+      type: 'device/setManual',
+      deviceId: 'F03-EF',
+      state: { kind: 'exhaust_fan', level: 'OFF' },
+    });
+    runtime.advance(600);
+    const snapshot = runtime.getSnapshot();
+    expect(snapshot.devices['F03-EF']!.mode).toBe('auto');
+    const expired = snapshot.events.filter((e) => e.type === 'MANUAL_OVERRIDE_EXPIRED');
+    expect(expired).toHaveLength(1);
+    expect(expired[0]!.timestamp).toBe(simulationConfig.startTime + 600 * STEP);
+    // OFF → LOW нь өсөлт тул тэр даруй
+    expect(snapshot.devices['F03-EF']!.state).toEqual({ kind: 'exhaust_fan', level: 'LOW' });
+    runtime.stop();
+  });
+
+  it('control_degraded нь нөөц горим идэвхжсэн ИЖИЛ алхамд (6b); R-SENSOR-FALLBACK SF → MEDIUM', async () => {
+    const { runtime } = started();
+    await runtime.dispatch({ type: 'sensor/disconnect', sensorId: 'F04-A-co2' });
+    await runtime.dispatch({ type: 'sensor/disconnect', sensorId: 'F04-B-co2' });
+    runtime.advance(N);
+    const events = runtime.getSnapshot().events;
+    const fallback = events.find((e) => e.type === 'CONTROL_FALLBACK_ACTIVE')!;
+    const raised = events.find(
+      (e) =>
+        e.type === 'ALERT_RAISED' &&
+        e.message.includes(mn.alerts.controlDegradedTitle('4-р давхар')),
+    )!;
+    expect(fallback).toBeDefined();
+    expect(raised).toBeDefined();
+    expect(raised.timestamp).toBe(fallback.timestamp);
+    expect(raised.seq).toBeGreaterThan(fallback.seq);
+    expect(runtime.getSnapshot().devices['F04-SF']!.state).toEqual({
+      kind: 'supply_fan',
+      level: 'MEDIUM',
+    });
+    // Дахин холбоход нөөц горим ба дохио тэр даруй (дараагийн уншилтаар) цуцлагдана
+    await runtime.dispatch({ type: 'sensor/reconnect', sensorId: 'all' });
+    runtime.advance(1);
+    const after = runtime.getSnapshot();
+    expect(after.control.fallbackFloors).toEqual([]);
+    expect(after.alerts.active.some((a) => a.key === 'control_degraded:F04')).toBe(false);
     runtime.stop();
   });
 });

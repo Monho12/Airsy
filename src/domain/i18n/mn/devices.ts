@@ -1,5 +1,12 @@
 // Төхөөрөмжийн Монгол нэр ба төлөв (CLAUDE.md §5.7, §8.9-ийн нэр томьёо). Эзэмшигч: Frontend (§14.3).
-import type { DamperPosition, DeviceKind, DeviceState, FanLevel, FloorId } from '@/domain/types';
+import type {
+  ControlMode,
+  DamperPosition,
+  DeviceKind,
+  DeviceState,
+  FanLevel,
+  FloorId,
+} from '@/domain/types';
 
 const kind = {
   supply_fan: 'Агаар оруулах сэнс',
@@ -37,7 +44,36 @@ export const devices = {
       : devices.fanLevel[state.level];
   },
 
-  readOnlyNote: 'Зөвхөн харах — удирдлага Phase 5-д нэмэгдэнэ.',
+  // ---------- Phase 5 — гар удирдлага ба «Яагаад?» шалгагч (§6.7, §6.8, FR-C7, FR-C8, D78) ----------
+  modeBadge: { auto: 'АВТ', manual: 'ГАР', emergency: 'ЯАРАЛТАЙ' } satisfies Record<
+    ControlMode,
+    string
+  >,
+  manualSelectLabel(deviceName: string): string {
+    return `${deviceName} — гараар тохируулах`;
+  },
+  returnToAuto: 'Автомат руу буцаах',
+  why: 'Яагаад?',
+  whyLabel(deviceName: string): string {
+    return `${deviceName} — сүүлийн шийдвэрийн тайлбар`;
+  },
+  manualUntil(timeText: string): string {
+    return `Гар удирдлага ${timeText} хүртэл`;
+  },
+  emergencyLockNote: 'Яаралтай байдлын симуляцийн үед гар удирдлага идэвхгүй.',
+  inspector: {
+    noDecision: 'Шийдвэр хараахан гараагүй — дараагийн алхмаар үнэлэгдэнэ.',
+    outcome: 'Үр дүн',
+    reason: 'Шалтгаан',
+    winningRule: 'Шийдсэн дүрэм',
+    contributing: 'Ижил утга хүссэн',
+    requests: 'Дүрмүүдийн хүсэлт',
+    constraints: 'Хязгаарлалт',
+    minimum: 'Доод хязгаар',
+    evaluatedAt: 'Үнэлсэн',
+    roleMinimum: 'доод хязгаар',
+    roleOverride: 'яаралтай',
+  },
 
   /** Удирдлагын engine байхгүй (Phase 2) үеийн эхний төлөвийн шалтгаан */
   initialStateReason: 'Эхлэх төлөв (суурь агааржуулалт).',

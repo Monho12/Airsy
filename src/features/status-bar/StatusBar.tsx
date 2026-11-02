@@ -1,5 +1,5 @@
 // Төлөвийн мөр: барилгын ерөнхий төлөв, идэвхтэй дохионы тоо, автомат горимын тэмдэг (UC-1, CLAUDE.md §8.2),
-// симуляцийн удирдлага (Phase 4, D74). Автомат горимын товч Phase 5-д (§13).
+// симуляцийн удирдлага (Phase 4, D74), автомат горимын товч (Phase 5, FR-C6, D78).
 import { useMemo } from 'react';
 
 import { HealthIndicator } from '@/components/ui';
@@ -8,6 +8,7 @@ import { useLiveStore } from '@/store/liveStore';
 import { useRuntime } from '@/store/runtime';
 import { selectStatusBar } from '@/store/selectors';
 
+import { AutoModeToggle } from './AutoModeToggle';
 import { SimulationControls } from './SimulationControls';
 
 import './StatusBar.css';
@@ -39,7 +40,17 @@ export function StatusBar() {
       </div>
       <div className="status-bar__item">
         <dt>{mn.control.autoModeLabel}</dt>
-        <dd>{data.autoMode ? mn.control.autoModeOn : mn.control.autoModeOff}</dd>
+        <dd>
+          {runtime === null ? (
+            data.autoMode ? (
+              mn.control.autoModeOn
+            ) : (
+              mn.control.autoModeOff
+            )
+          ) : (
+            <AutoModeToggle runtime={runtime} enabled={data.autoMode} />
+          )}
+        </dd>
       </div>
     </dl>
   );

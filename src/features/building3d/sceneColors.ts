@@ -21,6 +21,8 @@ export interface SceneColors {
   deviceActive: string;
   /** Унтраалттай сэнсний далбаа, гэрэлгүй заагч */
   deviceIdle: string;
+  /** Агаарын урсгалын бөөмс (FR-B8) — чимэглэлийн саарал-цэнхэр, төлөв/сонголтын өнгөнөөс ялгаатай */
+  airflow: string;
   /** Мэдрэгчийн зангилааны төлөвийн өнгө (§8.3); offline/invalid — саарал */
   status: Record<HealthStatus, string>;
 }
@@ -41,6 +43,7 @@ export function readSceneColors(): SceneColors {
     deviceFrame: readCssToken('--color-text-muted'),
     deviceActive: readCssToken('--color-text-primary'),
     deviceIdle: readCssToken('--color-border-strong'),
+    airflow: readCssToken('--color-text-secondary'),
     status: {
       normal: readCssToken('--color-status-normal'),
       warning: readCssToken('--color-status-warning'),
