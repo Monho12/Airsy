@@ -1,0 +1,175 @@
+/*
+ * Сценарийн самбар ба яаралтай мөр (CLAUDE.md §7.1, §6.9, §8.3, §8.7). Өнгө, зай нь tokens.css-ээс.
+ * Ашигласан хослол бүгд §8.3-ын матрицад: бичвэр text-primary/secondary/muted (surface-1), явцын дүүргэлт accent
+ * (surface-3 дээр 8.16:1), яаралтай мөр — on-emergency / emergency (4.83:1), focus-ring / emergency (3.33:1, тест).
+ */
+
+.scenario-panel__active {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.scenario-panel__active > .ui-button {
+  align-self: flex-start;
+}
+
+.scenario-panel__active-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--font-size-14);
+  font-weight: var(--font-weight-semibold);
+}
+
+.scenario-panel__percent {
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.scenario-panel__progress {
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-3);
+}
+
+.scenario-panel__progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+  transition: width var(--motion-base) var(--ease-standard);
+}
+
+.scenario-panel__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scenario-panel__item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.scenario-panel__item--active {
+  box-shadow: inset 2px 0 0 var(--color-accent);
+  padding-left: var(--space-2);
+}
+
+.scenario-panel__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.scenario-panel__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-14);
+  font-weight: var(--font-weight-medium);
+  overflow-wrap: anywhere;
+}
+
+.scenario-panel__active-tag {
+  padding: 0 var(--space-1);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  color: var(--color-accent);
+  font-size: var(--font-size-11);
+  letter-spacing: var(--letter-spacing-label);
+}
+
+.scenario-panel__description {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-13);
+}
+
+.scenario-panel__note {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-12);
+}
+
+.scenario-panel__item > .ui-button {
+  flex: 0 0 auto;
+}
+
+.scenario-panel__footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--space-3);
+}
+
+.scenario-panel__error {
+  color: var(--color-status-critical);
+  font-size: var(--font-size-13);
+}
+
+.scenario-panel__disclaimer {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ---------- Яаралтай мөр ---------- */
+.emergency-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-emergency);
+  color: var(--color-on-emergency);
+}
+
+.emergency-bar__icon {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.emergency-bar__text {
+  display: flex;
+  flex: 1 1 280px;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.emergency-bar__title {
+  font-size: var(--font-size-14);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.emergency-bar__floor,
+.emergency-bar__disclaimer,
+.emergency-bar__error {
+  font-size: var(--font-size-13);
+}
+
+.emergency-bar__error {
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Яаралтай мөрөн дээрх товч: зөвхөн on-emergency (§8.3) */
+.ui-button.emergency-bar__end {
+  border-color: var(--color-on-emergency);
+  color: var(--color-on-emergency);
+  font-weight: var(--font-weight-semibold);
+}
+
+.ui-button.emergency-bar__end:hover {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--color-on-emergency);
+}

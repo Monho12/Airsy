@@ -1,6 +1,6 @@
 // App shell: дээд төлөвийн мөр ба гол layout (CLAUDE.md §8.2). Phase 2-т dashboard самбарууд жишээ snapshot-оор;
-// Phase 3-т 3D барилга (lazy, WebGL-гүй үед орлуулалттай). Хараахан хэрэгжээгүй хэсэг (хандлага, сценари) нь зөвхөн
-// шошготой орлуулагч — хуурамч удирдлагагүй (§8.7).
+// Phase 3-т 3D барилга (lazy, WebGL-гүй үед орлуулалттай); Phase 6-д сценарийн самбар ба яаралтай мөр (§6.9).
+// Хараахан хэрэгжээгүй хэсэг (хандлага) нь зөвхөн шошготой орлуулагч — хуурамч удирдлагагүй (§8.7).
 import type { ComponentType } from 'react';
 
 import { mn } from '@/domain/i18n/mn';
@@ -9,6 +9,7 @@ import { DeviceList } from '@/features/devices';
 import { EventTimeline } from '@/features/events';
 import { FloorDetails } from '@/features/floor-details';
 import { FloorList } from '@/features/floor-list';
+import { EmergencyBar, ScenarioPanel } from '@/features/scenarios';
 import { StatusBar } from '@/features/status-bar';
 
 import { Building3DRegion } from './Building3DRegion';
@@ -31,7 +32,7 @@ const REGION_ORDER: readonly RegionKey[] = [
   'scenarios',
 ];
 
-/** Хэрэгжсэн самбарууд; бусад нь орлуулагч хэвээр (хандлага ба сценари — Phase 6) */
+/** Хэрэгжсэн самбарууд; бусад нь орлуулагч хэвээр (хандлага — Phase 6c) */
 const PANELS: Partial<Record<RegionKey, ComponentType>> = {
   building3d: Building3DRegion,
   floorList: FloorList,
@@ -39,6 +40,7 @@ const PANELS: Partial<Record<RegionKey, ComponentType>> = {
   devices: DeviceList,
   alerts: AlertList,
   events: EventTimeline,
+  scenarios: ScenarioPanel,
 };
 
 function PlaceholderRegion({ region }: { region: RegionKey }) {
@@ -71,6 +73,8 @@ export function AppShell() {
           <span className="visually-hidden"> — {common.simulationBadgeDescription}</span>
         </p>
       </header>
+      {/* Яаралтай байдлын симуляци идэвхтэй үед л зурагдана (§6.9, §8.7) */}
+      <EmergencyBar />
 
       <main className="shell-main">
         {REGION_ORDER.map((region) => {

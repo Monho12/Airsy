@@ -8,11 +8,13 @@ import {
   RECENT_EVENT_LIMIT,
   selectActiveAlerts,
   selectAreaSummary,
+  selectEmergency,
   selectFloorDevices,
   selectFloorList,
   selectFloorSummary,
   selectOutdoorConditions,
   selectRecentEvents,
+  selectScenarioPanel,
   selectStatusBar,
 } from './selectors';
 
@@ -247,5 +249,60 @@ describe('selectRecentEvents (§11.4)', () => {
     expect(result).toHaveLength(RECENT_EVENT_LIMIT);
     expect(result[0]!.seq).toBe(120);
     expect(selectRecentEvents(snapshot, 0)).toEqual([]);
+  });
+});
+
+describe('selectScenarioPanel / selectEmergency (§7.1, §6.9, Phase 6b)', () => {
+  it('8 сценари §7.2-ын дарааллаар; идэвхтэй сценари ба яаралтай байдалгүй', () => {
+    const data = selectScenarioPanel(snapshot);
+    expect(data.items.map((item) => item.id)).toEqual([
+      'normal-operation',
+      'elevated-temperature',
+      'high-co2',
+      'voc-cleaning',
+      'poor-outdoor-air',
+      'fire-emergency',
+      'sensor-disconnection',
+      'recovery',
+    ]);
+    expect(data.items.find((item) => item.id === 'fire-emergency')?.requiresConfirmation).toBe(
+      true,
+    );
+    expect(data.items.filter((item) => item.startsFromCurrent).map((item) => item.id)).toEqual([
+      'recovery',
+    ]);
+    expect(data.items.some((item) => item.blockedByEmergency)).toBe(false);
+    expect(data.active).toBeNull();
+    expect(data.emergency).toBeNull();
+    expect(selectEmergency(snapshot)).toBeNull();
+  });
+
+  it('явцыг 0–100 бүхэл хувь болгоно', () => {
+    const active: LiveSnapshot = {
+      ...snapshot,
+      simulation: {
+        ...snapshot.simulation,
+        activeScenario: { id: 'high-co2', startedAt: snapshot.simTime, progress: 0.426 },
+      },
+    };
+    expect(selectScenarioPanel(active).active).toMatchObject({ id: 'high-co2', percent: 43 });
+  });
+
+  it('яаралтай байдлын үед галын давхрын нэр, Сэргэлт идэвхгүй', () => {
+    const emergency: LiveSnapshot = {
+      ...snapshot,
+      control: {
+        ...snapshot.control,
+        emergency: { fireFloorId: 'F08', startedAt: snapshot.simTime },
+      },
+    };
+    expect(selectEmergency(emergency)).toEqual({
+      fireFloorId: 'F08',
+      fireFloorLabel: '8-р давхар',
+    });
+    const data = selectScenarioPanel(emergency);
+    expect(data.items.filter((item) => item.blockedByEmergency).map((item) => item.id)).toEqual([
+      'recovery',
+    ]);
   });
 });

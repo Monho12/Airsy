@@ -181,3 +181,81 @@
 .ui-button:hover {
   background: var(--color-surface-2);
 }
+
+.ui-button:disabled {
+  border-color: var(--color-status-offline);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+.ui-button:disabled:hover {
+  background: transparent;
+}
+
+/* Ноцтой үйлдлийн товч (эхнээс нь, яаралтай сценари): дүүргэлт critical-fill + on-fill бичвэр (5.10:1, §8.3) */
+.ui-button--danger {
+  border-color: var(--color-status-critical-fill);
+  background: var(--color-status-critical-fill);
+  color: var(--color-on-fill);
+}
+
+.ui-button--danger:hover {
+  background: var(--color-status-critical-fill);
+  border-color: var(--color-status-critical);
+}
+
+/* ---------- Dialog (§8.7, §8.8) ---------- */
+.ui-dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.ui-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(100%, 480px);
+  max-height: calc(100dvh - 2 * var(--space-4));
+  overflow-y: auto;
+  padding: var(--space-5);
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+}
+
+/* Яаралтай байдлын анхааруулга: төлөвийн хүрээ (critical, 6.49:1 surface-1 дээр) */
+.ui-dialog--danger {
+  border-color: var(--color-status-critical);
+}
+
+.ui-dialog:focus {
+  outline: none;
+}
+
+.ui-dialog__title {
+  font-size: var(--font-size-16);
+  font-weight: var(--font-weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+.ui-dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-14);
+}
+
+.ui-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}

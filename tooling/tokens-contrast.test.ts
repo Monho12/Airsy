@@ -106,6 +106,12 @@ const onFill: { fg: string; bg: string; expected: Cell }[] = [
   { fg: 'text-secondary', bg: 'emergency', expected: { forbidden: 2.21 } },
 ];
 
+/** Утга илэрхийлэх UI элемент (3:1) — матрицад шинээр нэмсэн хослол (Phase 6b, §8.3). */
+const uiPairs: { fg: string; bg: string; expected: number }[] = [
+  // Яаралтай мөрөн дээрх товчны focus-ийн хүрээ
+  { fg: 'focus-ring', bg: 'emergency', expected: 3.33 },
+];
+
 const WHITE: Rgb = [255, 255, 255];
 /** Баримт 2 оронтой тоогоор (дугуйлж) бичигдсэн тул тооцоолсон утга баримтын утгаас ±0.005 дотор байх ёстой. */
 const TOLERANCE = 0.0051;
@@ -150,4 +156,14 @@ describe('§8.3 зөвхөн чимэглэлийн хүрээ', () => {
       }
     }
   });
+});
+
+describe('§8.3 UI элементийн нэмэлт хослол (3:1)', () => {
+  for (const pair of uiPairs) {
+    it(`${pair.fg} / ${pair.bg}: ${pair.expected}`, () => {
+      const ratio = contrast(color(pair.fg), color(pair.bg));
+      expect(Math.abs(ratio - pair.expected)).toBeLessThan(TOLERANCE);
+      expect(ratio).toBeGreaterThanOrEqual(UI);
+    });
+  }
 });

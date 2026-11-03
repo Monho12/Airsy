@@ -4,6 +4,8 @@ import { aggregateFloorMetric, isValidMeasurement, summarizeHealth } from '@/dom
 import type { HealthSummary } from '@/domain/classification';
 import { buildingConfig, METRICS, type BuildingConfig } from '@/domain/config/building';
 import { outdoorAirThresholds } from '@/domain/config/thresholds';
+import { floorLabelMn } from '@/domain/i18n/mn';
+import { scenarioDefinitions, scenarioOrder } from '@/domain/scenarios/definitions';
 import type {
   Alert,
   Area,
@@ -14,6 +16,7 @@ import type {
   LiveSnapshot,
   MetricType,
   OutdoorConditions,
+  ScenarioId,
   SensorReading,
   SimTimeMs,
   SystemEvent,
@@ -232,4 +235,79 @@ export function selectRecentEvents(
 ): SystemEvent[] {
   if (limit <= 0) return []; // `slice(-0)` нь бүх массивыг буцаадаг тул тусад нь
   return snapshot.events.slice(-limit).reverse();
+}
+
+// ---------- Сценарийн самбар ба яаралтай мөр (§7.1, §7.4, §6.9, Phase 6b) ----------
+
+export interface ScenarioItem {
+  id: ScenarioId;
+  name: string;
+  description: string;
+  /** Эхлүүлэхээс өмнө анхааруулгын баталгаажуулалт заавал (S6, §6.9) */
+  requiresConfirmation: boolean;
+  /** `true` — одоогийн төлөвөөс эхэлнэ (зөвхөн Сэргэлт, §7.1) */
+  startsFromCurrent: boolean;
+  /** Одоо эхлүүлэх боломжгүй бол `true` (Сэргэлт яаралтай байдлын үед, §7.2 S8) */
+  blockedByEmergency: boolean;
+}
+
+export interface ActiveScenarioView {
+  id: ScenarioId;
+  name: string;
+  /** 0–100, бүхэл хувь */
+  percent: number;
+}
+
+export interface EmergencyView {
+  fireFloorId: FloorId;
+  fireFloorLabel: string;
+}
+
+export interface ScenarioPanelData {
+  items: ScenarioItem[];
+  active: ActiveScenarioView | null;
+  emergency: EmergencyView | null;
+}
+
+/** Яаралтай байдал (`ControlState.emergency`) — идэвхгүй бол `null` */
+export function selectEmergency(
+  snapshot: LiveSnapshot,
+  config: BuildingConfig = buildingConfig,
+): EmergencyView | null {
+  const emergency = snapshot.control.emergency;
+  if (emergency === null) return null;
+  const level = config.floors[emergency.fireFloorId]?.level;
+  return {
+    fireFloorId: emergency.fireFloorId,
+    fireFloorLabel: level === undefined ? emergency.fireFloorId : floorLabelMn(level),
+  };
+}
+
+/** Сценарийн самбарын өгөгдөл: §7.2-ын дарааллаар 8 сценари, идэвхтэй сценарийн явц, яаралтай байдал. */
+export function selectScenarioPanel(
+  snapshot: LiveSnapshot,
+  config: BuildingConfig = buildingConfig,
+): ScenarioPanelData {
+  const emergency = selectEmergency(snapshot, config);
+  const items = scenarioOrder.map((id): ScenarioItem => {
+    const scenario = scenarioDefinitions[id];
+    return {
+      id,
+      name: scenario.name,
+      description: scenario.description,
+      requiresConfirmation: scenario.requiresConfirmation,
+      startsFromCurrent: scenario.startsFrom === 'current',
+      blockedByEmergency: scenario.startsFrom === 'current' && emergency !== null,
+    };
+  });
+  const running = snapshot.simulation.activeScenario;
+  const active =
+    running === null
+      ? null
+      : {
+          id: running.id,
+          name: scenarioDefinitions[running.id].name,
+          percent: Math.round(Math.min(1, Math.max(0, running.progress)) * 100),
+        };
+  return { items, active, emergency };
 }

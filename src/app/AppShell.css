@@ -5,10 +5,15 @@
  */
 
 .shell {
-  display: grid;
-  grid-template-rows: auto 1fr;
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
   min-height: 100dvh;
+}
+
+/* Гол хэсэг үлдсэн өндрийг эзэлнэ (дээд мөр ба яаралтай мөрийн доор) */
+.shell > .shell-main {
+  flex: 1 0 auto;
 }
 
 /* ---------- Дээд төлөвийн мөр ---------- */
