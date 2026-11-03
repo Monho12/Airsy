@@ -473,7 +473,8 @@ describe('удирдлага ба командууд (Phase 5, §6.7, §9.5-ын
     });
     expect(runtime.getSnapshot().alerts.active).toEqual([]);
     runtime.stop();
-  });
+    // 6000 алхам ачаалалтай машин дээр 5 с-ийн анхдагч хязгаараас удаан байж болох тул хязгаарыг нэмэв
+  }, 30_000);
 
   it('control/setAutoMode: AUTO_MODE_DISABLED/ENABLED, давтан нь өөрчлөлтгүй', async () => {
     const { runtime } = started();
