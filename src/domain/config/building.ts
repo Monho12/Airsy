@@ -259,11 +259,37 @@ const roomPath = (from: { x: number; z: number }, to: { x: number; z: number }):
   { x: to.x, y: 2.8, z: to.z },
 ];
 
+/** Захирлын өрөөний давхар (D88; хөгжүүлэгчийн сонголт) — барилгад ганц захирлын өрөө */
+export const DIRECTOR_FLOOR_LEVEL = 10;
+
+/** Ганц өрөөнүүдийн давхрын сонголт (D88) */
+interface UniqueRoomFloors {
+  /** Захирлын өрөө: 10-р давхар; давхар цөөн бол лоббиос бусад хамгийн дээд давхар */
+  director: number | null;
+  /** Сервер өрөө: хамгийн доод оффис давхар; оффис давхаргүй бол лоббиос бусад хамгийн доод давхар */
+  server: number | null;
+}
+
+function uniqueRoomFloors(usageByLevel: readonly Usage[]): UniqueRoomFloors {
+  const levels = usageByLevel.map((usage, i) => ({ level: i + 1, usage }));
+  const rooms = levels.filter((l) => l.usage !== 'lobby');
+  const offices = levels.filter((l) => l.usage === 'office');
+  const director = rooms.some((l) => l.level === DIRECTOR_FLOOR_LEVEL)
+    ? DIRECTOR_FLOOR_LEVEL
+    : (rooms.at(-1)?.level ?? null);
+  const server = offices[0]?.level ?? rooms[0]?.level ?? null;
+  return { director, server };
+}
+
 /**
- * Давхрын дотоод бүтэц (D86, D87). Лобби (F01) нээлттэй орон зай тул өрөө, хана, лифтний танхимгүй — коридорын
- * контур ба эвакуацийн шатны гарц л.
+ * Давхрын дотоод бүтэц (D86, D87, D88). Лобби (F01) нээлттэй орон зай тул өрөө, хана, лифтний танхимгүй — коридорын
+ * контур ба эвакуацийн шатны гарц л. Захирлын ба сервер өрөө барилгад ганц (`unique`); бусад давхарт тэр байрлалд
+ * ажлын өрөө ба агуулах.
  */
-function createInteriorLayout(usage: Usage): FloorInteriorLayout {
+function createInteriorLayout(
+  usage: Usage,
+  unique: { director: boolean; server: boolean },
+): FloorInteriorLayout {
   const halfW = FOOTPRINT.width / 2;
   const halfD = FOOTPRINT.depth / 2;
   const c = CORRIDOR_HALF_WIDTH;
@@ -299,8 +325,8 @@ function createInteriorLayout(usage: Usage): FloorInteriorLayout {
   const rooms: InteriorRoom[] = [
     { kind: 'meeting', number: 1, bounds: corner(-1, -1) },
     { kind: 'meeting', number: 2, bounds: corner(1, -1) },
-    { kind: 'director', number: null, bounds: corner(-1, 1) },
-    { kind: 'storage', number: null, bounds: corner(1, 1) },
+    { kind: unique.director ? 'director' : 'workroom', number: null, bounds: corner(-1, 1) },
+    { kind: unique.server ? 'server' : 'storage', number: null, bounds: corner(1, 1) },
     { kind: 'restroom', number: null, bounds: back(-1) },
     { kind: 'kitchen', number: null, bounds: back(1) },
   ];
@@ -409,6 +435,12 @@ export function createBuildingConfig(floorCount: number = DEFAULT_FLOOR_COUNT): 
   const devices: BuildingConfig['devices'] = {};
   const floorIds: FloorId[] = [];
 
+  const usageByLevel = Array.from(
+    { length: floorCount },
+    (_, i) => (SPECIAL_FLOORS[i + 1] ?? OFFICE_TEMPLATE).usage,
+  );
+  const unique = uniqueRoomFloors(usageByLevel);
+
   for (let level = 1; level <= floorCount; level += 1) {
     const template = SPECIAL_FLOORS[level] ?? OFFICE_TEMPLATE;
     const floorId = floorIdOf(level);
@@ -457,7 +489,10 @@ export function createBuildingConfig(floorCount: number = DEFAULT_FLOOR_COUNT): 
       areaIds,
       deviceIds,
       ventilation: createVentilationLayout(),
-      interior: createInteriorLayout(template.usage),
+      interior: createInteriorLayout(template.usage, {
+        director: level === unique.director,
+        server: level === unique.server,
+      }),
     };
   }
 

@@ -1,5 +1,5 @@
 // Камерын удирдлага (CLAUDE.md FR-B3, §8.5, §10.3): хязгаартай эргүүлэх/ойртуулах (зөөхгүй), анхдагч харагдац,
-// «Харагдацыг сэргээх» (`cameraResetToken`), сонгосон давхарт зөөлөн төвлөрөх. Хөдөлгөөн багасгах үед шууд үсэрнэ.
+// «Харагдацыг сэргээх» (`cameraResetToken`), сонгосон давхарт зөөлөн төвлөрөх (D88: дээрээс налуу, ойртож). Хөдөлгөөн багасгах үед шууд үсэрнэ.
 // Хэрэглэгч чирж эхлэхэд үргэлжилж буй хөдөлгөөн зогсоно — тасралтгүй/чимэглэлийн хөдөлгөөн байхгүй.
 import { OrbitControls } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
@@ -10,8 +10,7 @@ import { useUiStore } from '@/store/uiStore';
 import {
   cameraLimits,
   defaultCameraPose,
-  floorFocusTarget,
-  focusPose,
+  floorFocusPose,
   settleDistance,
   stepCamera,
   type CameraPose,
@@ -84,12 +83,13 @@ export function CameraRig({ layout }: { layout: BuildingLayout }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layout]);
 
-  // Сонгосон давхарт төвлөрөх; сонголт цуцлагдахад камер хөдлөхгүй
+  // Сонгосон давхарт төвлөрөх (D88): дээрээс ~40° налуу, давхрыг дэлгэцэнд дүүргэх зайнаас; хэрэглэгчийн хэвтээ
+  // чиглэл хадгалагдана. Сонголт цуцлагдахад камер хөдлөхгүй
   useEffect(() => {
     if (selectedFloorId === null) return;
     const current = readPose();
-    const target = floorFocusTarget(layout, selectedFloorId);
-    if (current !== null && target !== null) moveTo(focusPose(current, target));
+    const goal = current === null ? null : floorFocusPose(current, layout, selectedFloorId);
+    if (goal !== null) moveTo(goal);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFloorId, layout]);
 

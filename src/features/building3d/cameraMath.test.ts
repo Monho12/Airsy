@@ -1,4 +1,5 @@
 // Камерын хязгаар ба төвлөрөл (FR-B3, §8.5). WebGL-гүй цэвэр тооцоо.
+import { MathUtils } from 'three';
 import { describe, expect, it } from 'vitest';
 
 import { buildingConfig, createBuildingConfig } from '@/domain/config/building';
@@ -7,7 +8,9 @@ import {
   CAMERA_DAMP_LAMBDA,
   cameraLimits,
   defaultCameraPose,
+  floorFocusPose,
   floorFocusTarget,
+  FOCUS_ELEVATION_DEG,
   focusPose,
   settleDistance,
   stepCamera,
@@ -120,5 +123,46 @@ describe('зөөлөн шилжилт (§8.5: 600–900 ms)', () => {
 
   it('ижил оролт → ижил алхам (тодорхой)', () => {
     expect(stepCamera(start, goal, 1 / 60)).toEqual(stepCamera(start, goal, 1 / 60));
+  });
+});
+
+describe('давхарт төвлөрөх харагдац (D88)', () => {
+  const start = defaultCameraPose(layout);
+
+  it('зорилт давхрын төв; дээрээс 40°; зай камерын хязгаарт, анхдагчаас ойр', () => {
+    const pose = floorFocusPose(start, layout, 'F07')!;
+    expect(pose.target).toEqual(floorFocusTarget(layout, 'F07'));
+    const dx = pose.position.x - pose.target.x;
+    const dy = pose.position.y - pose.target.y;
+    const dz = pose.position.z - pose.target.z;
+    const distance = Math.hypot(dx, dy, dz);
+    expect(MathUtils.radToDeg(Math.asin(dy / distance))).toBeCloseTo(FOCUS_ELEVATION_DEG);
+    const limits = cameraLimits(layout);
+    expect(distance).toBeGreaterThanOrEqual(limits.minDistance);
+    expect(distance).toBeLessThanOrEqual(limits.maxDistance);
+    const base = Math.hypot(
+      start.position.x - start.target.x,
+      start.position.y - start.target.y,
+      start.position.z - start.target.z,
+    );
+    expect(distance).toBeLessThan(base);
+  });
+
+  it('хэрэглэгчийн хэвтээ чиглэлийг (azimuth) хадгална', () => {
+    const rotated = {
+      target: start.target,
+      position: { x: start.target.x - 50, y: start.position.y, z: start.target.z + 10 },
+    };
+    const pose = floorFocusPose(rotated, layout, 'F03')!;
+    const before = Math.atan2(
+      rotated.position.x - rotated.target.x,
+      rotated.position.z - rotated.target.z,
+    );
+    const after = Math.atan2(pose.position.x - pose.target.x, pose.position.z - pose.target.z);
+    expect(after).toBeCloseTo(before);
+  });
+
+  it('тохиргоонд байхгүй давхарт null', () => {
+    expect(floorFocusPose(start, layout, 'F99')).toBeNull();
   });
 });

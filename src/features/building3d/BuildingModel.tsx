@@ -4,10 +4,11 @@
 // `DeviceModels.tsx`-д.
 import { Edges } from '@react-three/drei';
 import { useEffect, useMemo } from 'react';
-import { BoxGeometry, BufferAttribute, BufferGeometry, DoubleSide } from 'three';
+import { BoxGeometry, BufferAttribute, BufferGeometry, DoubleSide, Mesh } from 'three';
 
 import type { BuildingConfig } from '@/domain/config/building';
 import type { FloorId, Vec3 } from '@/domain/types';
+import { useUiStore } from '@/store/uiStore';
 
 import type {
   BuildingLayout,
@@ -18,8 +19,10 @@ import type {
 } from './layout';
 import { useEmergencyFloorRole } from './emergencyData';
 import type { SceneColors } from './sceneColors';
+import { selectedCeilingY, splitShaftBoxes } from './focusView';
 import {
   CEILING_SLAB_OPACITY,
+  GHOST_SLAB_OPACITY,
   slabOverlayOpacity,
   useFloorInteraction,
   useIsCeilingOfSelected,
@@ -32,6 +35,8 @@ const ignoreRaycast = () => null;
 
 /** Сонгосон давхрын таазны бүсийн хавтгай — хавтантай хамт тунгалаг (FR-B6) */
 const CEILING_ZONE_OPACITY = 0.06;
+/** Сүүдэр давхрын бүс (D88) */
+const GHOST_ZONE_OPACITY = 0.02;
 
 /**
  * Хавтангийн тунгалаг давхарга (бүдэгрүүлсэн давхар, сонгосон давхрын тааз). three нь `transparent: false`
@@ -78,17 +83,24 @@ function Zone({
 }) {
   const selected = useZoneSelected(zone.id);
   const highlighted = selected || floorVisual === 'selected';
+  const ghost = floorVisual === 'ghost';
   const opacity = selected
     ? 0.4
     : highlighted
       ? 0.16
-      : ceiling
-        ? CEILING_ZONE_OPACITY
-        : floorVisual === 'dimmed'
-          ? 0.3
-          : 0.85;
+      : ghost
+        ? GHOST_ZONE_OPACITY
+        : ceiling
+          ? CEILING_ZONE_OPACITY
+          : floorVisual === 'dimmed'
+            ? 0.3
+            : 0.85;
   return (
-    <mesh position={[zone.center.x, zone.center.y, zone.center.z]} rotation-x={-Math.PI / 2}>
+    <mesh
+      position={[zone.center.x, zone.center.y, zone.center.z]}
+      rotation-x={-Math.PI / 2}
+      raycast={ghost ? ignoreRaycast : Mesh.prototype.raycast}
+    >
       <planeGeometry args={zone.size} />
       <meshBasicMaterial
         color={highlighted ? colors.selected : colors.zone}
@@ -139,7 +151,11 @@ function FloorSlab({
       onPointerOver={onPointerOver}
       onPointerOut={onPointerOut}
     >
-      <mesh position={[center.x, center.y, center.z]}>
+      {/* Сүүдэр давхар (D88) сонгогдохгүй — дээрээс доорх сонгосон давхар руу дарахад саад болохгүй */}
+      <mesh
+        position={[center.x, center.y, center.z]}
+        raycast={visual === 'ghost' ? ignoreRaycast : Mesh.prototype.raycast}
+      >
         <boxGeometry args={size} />
         {/* Үргэлж тунгалаг бус; тунгалаг үед материалыг нууна (raycast ба хүрээ хэвээр) — оронд нь SlabOverlay */}
         <meshStandardMaterial color={colors.slab} roughness={1} visible={overlayOpacity === null} />
@@ -210,27 +226,26 @@ function RoofEquipment({ roof, colors }: { roof: RoofEquipmentLayout; colors: Sc
 function RoofSlab({
   slab,
   topFloorId,
+  ghost,
   colors,
 }: {
   slab: BuildingLayout['roofSlab'];
   topFloorId: FloorId | null;
+  /** Сонгосон давхрын дээр (хамгийн дээд давхар биш) — сүүдэр (D88) */
+  ghost: boolean;
   colors: SceneColors;
 }) {
   const ceiling = useIsCeilingOfSelected(topFloorId);
+  const overlay = ghost ? GHOST_SLAB_OPACITY : ceiling ? CEILING_SLAB_OPACITY : null;
   return (
     <>
       <mesh position={[slab.center.x, slab.center.y, slab.center.z]}>
         <boxGeometry args={slab.size} />
-        <meshStandardMaterial color={colors.slab} roughness={1} visible={!ceiling} />
+        <meshStandardMaterial color={colors.slab} roughness={1} visible={overlay === null} />
         <Edges color={colors.slabEdge} />
       </mesh>
-      {ceiling && (
-        <SlabOverlay
-          center={slab.center}
-          size={slab.size}
-          opacity={CEILING_SLAB_OPACITY}
-          colors={colors}
-        />
+      {overlay !== null && (
+        <SlabOverlay center={slab.center} size={slab.size} opacity={overlay} colors={colors} />
       )}
     </>
   );
@@ -259,14 +274,45 @@ function mergeBoxes(boxes: readonly Box[]): BufferGeometry {
   return merged;
 }
 
-function SolidShafts({ boxes, colors }: { boxes: readonly Box[]; colors: SceneColors }) {
-  const geometry = useMemo(() => mergeBoxes(boxes), [boxes]);
-  useEffect(() => () => geometry.dispose(), [geometry]);
+/** Хонгил ба эвакуацийн шатны сүүдэр хэсгийн тунгалаг байдал (D88) — сүүдэр давхрын хавтантай ойролцоо */
+const GHOST_SHAFT_OPACITY = 0.08;
+
+/**
+ * Хонгил ба эвакуацийн шат (D59, D87). Давхар сонгосон үед таазаар нь хуваана (D88): доод хэсэг тунгалаг бус +
+ * ирмэг, дээд хэсэг сүүдэр (ирмэггүй, 1 нэмэлт draw call) — дээрээс харахад сонгосон давхрын арын хэсгийг халхлахгүй.
+ */
+function SolidShafts({
+  boxes,
+  cutY,
+  colors,
+}: {
+  boxes: readonly Box[];
+  cutY: number | null;
+  colors: SceneColors;
+}) {
+  const parts = useMemo(() => splitShaftBoxes(boxes, cutY), [boxes, cutY]);
+  const solid = useMemo(() => mergeBoxes(parts.solid), [parts]);
+  const ghost = useMemo(() => (parts.ghost.length > 0 ? mergeBoxes(parts.ghost) : null), [parts]);
+  useEffect(() => () => solid.dispose(), [solid]);
+  useEffect(() => () => ghost?.dispose(), [ghost]);
   return (
-    <mesh name="core" geometry={geometry}>
-      <meshStandardMaterial color={colors.core} roughness={1} />
-      <Edges color={colors.slabEdge} />
-    </mesh>
+    <>
+      <mesh name="core" geometry={solid}>
+        <meshStandardMaterial color={colors.core} roughness={1} />
+        <Edges color={colors.slabEdge} />
+      </mesh>
+      {ghost !== null && (
+        <mesh name="core-ghost" geometry={ghost} raycast={ignoreRaycast}>
+          <meshStandardMaterial
+            color={colors.core}
+            roughness={1}
+            transparent
+            opacity={GHOST_SHAFT_OPACITY}
+            depthWrite={false}
+          />
+        </mesh>
+      )}
+    </>
   );
 }
 
@@ -280,6 +326,9 @@ export function BuildingModel({
   colors: SceneColors;
 }) {
   const { roofSlab, core, floors } = layout;
+  const selectedFloorId = useUiStore((state) => state.selectedFloorId);
+  const cutY = selectedCeilingY(layout, selectedFloorId);
+  const topSelected = selectedFloorId !== null && selectedFloorId === floors.at(-1)?.id;
   // Тогтвортой лавлагаа — geometry render бүрт дахин үүсэхгүй
   const shaftBoxes = useMemo(
     () => [core, ...layout.evacuationStairs],
@@ -296,11 +345,19 @@ export function BuildingModel({
           colors={colors}
         />
       ))}
-      <RoofSlab slab={roofSlab} topFloorId={floors.at(-1)?.id ?? null} colors={colors} />
-      <RoofEquipment roof={layout.roofEquipment} colors={colors} />
+      <RoofSlab
+        slab={roofSlab}
+        topFloorId={floors.at(-1)?.id ?? null}
+        ghost={selectedFloorId !== null && !topSelected}
+        colors={colors}
+      />
+      {/* Дээврийн тоног төхөөрөмж — давхар сонгосон үед (дээд давхраас бусад) нуугдана (D88) */}
+      {(selectedFloorId === null || topSelected) && (
+        <RoofEquipment roof={layout.roofEquipment} colors={colors} />
+      )}
       {/* Лифт/шатны хонгил (D59) ба эвакуацийн шат (D87) — нэг geometry (draw call нэмэгдэхгүй); сонгогдохгүй,
           event handler-гүй тул давхрын сонголтод саад болохгүй */}
-      <SolidShafts boxes={shaftBoxes} colors={colors} />
+      <SolidShafts boxes={shaftBoxes} cutY={cutY} colors={colors} />
       {layout.facade.map((panel) => (
         <Facade key={panel.side} panel={panel} colors={colors} />
       ))}

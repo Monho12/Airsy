@@ -11,15 +11,32 @@ import { useUiStore } from '@/store/uiStore';
  */
 export const CLICK_DRAG_TOLERANCE_PX = 4;
 
-export type FloorVisualState = 'selected' | 'hovered' | 'idle' | 'dimmed';
+/**
+ * `ghost` — сонгосон давхрын **дээрх** давхар (D88): маш бүдэг сүүдэр, зөвхөн хавтангийн контур чиг баримжаа өгнө;
+ * мэдрэгч, төхөөрөмж, урсгал нуугдана; сонгогдохгүй (raycast-гүй) — дээрээс харахад доорх сонгосон давхрыг халхлахгүй.
+ */
+export type FloorVisualState = 'selected' | 'hovered' | 'idle' | 'dimmed' | 'ghost';
 
-/** §8.6: сонгосон давхар тодорч, бусад нь бүдэгрэнэ; сонголтгүй үед бүгд ердийн. */
+/** Давхрын түвшин ID-аас (§5.2: `F` + 2 оронтой түвшин) */
+export const floorLevelOf = (floorId: FloorId): number => Number(floorId.slice(1));
+
+/** Давхар сонгосон давхрын дээр байгаа эсэх (D88) */
+export function isAboveSelected(floorId: FloorId, selectedFloorId: FloorId | null): boolean {
+  return selectedFloorId !== null && floorLevelOf(floorId) > floorLevelOf(selectedFloorId);
+}
+
+export function useIsAboveSelected(floorId: FloorId): boolean {
+  return useUiStore((state) => isAboveSelected(floorId, state.selectedFloorId));
+}
+
+/** §8.6: сонгосон давхар тодорч, доорх нь бүдэгрэнэ, дээрх нь сүүдэр (D88); сонголтгүй үед бүгд ердийн. */
 export function floorVisualState(
   floorId: FloorId,
   selectedFloorId: FloorId | null,
   hoveredFloorId: FloorId | null,
 ): FloorVisualState {
   if (floorId === selectedFloorId) return 'selected';
+  if (isAboveSelected(floorId, selectedFloorId)) return 'ghost';
   if (floorId === hoveredFloorId) return 'hovered';
   return selectedFloorId === null ? 'idle' : 'dimmed';
 }
@@ -31,6 +48,8 @@ export const DIMMED_SLAB_OPACITY = 0.35;
  * илүү тунгалаг.
  */
 export const CEILING_SLAB_OPACITY = 0.1;
+/** Сонгосон давхрын дээрх давхрын хавтан (D88) — бараг үл үзэгдэх, контур л чиг баримжаа өгнө */
+export const GHOST_SLAB_OPACITY = 0.04;
 
 /**
  * Хавтангийн тунгалаг давхаргын opacity; `null` бол тунгалаг бус үндсэн хавтан. Тааз нь hover-оос ч давуу —
@@ -38,6 +57,8 @@ export const CEILING_SLAB_OPACITY = 0.1;
  * тунгалаг бус болж тодорно (өмнөх зан төлөв).
  */
 export function slabOverlayOpacity(visual: FloorVisualState, ceiling: boolean): number | null {
+  // Сонгосон давхрын тааз нь дээрх давхрын хавтан — сүүдэр давуу (D88); дээврийн хавтан л таазаар үлдэнэ
+  if (visual === 'ghost') return GHOST_SLAB_OPACITY;
   if (ceiling) return CEILING_SLAB_OPACITY;
   return visual === 'dimmed' ? DIMMED_SLAB_OPACITY : null;
 }

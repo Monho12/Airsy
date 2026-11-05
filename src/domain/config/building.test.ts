@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import { classifyReading } from '@/domain/classification';
 
-import { METRICS, buildingConfig, createBuildingConfig, OUTDOOR_METRICS } from './building';
+import {
+  METRICS,
+  buildingConfig,
+  createBuildingConfig,
+  DIRECTOR_FLOOR_LEVEL,
+  OUTDOOR_METRICS,
+} from './building';
 import { indoorThresholds } from './thresholds';
 
 describe('createBuildingConfig (§5.1, §5.2, FR-B1)', () => {
@@ -235,12 +241,12 @@ describe('дотоод бүтэц, хонгил, эвакуацийн шат (D8
     });
   const solids = [building.core, ...building.evacuationStairs];
 
-  it('оффис давхар: 6 өрөө (хурлын 1, 2, захирал, агуулах, ариун цэврийн, гал тогоо), лифтний танхим, 2 гарц', () => {
+  it('оффис давхар: 6 өрөө (хурлын 1, 2, ажлын өрөө, агуулах, ариун цэврийн, гал тогоо), лифтний танхим, 2 гарц', () => {
     const interior = floors.F07!.interior;
     expect(interior.rooms.map((r) => `${r.kind}${r.number ?? ''}`)).toEqual([
       'meeting1',
       'meeting2',
-      'director',
+      'workroom',
       'storage',
       'restroom',
       'kitchen',
@@ -388,5 +394,32 @@ describe('дотоод бүтэц, хонгил, эвакуацийн шат (D8
       expect(floor.interior.exits).toHaveLength(2);
       expect(floor.interior.rooms).toHaveLength(floor.usage === 'lobby' ? 0 : 6);
     }
+  });
+});
+
+describe('ганц өрөө: захирлын өрөө ба сервер өрөө (D88)', () => {
+  const countKind = (config: ReturnType<typeof createBuildingConfig>, kind: string) =>
+    Object.values(config.floors).flatMap((f) =>
+      f.interior.rooms.filter((r) => r.kind === kind).map(() => f.id),
+    );
+
+  it('12 давхарт: захирлын өрөө зөвхөн F10, сервер өрөө зөвхөн F03 (хамгийн доод оффис давхар)', () => {
+    expect(DIRECTOR_FLOOR_LEVEL).toBe(10);
+    expect(countKind(buildingConfig, 'director')).toEqual(['F10']);
+    expect(countKind(buildingConfig, 'server')).toEqual(['F03']);
+    // Бусад давхарт тэр байрлалд ажлын өрөө ба агуулах
+    expect(countKind(buildingConfig, 'workroom')).toHaveLength(10);
+    expect(countKind(buildingConfig, 'storage')).toHaveLength(10);
+  });
+
+  it.each([
+    [20, 'F10', 'F03'],
+    [6, 'F06', 'F03'],
+    [2, 'F02', 'F02'],
+    [1, null, null],
+  ] as const)('%i давхарт: захирал %s, сервер %s — ганц', (count, director, server) => {
+    const config = createBuildingConfig(count);
+    expect(countKind(config, 'director')).toEqual(director === null ? [] : [director]);
+    expect(countKind(config, 'server')).toEqual(server === null ? [] : [server]);
   });
 });

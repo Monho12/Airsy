@@ -13,6 +13,8 @@ import { fanLevelOrder } from '@/domain/config/control';
 import { useLiveStore } from '@/store/liveStore';
 import { useUiStore } from '@/store/uiStore';
 
+import { useCeilingClipPlanes } from './useCeilingClip';
+
 import { fanAngularSpeed } from './animationData';
 import {
   createDeviceModels,
@@ -142,6 +144,8 @@ export function DeviceModels({
   const visuals = useMemo(() => deviceVisualStates(devices, models), [devices, models]);
   const invalidate = useThree((state) => state.invalidate);
   const reducedMotion = useUiStore((state) => state.reducedMotion);
+  // Сонгосон давхрын дээрх төхөөрөмжийг тайрна (D88) — дээрээс харахад сонгосон давхрыг халхлахгүй
+  const clipPlanes = useCeilingClipPlanes(layout);
 
   // Сэнс ба хаалт тусдаа instanced mesh-тэй
   const { fans, dampers } = useMemo(() => {
@@ -278,7 +282,7 @@ export function DeviceModels({
         args={[undefined, undefined, fanCount]}
       >
         <torusGeometry args={[FAN_RADIUS, 0.07, 8, 32]} />
-        <meshBasicMaterial />
+        <meshBasicMaterial clippingPlanes={clipPlanes} />
       </instancedMesh>
       <instancedMesh
         key={`blade-${fanCount}`}
@@ -286,7 +290,7 @@ export function DeviceModels({
         args={[undefined, undefined, fanCount * BLADES_PER_FAN]}
       >
         <boxGeometry args={BLADE_SIZE} />
-        <meshBasicMaterial />
+        <meshBasicMaterial clippingPlanes={clipPlanes} />
       </instancedMesh>
       <instancedMesh
         key={`pip-${fanCount}`}
@@ -294,7 +298,7 @@ export function DeviceModels({
         args={[undefined, undefined, fanCount * FAN_LEVEL_SEGMENTS]}
       >
         <boxGeometry args={PIP_SIZE} />
-        <meshBasicMaterial />
+        <meshBasicMaterial clippingPlanes={clipPlanes} />
       </instancedMesh>
       <instancedMesh
         key={`frame-${damperCount}`}
@@ -303,7 +307,7 @@ export function DeviceModels({
       >
         {/* Нэгж куб — тал бүрийн хэмжээг instance-ийн масштабаар */}
         <boxGeometry args={[1, 1, 1]} />
-        <meshBasicMaterial />
+        <meshBasicMaterial clippingPlanes={clipPlanes} />
       </instancedMesh>
       <instancedMesh
         key={`louver-${damperCount}`}
@@ -311,7 +315,7 @@ export function DeviceModels({
         args={[undefined, undefined, damperCount * LOUVERS_PER_DAMPER]}
       >
         <boxGeometry args={LOUVER_SIZE} />
-        <meshBasicMaterial />
+        <meshBasicMaterial clippingPlanes={clipPlanes} />
       </instancedMesh>
     </group>
   );

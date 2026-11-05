@@ -51,7 +51,11 @@ export function Building3D({ onFallback, config = defaultBuildingConfig }: Build
           far: layout.height * 20,
           position: [position.x, position.y, position.z],
         }}
-        onCreated={({ gl }) => setCanvas(gl.domElement)}
+        onCreated={({ gl }) => {
+          // Материал тус бүрийн clipping plane (D88: сонгосон давхрын дээрх төхөөрөмжийг тайрах)
+          gl.localClippingEnabled = true;
+          setCanvas(gl.domElement);
+        }}
       >
         <color attach="background" args={[colors.background]} />
         {/* Сэрүүн ерөнхий гэрэл + нэг чиглэлтэй гол гэрэл, сүүдэргүй (§8.6) */}

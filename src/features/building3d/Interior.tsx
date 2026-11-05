@@ -10,7 +10,9 @@ import {
   CookingPot,
   DoorOpen,
   Footprints,
+  Laptop,
   Monitor,
+  Server,
   Users,
   type LucideIcon,
 } from 'lucide-react';
@@ -29,6 +31,7 @@ import {
   type InteriorLabelKind,
   type InteriorLineKind,
 } from './interiorData';
+import { selectedCeilingY } from './focusView';
 import type { BuildingLayout } from './layout';
 import type { SceneColors } from './sceneColors';
 
@@ -51,12 +54,15 @@ export function CoreDetails({
   layout: BuildingLayout;
   colors: SceneColors;
 }) {
+  // Сонгосон давхрын таазаас дээш шугам зурахгүй (D88) — хонгилын дээд хэсэг сүүдэр
+  const selectedFloorId = useUiStore((state) => state.selectedFloorId);
+  const maxY = selectedCeilingY(layout, selectedFloorId);
   const geometry = useDisposable(
     useMemo(() => {
       const g = new BufferGeometry();
-      g.setAttribute('position', new BufferAttribute(coreFaceLines(config, layout), 3));
+      g.setAttribute('position', new BufferAttribute(coreFaceLines(config, layout, maxY), 3));
       return g;
-    }, [config, layout]),
+    }, [config, layout, maxY]),
   );
   return (
     <lineSegments geometry={geometry} raycast={ignoreRaycast}>
@@ -143,7 +149,9 @@ const text = mn.common.building3d.interior;
 const LABEL_ICONS: Record<InteriorLabelKind, LucideIcon> = {
   meeting: Users,
   director: Briefcase,
+  workroom: Laptop,
   storage: Archive,
+  server: Server,
   restroom: Bath,
   kitchen: CookingPot,
   lift: ArrowUpDown,

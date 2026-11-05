@@ -79,7 +79,8 @@ export interface FloorInteriorLayout {
 }
 
 /** Өрөөний зориулалт (D87; бодит оффисын хэв маяг) — UI нэрийг `i18n/mn`-ээс */
-export type InteriorRoomKind = 'meeting' | 'director' | 'storage' | 'restroom' | 'kitchen';
+export type InteriorRoomKind =
+  'meeting' | 'director' | 'workroom' | 'storage' | 'server' | 'restroom' | 'kitchen';
 
 export interface InteriorRoom {
   kind: InteriorRoomKind;

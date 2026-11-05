@@ -119,7 +119,7 @@ describe('сонгосон давхрын шошго (D87)', () => {
     const labels = interiorLabels(buildingConfig, layout, 'F07');
     const kinds = labels.map((l) => l.kind);
     expect(kinds.filter((k) => k === 'meeting')).toHaveLength(2);
-    for (const kind of ['director', 'storage', 'restroom', 'kitchen', 'lift', 'stair'] as const) {
+    for (const kind of ['workroom', 'storage', 'restroom', 'kitchen', 'lift', 'stair'] as const) {
       expect(kinds.filter((k) => k === kind)).toHaveLength(1);
     }
     expect(kinds.filter((k) => k === 'exit')).toHaveLength(2);
@@ -152,5 +152,14 @@ describe('сонгосон давхрын шошго (D87)', () => {
   it('лобби (F01): өрөөний шошгогүй — лифт, шат, гарц, бүс л', () => {
     const kinds = interiorLabels(buildingConfig, layout, 'F01').map((l) => l.kind);
     expect(kinds.sort()).toEqual(['exit', 'exit', 'lift', 'office', 'office', 'stair']);
+  });
+});
+
+describe('хонгилын шугам сонгосон давхрын таазаар хязгаарлагдана (D88)', () => {
+  it('тааз хүртэлх давхрын шугам л; бүх орой тааз хүртэл', () => {
+    const maxY = 7 * floorHeight;
+    const lines = coreFaceLines(buildingConfig, layout, maxY);
+    expect(lines.length).toBe((2 + 7 * (2 * 4 + 2)) * 6);
+    for (let i = 1; i < lines.length; i += 3) expect(lines[i]!).toBeLessThanOrEqual(maxY + 1e-6);
   });
 });

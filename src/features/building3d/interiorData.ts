@@ -256,10 +256,15 @@ export function selectedInteriorGeometry(
  * хуваалт (бүтэн өндөр), давхар бүрт лифтний хаалганы хүрээ ба шатны зигзаг (хоёр хэсэгтэй). Хонгил тунгалаг бус тул
  * хуваалтыг нүүрэн дээр зурна.
  */
-export function coreFaceLines(config: BuildingConfig, layout: BuildingLayout): Float32Array {
+export function coreFaceLines(
+  config: BuildingConfig,
+  layout: BuildingLayout,
+  /** Сонгосон давхрын тааз (D88) — үүнээс дээш шугам зурахгүй; null бол бүтэн өндөр */
+  maxY: number | null = null,
+): Float32Array {
   const { core, coreLayout, floorHeight } = config.building;
   const faceZ = core.z + core.depth + FACE_OFFSET;
-  const top = layout.core.size[1];
+  const top = maxY === null ? layout.core.size[1] : Math.min(layout.core.size[1], maxY);
   const out: number[] = [];
   const parts = [...coreLayout.lifts, coreLayout.stair].sort((a, b) => a.x - b.x);
   for (let i = 1; i < parts.length; i += 1) {
@@ -269,6 +274,7 @@ export function coreFaceLines(config: BuildingConfig, layout: BuildingLayout): F
   const { stair } = coreLayout;
   const margin = 0.3;
   for (const floor of layout.floors) {
+    if (floor.elevation >= top) continue;
     const floorY = floor.elevation + SLAB_THICKNESS;
     const doorTop = floorY + DOOR_HEIGHT;
     for (const lift of coreLayout.lifts) {

@@ -34,6 +34,7 @@ import {
   streamlineStreakSpeed,
 } from './animationData';
 import { emergencyFloorRole } from './emergencyData';
+import { isAboveSelected } from './selection';
 import type { BuildingLayout } from './layout';
 import type { SceneColors } from './sceneColors';
 
@@ -233,7 +234,10 @@ export function Airflow({
     const fire = u.uFire!.value as number[];
     let moving = false;
     floors.forEach((floor, f) => {
-      const airflow = floorAirflow(devices, config, floor.floorId);
+      // Сонгосон давхрын дээрх давхрын урсгал нуугдана (D88)
+      const airflow = isAboveSelected(floor.floorId, selectedFloorId)
+        ? 0
+        : floorAirflow(devices, config, floor.floorId);
       counts[f] = streamlineCount(airflow);
       airflows[f] = airflow;
       emphasis[f] = floorEmphasis(floor.floorId, selectedFloorId);

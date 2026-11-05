@@ -11,7 +11,10 @@ import {
   CEILING_SLAB_OPACITY,
   CLICK_DRAG_TOLERANCE_PX,
   DIMMED_SLAB_OPACITY,
+  floorLevelOf,
   floorVisualState,
+  GHOST_SLAB_OPACITY,
+  isAboveSelected,
   handleSensorNodeClick,
   isCeilingOfSelected,
   slabOverlayOpacity,
@@ -36,6 +39,7 @@ describe('floorVisualState (§8.6)', () => {
     [null, null, 'idle'],
     [F01, null, 'selected'],
     [F02, null, 'dimmed'],
+    [F01, F02, 'selected'],
     [null, F01, 'hovered'],
     [F02, F01, 'hovered'],
     [F01, F01, 'selected'],
@@ -75,8 +79,12 @@ describe('slabOverlayOpacity — хавтангийн тунгалаг байд�
     const withF07 = overlays('F07');
     expect(withF07.filter((o) => o === null)).toHaveLength(1);
     expect(withF07[ids.indexOf('F07')]).toBeNull();
-    expect(withF07[ids.indexOf('F08')]).toBe(CEILING_SLAB_OPACITY);
-    expect(withF07.filter((o) => o === DIMMED_SLAB_OPACITY)).toHaveLength(ids.length - 2);
+    // D88: дээрх давхрууд (F08–F12, таазыг оруулаад) сүүдэр, доорх (F01–F06) бүдэг
+    const above = ids.filter((id) => id > 'F07');
+    for (const id of above) expect(withF07[ids.indexOf(id)]).toBe(GHOST_SLAB_OPACITY);
+    expect(withF07.filter((o) => o === DIMMED_SLAB_OPACITY)).toHaveLength(
+      ids.length - 1 - above.length,
+    );
   });
 });
 
@@ -158,7 +166,11 @@ describe('uiStore → 3D (давхрын жагсаалт ба бусад UI-и�
 
     act(() => useUiStore.getState().selectFloor(F01));
     expect(selected.result.current.visual).toBe('selected');
-    expect(other.result.current.visual).toBe('dimmed');
+    // F02 нь F01-ийн дээр — сүүдэр (D88)
+    expect(other.result.current.visual).toBe('ghost');
+    act(() => useUiStore.getState().selectFloor(F02));
+    expect(selected.result.current.visual).toBe('dimmed');
+    act(() => useUiStore.getState().selectFloor(F01));
 
     act(() => useUiStore.getState().selectFloor(null));
     expect(selected.result.current.visual).toBe('idle');
@@ -230,5 +242,25 @@ describe('мэдрэгчийн зангилаа → бүсийн сонголт 
     const floor = renderHook(() => useFloorInteraction(F02)).result.current;
     act(() => floor.onClick(click()));
     expect(useUiStore.getState()).toMatchObject({ selectedAreaId: 'F02-A', selectedFloorId: F02 });
+  });
+});
+
+describe('сонгосон давхрын дээрх давхар — сүүдэр (D88)', () => {
+  it('түвшинг ID-аас; зөвхөн дээрх давхар сүүдэр, hover-оос давуу', () => {
+    expect(floorLevelOf('F07')).toBe(7);
+    expect(floorLevelOf('F12')).toBe(12);
+    expect(isAboveSelected('F08', 'F07')).toBe(true);
+    expect(isAboveSelected('F07', 'F07')).toBe(false);
+    expect(isAboveSelected('F06', 'F07')).toBe(false);
+    expect(isAboveSelected('F08', null)).toBe(false);
+    expect(floorVisualState('F10', 'F07', 'F10')).toBe('ghost');
+    expect(floorVisualState('F05', 'F07', 'F05')).toBe('hovered');
+  });
+
+  it('сүүдрийн хавтан тааз ба бүдэг давхраас ч тунгалаг', () => {
+    expect(slabOverlayOpacity('ghost', false)).toBe(GHOST_SLAB_OPACITY);
+    expect(slabOverlayOpacity('ghost', true)).toBe(GHOST_SLAB_OPACITY);
+    expect(GHOST_SLAB_OPACITY).toBeLessThan(CEILING_SLAB_OPACITY);
+    expect(GHOST_SLAB_OPACITY).toBeGreaterThan(0);
   });
 });

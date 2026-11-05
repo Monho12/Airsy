@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { buildingConfig } from '@/domain/config/building';
 import type { Vec3 } from '@/domain/types';
 
-import { defaultCameraPose, floorFocusTarget, focusPose } from './cameraMath';
+import { defaultCameraPose, floorFocusPose } from './cameraMath';
 import { createBuildingLayout, type BuildingLayout } from './layout';
 import { createSensorNodes } from './sensorNodeData';
 
@@ -61,12 +61,19 @@ describe('D60: мэдрэгчийн тэмдэг анхдагч камераас
     expect(clear.length).toBeGreaterThanOrEqual(16);
   });
 
-  it('давхарт төвлөрөхөд тэр давхрын урд бүсийн (B) зангилааны төв саадгүй (D60-аас өмнө 0)', () => {
+  it('давхарт төвлөрөхөд (D88: дээрээс 40°, дээрх давхар сүүдэр) тэр давхрын хоёр бүсийн зангилаа саадгүй', () => {
     const start = defaultCameraPose(layout);
     for (const floor of layout.floors) {
-      const { position } = focusPose(start, floorFocusTarget(layout, floor.id)!);
-      const front = nodes.find((node) => node.floorId === floor.id && node.position.z > 0)!;
-      expect(visibleFrom(position, front.position), floor.id).toBe(true);
+      const { position } = floorFocusPose(start, layout, floor.id)!;
+      // Сүүдэр давхар (сонгосон давхрын дээрх хавтан, дээвэр, хонгилын дээд хэсэг) халхлахгүй — тунгалаг (D88)
+      const ceiling = floor.elevation + layout.height / layout.floors.length;
+      const solid = boxes
+        .map((box) => ({ ...box, max: { ...box.max, y: Math.min(box.max.y, ceiling) } }))
+        .filter((box) => box.min.y < ceiling - 1e-6);
+      for (const node of nodes.filter((n) => n.floorId === floor.id)) {
+        const clear = !solid.some((box) => segmentHitsBox(position, node.position, box));
+        expect(clear, `${floor.id} ${node.areaId}`).toBe(true);
+      }
     }
   });
 });

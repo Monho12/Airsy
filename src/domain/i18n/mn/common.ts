@@ -48,7 +48,9 @@ export const common = {
       meeting: (number: number | null) =>
         number === null ? 'Хурлын өрөө' : `Хурлын өрөө ${number}`,
       director: 'Захирлын өрөө',
-      storage: 'Агуулах / сервер',
+      workroom: 'Ажлын өрөө',
+      storage: 'Агуулах',
+      server: 'Сервер өрөө',
       restroom: 'Ариун цэврийн өрөө',
       kitchen: 'Гал тогоо',
       lift: 'Лифт',
