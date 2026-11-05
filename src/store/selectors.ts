@@ -3,7 +3,11 @@
 import { aggregateFloorMetric, isValidMeasurement, summarizeHealth } from '@/domain/classification';
 import type { HealthSummary } from '@/domain/classification';
 import { buildingConfig, METRICS, type BuildingConfig } from '@/domain/config/building';
-import { outdoorAirThresholds } from '@/domain/config/thresholds';
+import { indoorThresholds, outdoorAirThresholds } from '@/domain/config/thresholds';
+import { floorLabelMn } from '@/domain/i18n/mn';
+import { scenarioDefinitions, scenarioOrder } from '@/domain/scenarios/definitions';
+
+import type { AlertFilter, EventFilter } from './uiStore';
 import type {
   Alert,
   Area,
@@ -14,7 +18,10 @@ import type {
   LiveSnapshot,
   MetricType,
   OutdoorConditions,
+  ScenarioId,
   SensorReading,
+  ThresholdConditionId,
+  TrendPoint,
   SimTimeMs,
   SystemEvent,
   VentilationDevice,
@@ -232,4 +239,232 @@ export function selectRecentEvents(
 ): SystemEvent[] {
   if (limit <= 0) return []; // `slice(-0)` нь бүх массивыг буцаадаг тул тусад нь
   return snapshot.events.slice(-limit).reverse();
+}
+
+// ---------- Сценарийн самбар ба яаралтай мөр (§7.1, §7.4, §6.9, Phase 6b) ----------
+
+export interface ScenarioItem {
+  id: ScenarioId;
+  name: string;
+  description: string;
+  /** Эхлүүлэхээс өмнө анхааруулгын баталгаажуулалт заавал (S6, §6.9) */
+  requiresConfirmation: boolean;
+  /** `true` — одоогийн төлөвөөс эхэлнэ (зөвхөн Сэргэлт, §7.1) */
+  startsFromCurrent: boolean;
+  /** Одоо эхлүүлэх боломжгүй бол `true` (Сэргэлт яаралтай байдлын үед, §7.2 S8) */
+  blockedByEmergency: boolean;
+}
+
+export interface ActiveScenarioView {
+  id: ScenarioId;
+  name: string;
+  /** 0–100, бүхэл хувь */
+  percent: number;
+}
+
+export interface EmergencyView {
+  fireFloorId: FloorId;
+  fireFloorLabel: string;
+}
+
+export interface ScenarioPanelData {
+  items: ScenarioItem[];
+  active: ActiveScenarioView | null;
+  emergency: EmergencyView | null;
+}
+
+/** Яаралтай байдал (`ControlState.emergency`) — идэвхгүй бол `null` */
+export function selectEmergency(
+  snapshot: LiveSnapshot,
+  config: BuildingConfig = buildingConfig,
+): EmergencyView | null {
+  const emergency = snapshot.control.emergency;
+  if (emergency === null) return null;
+  const level = config.floors[emergency.fireFloorId]?.level;
+  return {
+    fireFloorId: emergency.fireFloorId,
+    fireFloorLabel: level === undefined ? emergency.fireFloorId : floorLabelMn(level),
+  };
+}
+
+/** Сценарийн самбарын өгөгдөл: §7.2-ын дарааллаар 8 сценари, идэвхтэй сценарийн явц, яаралтай байдал. */
+export function selectScenarioPanel(
+  snapshot: LiveSnapshot,
+  config: BuildingConfig = buildingConfig,
+): ScenarioPanelData {
+  const emergency = selectEmergency(snapshot, config);
+  const items = scenarioOrder.map((id): ScenarioItem => {
+    const scenario = scenarioDefinitions[id];
+    return {
+      id,
+      name: scenario.name,
+      description: scenario.description,
+      requiresConfirmation: scenario.requiresConfirmation,
+      startsFromCurrent: scenario.startsFrom === 'current',
+      blockedByEmergency: scenario.startsFrom === 'current' && emergency !== null,
+    };
+  });
+  const running = snapshot.simulation.activeScenario;
+  const active =
+    running === null
+      ? null
+      : {
+          id: running.id,
+          name: scenarioDefinitions[running.id].name,
+          percent: Math.round(Math.min(1, Math.max(0, running.progress)) * 100),
+        };
+  return { items, active, emergency };
+}
+
+// ---------- Хандлагын график (FR-T1, §5.6 «Графикт max-ийг зурна», Phase 6c) ----------
+
+/** Нэг босгын шугам: тал, түвшин, орох утга (§5.5) */
+export interface TrendThreshold {
+  condition: ThresholdConditionId;
+  side: 'high' | 'low';
+  level: 'warning' | 'critical';
+  value: number;
+}
+
+/** Босгын зурвас (чимэглэлийн дэвсгэр): `from` < `to`, y тэнхлэгийн мужаар хайчилсан */
+export interface TrendBand {
+  level: 'warning' | 'critical';
+  from: number;
+  to: number;
+}
+
+export interface TrendChartData {
+  points: readonly TrendPoint[];
+  thresholds: TrendThreshold[];
+  bands: TrendBand[];
+  /** y тэнхлэгийн муж; зөв утга нэг ч байхгүй бол `null` */
+  domain: [number, number] | null;
+  latest: number | null;
+  min: number | null;
+  max: number | null;
+}
+
+/** Хоосон түүхийн тогтвортой лавлагаа (selector бүр шинэ массив буцаахгүй) */
+const EMPTY_POINTS: readonly TrendPoint[] = [];
+
+/** Давхар × хэмжигдэхүүний хандлагын цуваа (snapshot-ийн лавлагаа — structural sharing, §11.2) */
+export function selectTrendPoints(
+  snapshot: LiveSnapshot,
+  floorId: FloorId,
+  metric: MetricType,
+): readonly TrendPoint[] {
+  return snapshot.history[floorId]?.[metric] ?? EMPTY_POINTS;
+}
+
+/** Тухайн хэмжигдэхүүний босгын шугамууд (§5.5; дотоод босго) */
+export function trendThresholds(metric: MetricType): TrendThreshold[] {
+  const result: TrendThreshold[] = [];
+  for (const [condition, definition] of Object.entries(indoorThresholds) as [
+    ThresholdConditionId,
+    (typeof indoorThresholds)[ThresholdConditionId],
+  ][]) {
+    if (definition.metric !== metric) continue;
+    result.push(
+      { condition, side: definition.side, level: 'warning', value: definition.warningEnter },
+      { condition, side: definition.side, level: 'critical', value: definition.criticalEnter },
+    );
+  }
+  return result;
+}
+
+/**
+ * Хандлагын графикийн өгөгдөл. y тэнхлэгийн муж нь утгыг бүхэлд нь багтааж, хамгийн ойрын анхааруулгын босгыг үргэлж
+ * харуулна; утга анхааруулгын босгыг давсан бол ноцтой босгыг ч багтаана (босго хүртэлх зай харагдана). `null` цэг
+ * (зөв хэмжилтгүй) нь тасархай болж үлдэнэ — хэзээ ч тэг биш (FR-M5).
+ */
+export function selectTrendChart(
+  points: readonly TrendPoint[],
+  metric: MetricType,
+): TrendChartData {
+  const values = points.flatMap((point) => (point.value === null ? [] : [point.value]));
+  const thresholds = trendThresholds(metric);
+  if (values.length === 0) {
+    return { points, thresholds, bands: [], domain: null, latest: null, min: null, max: null };
+  }
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const last = points[points.length - 1];
+  const latest = last?.value ?? null;
+
+  let low = min;
+  let high = max;
+  for (const side of ['high', 'low'] as const) {
+    const warning = thresholds.find((t) => t.side === side && t.level === 'warning');
+    const critical = thresholds.find((t) => t.side === side && t.level === 'critical');
+    if (warning === undefined || critical === undefined) continue;
+    if (side === 'high') {
+      high = Math.max(high, max >= warning.value ? critical.value : warning.value);
+    } else {
+      low = Math.min(low, min <= warning.value ? critical.value : warning.value);
+    }
+  }
+  // Ирмэгт 8%-ийн зай; муж тэг өргөнтэй бол нэгж зай
+  const pad = high > low ? (high - low) * 0.08 : 1;
+  const domain: [number, number] = [low - pad, high + pad];
+
+  const bands: TrendBand[] = [];
+  const clip = (level: TrendBand['level'], from: number, to: number) => {
+    const a = Math.max(from, domain[0]);
+    const b = Math.min(to, domain[1]);
+    if (b > a) bands.push({ level, from: a, to: b });
+  };
+  for (const side of ['high', 'low'] as const) {
+    const warning = thresholds.find((t) => t.side === side && t.level === 'warning');
+    const critical = thresholds.find((t) => t.side === side && t.level === 'critical');
+    if (warning === undefined || critical === undefined) continue;
+    if (side === 'high') {
+      clip('warning', warning.value, critical.value);
+      clip('critical', critical.value, domain[1]);
+    } else {
+      clip('warning', critical.value, warning.value);
+      clip('critical', domain[0], critical.value);
+    }
+  }
+  return { points, thresholds, bands, domain, latest, min, max };
+}
+
+// ---------- Дохио ба үйл явдлын шүүлт (FR-A2, FR-A3, Phase 6d, D83) ----------
+
+/** Шүүлттэй дохионы жагсаалт. Шийдэгдсэн нь `recentResolved`-ээс, шинэ нь эхэнд; бусад нь идэвхтэйн эрэмбээр. */
+export function selectFilteredAlerts(snapshot: LiveSnapshot, filter: AlertFilter): Alert[] {
+  const source =
+    filter.status === 'resolved'
+      ? [...snapshot.alerts.recentResolved].sort(
+          (a, b) => (b.resolvedAt ?? 0) - (a.resolvedAt ?? 0) || a.id.localeCompare(b.id),
+        )
+      : selectActiveAlerts(snapshot).filter(
+          (alert) => filter.status === 'open' || alert.status === filter.status,
+        );
+  return source.filter(
+    (alert) =>
+      (filter.severity === 'all' || alert.severity === filter.severity) &&
+      (filter.floor === 'all' ||
+        (filter.floor === 'building'
+          ? alert.scope.floorId === undefined
+          : alert.scope.floorId === filter.floor)) &&
+      (filter.metric === 'all' || alert.scope.metric === filter.metric),
+  );
+}
+
+/** Дохионы тоо: ажиллаж буй (идэвхтэй + хүлээн авсан) ба шийдэгдсэн — шүүлтийн шошгонд */
+export function selectAlertCounts(snapshot: LiveSnapshot): { open: number; resolved: number } {
+  return { open: snapshot.alerts.active.length, resolved: snapshot.alerts.recentResolved.length };
+}
+
+/** Шүүлттэй бүрэн үйл явдлын түүх — шинэ нь эхэнд (ring buffer-ийн бүх үйл явдал, §11.4) */
+export function selectFilteredEvents(snapshot: LiveSnapshot, filter: EventFilter): SystemEvent[] {
+  const result: SystemEvent[] = [];
+  for (let i = snapshot.events.length - 1; i >= 0; i -= 1) {
+    const event = snapshot.events[i]!;
+    if (filter.category !== 'all' && event.category !== filter.category) continue;
+    if (filter.severity !== 'all' && event.severity !== filter.severity) continue;
+    if (filter.floor !== 'all' && event.floorId !== filter.floor) continue;
+    result.push(event);
+  }
+  return result;
 }

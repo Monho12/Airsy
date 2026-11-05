@@ -1,4 +1,4 @@
-// Төхөөрөмжийн төлөвийн БҮХ өөрчлөлтийн цорын ганц зам (CLAUDE.md §6.2): автомат, гар, яаралтай.
+// Төхөөрөмжийн төлөвийн БҮХ өөрчлөлтийн цорын ганц зам (CLAUDE.md §6.2): автомат, гар, яаралтай, сценарийн шинэчлэл.
 // Шинэ төхөөрөмжийн объект ба яг нэг үйл явдлыг хамт буцаана — юу ч чимээгүй өөрчлөгдөхгүй.
 import type { SystemEventDraft } from '@/domain/events/eventLog';
 import { mn } from '@/domain/i18n/mn';
@@ -16,7 +16,9 @@ import { stateLabel } from './levels';
 export type DeviceCommandSource =
   | { kind: 'auto'; ruleId: RuleId; reason: string; trigger?: string }
   | { kind: 'emergency'; reason: string }
-  | { kind: 'manual'; override: ManualOverride };
+  | { kind: 'manual'; override: ManualOverride }
+  /** Зөөлөн шинэчлэл (§7.4 C-4): хамгаалалтыг тойрч суурь руу; `lastRuleId: null`, actor `scenario` */
+  | { kind: 'reset'; reason: string };
 
 export interface DeviceCommandResult {
   device: VentilationDevice;
@@ -60,6 +62,33 @@ export function applyDeviceCommand(
         newState: state,
         reason,
         actor: 'operator',
+      },
+    };
+  }
+
+  if (source.kind === 'reset') {
+    return {
+      device: {
+        ...device,
+        state,
+        mode: 'auto',
+        manualOverride: null,
+        lastChangedAt: now,
+        lastChangeReason: source.reason,
+        lastRuleId: null,
+      },
+      event: {
+        timestamp: now,
+        type: 'DEVICE_STATE_CHANGED',
+        category: 'scenario',
+        severity: 'info',
+        message: mn.events.deviceStateChanged(device.name, from, to, source.reason),
+        floorId: device.floorId,
+        deviceId: device.id,
+        previousState: device.state,
+        newState: state,
+        reason: source.reason,
+        actor: 'scenario',
       },
     };
   }

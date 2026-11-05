@@ -43,6 +43,25 @@ export const common = {
     retry: 'Дахин оролдох',
     /** «Reset view» (§8.9-ийн нэр томьёо, FR-B3) */
     resetView: 'Харагдацыг сэргээх',
+    /** Сонгосон давхрын дотоод бүтцийн шошго (D87) */
+    interior: {
+      meeting: (number: number | null) =>
+        number === null ? 'Хурлын өрөө' : `Хурлын өрөө ${number}`,
+      director: 'Захирлын өрөө',
+      workroom: 'Ажлын өрөө',
+      storage: 'Агуулах',
+      server: 'Сервер өрөө',
+      restroom: 'Ариун цэврийн өрөө',
+      kitchen: 'Гал тогоо',
+      lift: 'Лифт',
+      stair: 'Шат',
+      /**
+       * Гарцын тэмдэг англиар — олон улсын «EXIT» тэмдэгтэй ижил (хөгжүүлэгчийн шийдвэр, D87; §8.9-ийн зориуд
+       * хийсэн үл хамаарал). Дэлгэц уншигчид Монголоор (`exitLabel`).
+       */
+      exit: 'EXIT',
+      exitLabel: 'Яаралтай гарц',
+    },
   },
   /** Гадна мэдрэгчийн байршил (§5.3) — үйл явдал ба дохионы бичвэрт */
   outdoorStation: 'Гадна цаг агаарын станц',
@@ -56,10 +75,25 @@ export const common = {
     live: 'ШУУД',
     paused: 'ТҮР ЗОГССОН',
   },
+  /** Хандлагын график (FR-T1, §8.2, Phase 6c, D82) */
+  trends: {
+    metricLabel: 'Хэмжигдэхүүн',
+    noFloor: 'Хандлагыг харахын тулд давхар сонгоно уу.',
+    noData: 'Энэ хэмжигдэхүүнд зөв хэмжилт алга — өгөгдөлгүй.',
+    chartLabel: (floorLabel: string, metricLabel: string) =>
+      `${floorLabel}: ${metricLabel} — хандлагын график (давхрын хамгийн их утга)`,
+    seriesNote: 'Давхрын хамгийн их утга, сүүлийн 5 минут (симуляцийн цаг)',
+    latest: 'Сүүлийн',
+    max: 'Хамгийн их',
+    min: 'Хамгийн бага',
+    noValue: 'Өгөгдөлгүй',
+    thresholdsLabel: 'Босго',
+    threshold: (side: 'high' | 'low', levelLabel: string, value: string) =>
+      `${levelLabel} ${side === 'high' ? '≥' : '≤'} ${value}`,
+  },
   /** Runtime-ийн командын татгалзлын шалтгаан (§9.4, §9.4.1, D71) */
   runtime: {
     notRunning: 'Симуляци ажиллахгүй байна — командыг гүйцэтгэх боломжгүй.',
-    notAvailableYet: 'Энэ үйлдэл одоогоор боломжгүй — дараагийн шатанд нэмэгдэнэ.',
     invalidSpeed: 'Дэмжигдээгүй хурд.',
     unknownSensor: (sensorId: string) => `Мэдрэгч олдсонгүй: ${sensorId}.`,
   },

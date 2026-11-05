@@ -8,12 +8,17 @@ import {
   RECENT_EVENT_LIMIT,
   selectActiveAlerts,
   selectAreaSummary,
+  selectEmergency,
   selectFloorDevices,
   selectFloorList,
   selectFloorSummary,
   selectOutdoorConditions,
   selectRecentEvents,
+  selectScenarioPanel,
   selectStatusBar,
+  selectTrendChart,
+  selectTrendPoints,
+  trendThresholds,
 } from './selectors';
 
 const snapshot = createMockSnapshot();
@@ -247,5 +252,121 @@ describe('selectRecentEvents (§11.4)', () => {
     expect(result).toHaveLength(RECENT_EVENT_LIMIT);
     expect(result[0]!.seq).toBe(120);
     expect(selectRecentEvents(snapshot, 0)).toEqual([]);
+  });
+});
+
+describe('selectScenarioPanel / selectEmergency (§7.1, §6.9, Phase 6b)', () => {
+  it('8 сценари §7.2-ын дарааллаар; идэвхтэй сценари ба яаралтай байдалгүй', () => {
+    const data = selectScenarioPanel(snapshot);
+    expect(data.items.map((item) => item.id)).toEqual([
+      'normal-operation',
+      'elevated-temperature',
+      'high-co2',
+      'voc-cleaning',
+      'poor-outdoor-air',
+      'fire-emergency',
+      'sensor-disconnection',
+      'recovery',
+    ]);
+    expect(data.items.find((item) => item.id === 'fire-emergency')?.requiresConfirmation).toBe(
+      true,
+    );
+    expect(data.items.filter((item) => item.startsFromCurrent).map((item) => item.id)).toEqual([
+      'recovery',
+    ]);
+    expect(data.items.some((item) => item.blockedByEmergency)).toBe(false);
+    expect(data.active).toBeNull();
+    expect(data.emergency).toBeNull();
+    expect(selectEmergency(snapshot)).toBeNull();
+  });
+
+  it('явцыг 0–100 бүхэл хувь болгоно', () => {
+    const active: LiveSnapshot = {
+      ...snapshot,
+      simulation: {
+        ...snapshot.simulation,
+        activeScenario: { id: 'high-co2', startedAt: snapshot.simTime, progress: 0.426 },
+      },
+    };
+    expect(selectScenarioPanel(active).active).toMatchObject({ id: 'high-co2', percent: 43 });
+  });
+
+  it('яаралтай байдлын үед галын давхрын нэр, Сэргэлт идэвхгүй', () => {
+    const emergency: LiveSnapshot = {
+      ...snapshot,
+      control: {
+        ...snapshot.control,
+        emergency: { fireFloorId: 'F08', startedAt: snapshot.simTime },
+      },
+    };
+    expect(selectEmergency(emergency)).toEqual({
+      fireFloorId: 'F08',
+      fireFloorLabel: '8-р давхар',
+    });
+    const data = selectScenarioPanel(emergency);
+    expect(data.items.filter((item) => item.blockedByEmergency).map((item) => item.id)).toEqual([
+      'recovery',
+    ]);
+  });
+});
+
+describe('Хандлагын график (FR-T1, §5.6, Phase 6c)', () => {
+  const series = (values: (number | null)[]) =>
+    values.map((value, i) => ({ t: snapshot.simTime + i * 1000, value }));
+
+  it('selectTrendPoints: snapshot-ийн цувааны лавлагаа; байхгүй давхарт тогтвортой хоосон массив', () => {
+    expect(selectTrendPoints(snapshot, 'F07', 'co2')).toBe(snapshot.history.F07!.co2);
+    expect(selectTrendPoints(snapshot, 'F99', 'co2')).toBe(
+      selectTrendPoints(snapshot, 'F98', 'voc'),
+    );
+  });
+
+  it('босго тохиргооноос: CO₂ нэг талт, температур хоёр талт', () => {
+    expect(trendThresholds('co2')).toEqual([
+      { condition: 'co2', side: 'high', level: 'warning', value: 1000 },
+      { condition: 'co2', side: 'high', level: 'critical', value: 1500 },
+    ]);
+    expect(trendThresholds('temperature').map((t) => `${t.side}:${t.level}:${t.value}`)).toEqual([
+      'high:warning:26',
+      'high:critical:29',
+      'low:warning:19',
+      'low:critical:16',
+    ]);
+  });
+
+  it('зөв утга байхгүй бол муж, хураангуй null (тэг биш)', () => {
+    const data = selectTrendChart(series([null, null]), 'co2');
+    expect(data).toMatchObject({ domain: null, latest: null, min: null, max: null, bands: [] });
+  });
+
+  it('хэвийн CO₂: муж анхааруулгын босгыг багтаана, ноцтойг багтаахгүй', () => {
+    const data = selectTrendChart(series([640, null, 700, 660]), 'co2');
+    expect(data).toMatchObject({ latest: 660, min: 640, max: 700 });
+    const [low, high] = data.domain!;
+    expect(low).toBeLessThan(640);
+    expect(high).toBeGreaterThan(1000);
+    expect(high).toBeLessThan(1500);
+    expect(data.bands.map((b) => b.level)).toEqual(['warning']);
+    expect(data.bands[0]!.from).toBe(1000);
+  });
+
+  it('анхааруулга давсан CO₂: ноцтой босго ба зурвас багтана', () => {
+    const data = selectTrendChart(series([900, 1100]), 'co2');
+    expect(data.domain![1]).toBeGreaterThan(1500);
+    expect(data.bands).toEqual([
+      { level: 'warning', from: 1000, to: 1500 },
+      { level: 'critical', from: 1500, to: data.domain![1] },
+    ]);
+  });
+
+  it('сүүлийн цэг null бол latest null (сүүлийн зөв утгыг «одоогийн» гэж харуулахгүй)', () => {
+    expect(selectTrendChart(series([700, null]), 'co2').latest).toBeNull();
+  });
+
+  it('температур: хоёр талын анхааруулгын босго мужид орно', () => {
+    const data = selectTrendChart(series([22.4, 22.6]), 'temperature');
+    expect(data.domain![0]).toBeLessThan(19);
+    expect(data.domain![1]).toBeGreaterThan(26);
+    expect(data.bands.map((b) => b.level).sort()).toEqual(['warning', 'warning']);
   });
 });

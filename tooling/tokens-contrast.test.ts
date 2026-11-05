@@ -89,6 +89,8 @@ const matrix: { fg: string; min: number; cells: Cell[] }[] = [
   { fg: 'accent-strong', min: UI, cells: [13.23, 12.38, 11.39, 10.17, null, null] },
   { fg: 'status-critical-fill', min: UI, cells: [5.1, 4.77, 4.39, 3.92, null, null] },
   { fg: 'emergency', min: UI, cells: [3.97, 3.72, 3.42, 3.05, null, null] },
+  // Яаралтай гарцын неон ногоон (D87): 3D-ийн гарцын хүрээ, сум (UI элемент)
+  { fg: 'exit', min: UI, cells: [14.15, 13.24, 12.18, 10.87, null, null] },
 ];
 
 /** Дүүргэлт дээрх бичвэр (§8.3 матрицын доорх мөр). */
@@ -100,11 +102,31 @@ const onFill: { fg: string; bg: string; expected: Cell }[] = [
   { fg: 'on-fill', bg: 'status-critical-fill', expected: 5.1 },
   { fg: 'on-fill', bg: 'status-offline', expected: 4.89 },
   { fg: 'on-emergency', bg: 'emergency', expected: 4.83 },
+  // «EXIT» гарцын шошго: неон ногоон дүүргэлт дээр бараан бичвэр (D87)
+  { fg: 'on-fill', bg: 'exit', expected: 14.15 },
   { fg: 'white', bg: 'status-critical-fill', expected: { forbidden: 3.76 } },
   // §8.3-ын токены хүснэгт: яаралтай мөрөн дээр text-primary ба text-secondary хэрэглэхгүй
   { fg: 'text-primary', bg: 'emergency', expected: { forbidden: 4.38 } },
   { fg: 'text-secondary', bg: 'emergency', expected: { forbidden: 2.21 } },
 ];
+
+/** Утга илэрхийлэх UI элемент (3:1) — матрицад шинээр нэмсэн хослол (Phase 6b, §8.3). */
+const uiPairs: { fg: string; bg: string; expected: number }[] = [
+  // Яаралтай мөрөн дээрх товчны focus-ийн хүрээ
+  { fg: 'focus-ring', bg: 'emergency', expected: 3.33 },
+  // Хандлагын график (D82): өгөгдлийн шугам ба босгын шугам нь 12%-ийн босгын зурвас (surface-1 дээр) дээр
+  { fg: 'accent', bg: 'warning-band@s1', expected: 7.8 },
+  { fg: 'accent', bg: 'critical-band@s1', expected: 8.43 },
+  { fg: 'status-warning', bg: 'warning-band@s1', expected: 8.44 },
+  { fg: 'status-critical', bg: 'critical-band@s1', expected: 5.51 },
+];
+
+/** Графикийн босгын зурвасын тунгалаг байдал (TrendChart.css-тэй ижил, D82) */
+const CHART_BAND_ALPHA = 0.12;
+const blendedBackgrounds: Record<string, () => Rgb> = {
+  'warning-band@s1': () => blend(color('status-warning'), color('surface-1'), CHART_BAND_ALPHA),
+  'critical-band@s1': () => blend(color('status-critical'), color('surface-1'), CHART_BAND_ALPHA),
+};
 
 const WHITE: Rgb = [255, 255, 255];
 /** Баримт 2 оронтой тоогоор (дугуйлж) бичигдсэн тул тооцоолсон утга баримтын утгаас ±0.005 дотор байх ёстой. */
@@ -150,4 +172,15 @@ describe('§8.3 зөвхөн чимэглэлийн хүрээ', () => {
       }
     }
   });
+});
+
+describe('§8.3 UI элементийн нэмэлт хослол (3:1)', () => {
+  for (const pair of uiPairs) {
+    it(`${pair.fg} / ${pair.bg}: ${pair.expected}`, () => {
+      const bg = blendedBackgrounds[pair.bg]?.() ?? color(pair.bg);
+      const ratio = contrast(color(pair.fg), bg);
+      expect(Math.abs(ratio - pair.expected)).toBeLessThan(TOLERANCE);
+      expect(ratio).toBeGreaterThanOrEqual(UI);
+    });
+  }
 });

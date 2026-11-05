@@ -26,7 +26,7 @@ import {
   sensorNodeStatuses,
   type SensorNodeLayout,
 } from './sensorNodeData';
-import { handleSensorNodeClick } from './selection';
+import { handleSensorNodeClick, isAboveSelected } from './selection';
 
 /** Зангилааны радиус, м (дүрслэлийн хэмжээ) */
 const NODE_RADIUS = 0.8;
@@ -153,25 +153,28 @@ export function SensorNodes({
     [snapshot, nodes, config],
   );
   const selectedAreaId = useUiStore((state) => state.selectedAreaId);
+  const selectedFloorId = useUiStore((state) => state.selectedFloorId);
   const selectArea = useUiStore((state) => state.selectArea);
   // Hover нь зөвхөн шошгыг харуулах түр зуурын дүрслэл — сонголт биш, uiStore-д хадгалахгүй
   const [hoveredAreaId, setHoveredAreaId] = useState<AreaId | null>(null);
   const meshRef = useRef<InstancedMesh>(null);
   const invalidate = useThree((state) => state.invalidate);
 
-  // Байрлал (тохиргоо өөрчлөгдөхөд л)
+  // Байрлал (тохиргоо эсвэл сонголт өөрчлөгдөхөд). Сонгосон давхрын дээрх зангилаа нуугдана (D88) — масштаб 0
+  // тул raycast-д ч оролцохгүй (дээрээс доорх давхрын зангилааг дарахад саад болохгүй)
   useLayoutEffect(() => {
     const mesh = meshRef.current;
     if (mesh === null) return;
     nodes.forEach((node, index) => {
       scratchObject.position.set(node.position.x, node.position.y, node.position.z);
+      scratchObject.scale.setScalar(isAboveSelected(node.floorId, selectedFloorId) ? 0 : 1);
       scratchObject.updateMatrix();
       mesh.setMatrixAt(index, scratchObject.matrix);
     });
     mesh.instanceMatrix.needsUpdate = true;
     mesh.computeBoundingSphere(); // raycast зөв instance-ийг олно
     invalidate();
-  }, [nodes, invalidate]);
+  }, [nodes, selectedFloorId, invalidate]);
 
   // Төлөвийн өнгө (snapshot өөрчлөгдөхөд)
   useLayoutEffect(() => {
@@ -210,7 +213,7 @@ export function SensorNodes({
       </instancedMesh>
 
       {nodes.map((node, index) =>
-        statuses[index]?.dataIssue ? (
+        statuses[index]?.dataIssue && !isAboveSelected(node.floorId, selectedFloorId) ? (
           <mesh
             key={`issue-${node.areaId}`}
             position={[node.position.x, node.position.y, node.position.z]}

@@ -24,8 +24,11 @@ beforeEach(() => {
 });
 
 const region = (name: string) => screen.getByRole('region', { name });
+// Давхрын жагсаалт (`listbox`) дотроос — шүүлтийн `<select>`-үүд ч давхрын нэртэй option-той (D83)
 const floorOption = (level: number) =>
-  screen.getByRole('option', { name: new RegExp(`^${floorLabelMn(level)}`) });
+  within(screen.getByRole('listbox')).getByRole('option', {
+    name: new RegExp(`^${floorLabelMn(level)}`),
+  });
 
 function renderWith(snapshot: LiveSnapshot = createMockSnapshot()) {
   applySnapshot(snapshot);
@@ -101,7 +104,8 @@ describe('Dashboard — жишээ snapshot-оор', () => {
 
   it('давхрын жагсаалт тохиргооны бүх давхрыг дээрээс доош харуулна', () => {
     renderWith();
-    const options = screen.getAllByRole('option');
+    // Зөвхөн давхрын жагсаалтын сонголтууд (хандлагын графикийн <select> ч option-той)
+    const options = within(screen.getByRole('listbox')).getAllByRole('option');
     expect(options).toHaveLength(buildingConfig.building.floorIds.length);
     expect(options[0]).toHaveTextContent(floorLabelMn(buildingConfig.building.floorIds.length));
     expect(options.at(-1)).toHaveTextContent(floorLabelMn(1));

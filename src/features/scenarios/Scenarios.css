@@ -1,0 +1,202 @@
+/*
+ * Сценарийн самбар ба яаралтай мөр (CLAUDE.md §7.1, §6.9, §8.3, §8.7). Өнгө, зай нь tokens.css-ээс.
+ * Ашигласан хослол бүгд §8.3-ын матрицад: бичвэр text-primary/secondary/muted (surface-1), явцын дүүргэлт accent
+ * (surface-3 дээр 8.16:1), яаралтай мөр — on-emergency / emergency (4.83:1), focus-ring / emergency (3.33:1, тест).
+ */
+
+/* Гарчгийн мөр (D85): явц зүүн талд уян, товчнууд баруун талд; нарийн өргөнд доошоо ороно */
+.scenario-panel__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.scenario-panel__idle {
+  flex: 1 1 200px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-13);
+}
+
+.scenario-panel__active {
+  display: flex;
+  flex: 1 1 260px;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.scenario-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.scenario-panel__active-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--font-size-14);
+  font-weight: var(--font-weight-semibold);
+}
+
+.scenario-panel__percent {
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.scenario-panel__progress {
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-3);
+}
+
+.scenario-panel__progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+  transition: width var(--motion-base) var(--ease-standard);
+}
+
+/* Картын тор (D85): desktop 4, таблет 2–3, утас 1 багана — нэг дүрмээр */
+.scenario-panel__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Карт: surface-1 дээр хүрээтэй (бичвэрийн хослол §8.3-ын матрицад) */
+.scenario-panel__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+/* Идэвхтэй карт: accent хүрээ + accent-subtle дэвсгэр (accent-subtle@s1 — матрицад: muted 4.58, secondary 6.49) */
+.scenario-panel__item--active {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+.scenario-panel__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.scenario-panel__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-14);
+  font-weight: var(--font-weight-medium);
+  overflow-wrap: anywhere;
+}
+
+.scenario-panel__active-tag {
+  padding: 0 var(--space-1);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  color: var(--color-accent);
+  font-size: var(--font-size-11);
+  letter-spacing: var(--letter-spacing-label);
+}
+
+/* 2 мөрөөр таслана; бүтэн бичвэр title-д */
+.scenario-panel__description {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-13);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.scenario-panel__note {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-12);
+}
+
+/* Товч картын доод талд — картууд ижил өндөртэй үед товчнууд нэг шугамд */
+.scenario-panel__item > .ui-button {
+  align-self: flex-start;
+  margin-top: auto;
+}
+
+.scenario-panel__error {
+  color: var(--color-status-critical);
+  font-size: var(--font-size-13);
+}
+
+.scenario-panel__disclaimer {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ---------- Яаралтай мөр ---------- */
+.emergency-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-emergency);
+  color: var(--color-on-emergency);
+}
+
+.emergency-bar__icon {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.emergency-bar__text {
+  display: flex;
+  flex: 1 1 280px;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.emergency-bar__title {
+  font-size: var(--font-size-14);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.emergency-bar__floor,
+.emergency-bar__disclaimer,
+.emergency-bar__note,
+.emergency-bar__error {
+  font-size: var(--font-size-13);
+}
+
+.emergency-bar__error {
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Яаралтай мөрөн дээрх товч: зөвхөн on-emergency (§8.3) */
+.ui-button.emergency-bar__end {
+  border-color: var(--color-on-emergency);
+  color: var(--color-on-emergency);
+  font-weight: var(--font-weight-semibold);
+}
+
+.ui-button.emergency-bar__end:hover {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--color-on-emergency);
+}

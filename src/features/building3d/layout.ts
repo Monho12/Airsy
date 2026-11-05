@@ -54,6 +54,8 @@ export interface BuildingLayout {
   roofSlab: { center: Vec3; size: [number, number, number] };
   /** Лифт/шатны хонгил — `Building.core`-оос, газраас дээврийн хавтангийн дээд тал хүртэл (D59; shafts биш) */
   core: { center: Vec3; size: [width: number, height: number, depth: number] };
+  /** Эвакуацийн шатны хонгил — `Building.evacuationStairs`-ээс, хонгилтой ижил өндөр (D87) */
+  evacuationStairs: { center: Vec3; size: [width: number, height: number, depth: number] }[];
   facade: FacadePanel[];
   /** Дээврийн тоног төхөөрөмж (§5.1, §8.6) — зөвхөн дүрслэл, тусад нь удирдахгүй (§5.7) */
   roofEquipment: RoofEquipmentLayout;
@@ -188,6 +190,10 @@ export function createBuildingLayout(config: BuildingConfig): BuildingLayout {
       center: { x: core.x + core.width / 2, y: coreHeight / 2, z: core.z + core.depth / 2 },
       size: [core.width, coreHeight, core.depth],
     },
+    evacuationStairs: building.evacuationStairs.map((stair) => ({
+      center: { x: stair.x + stair.width / 2, y: coreHeight / 2, z: stair.z + stair.depth / 2 },
+      size: [stair.width, coreHeight, stair.depth] as [number, number, number],
+    })),
     facade,
     roofEquipment,
     camera: { position, target },

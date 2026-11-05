@@ -292,6 +292,34 @@ const violations: Case[] = [
     code: "import { Html } from '@react-three/drei';\nexport const value = Html;\n",
     rule: 'boundaries/dependencies',
   },
+  // ---------- График сан зөвхөн features/charts/**-д (D82) ----------
+  ...(
+    [
+      ['өөр feature', 'features/alpha/bad.tsx'],
+      ['building3d', 'features/building3d/bad.tsx'],
+      ['components/ui', 'components/ui/Bad.tsx'],
+      ['store', 'store/bad.ts'],
+      ['app', 'app/Bad.tsx'],
+      ['domain', 'domain/control/bad.ts'],
+    ] as const
+  ).map(([layer, file]) => ({
+    name: `${layer} → recharts`,
+    file,
+    code: "import { LineChart } from 'recharts';\nexport const value = LineChart;\n",
+    rule: 'boundaries/dependencies',
+  })),
+  {
+    name: 'charts → recharts-ийн дэд зам',
+    file: 'features/charts/bad.ts',
+    code: "import { LineChart } from 'recharts/es6/chart/LineChart';\nexport const value = LineChart;\n",
+    rule: 'boundaries/dependencies',
+  },
+  {
+    name: 'charts → three (3D сан зөвхөн building3d-д)',
+    file: 'features/charts/bad.ts',
+    code: "import { Mesh } from 'three';\nexport const value = Mesh;\n",
+    rule: 'boundaries/dependencies',
+  },
   // building3d дотор ч зөвхөн яг гурван модулийн нэр — дэд зам ба transitive dependency хориотой
   ...(
     [
@@ -385,6 +413,17 @@ const allowed: Omit<Case, 'rule'>[] = [
     name: 'building3d тест → three ба vitest',
     file: 'features/building3d/good.test.ts',
     code: "import { Vector3 } from 'three';\nimport { expect } from 'vitest';\nexport const value = [Vector3, expect];\n",
+  },
+  // ---------- График сан (D82) ----------
+  {
+    name: 'charts → recharts ба feature-ийн ердийн импорт',
+    file: 'features/charts/good.tsx',
+    code: "import { LineChart } from 'recharts';\nimport { useState } from 'react';\nimport { fixtureStore } from '@/store/uiStore';\nexport const value = [LineChart, useState, fixtureStore];\n",
+  },
+  {
+    name: 'charts тест → recharts ба vitest',
+    file: 'features/charts/good.test.tsx',
+    code: "import { Line } from 'recharts';\nimport { expect } from 'vitest';\nexport const value = [Line, expect];\n",
   },
   {
     name: 'app → building3d-ийн index (динамик import ч мөн)',

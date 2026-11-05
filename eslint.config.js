@@ -55,6 +55,14 @@ const toThreeD = THREE_D_MODULES.map((source) => ({
   dependency: { source },
 }));
 
+// График сан (D82): `recharts`-ийг зөвхөн features/charts/** импортолно; дэд зам (recharts/es6/*) хориотой.
+const toCharts = [
+  {
+    to: { module: { origin: 'external', source: 'recharts' } },
+    dependency: { source: 'recharts' },
+  },
+];
+
 // Элементийн дотоод импорт (feature-ийн «өөрийн хавтас» гэх мэт) анхдагчаар шалгагдахгүй (checkInternals: false).
 const policies = [
   // domain/** → зөвхөн domain/** (React, store, UI, гадаад сан хориотой)
@@ -100,6 +108,12 @@ const policies = [
   {
     from: { element: { type: 'feature', captured: { featureName: 'building3d' } } },
     allow: toThreeD,
+  },
+
+  // features/charts/** (тест файл орно) → дээр нь зөвхөн recharts (D82)
+  {
+    from: { element: { type: 'feature', captured: { featureName: 'charts' } } },
+    allow: toCharts,
   },
 
   // app/** → features/<нэр>/index.ts, components/ui, store, domain/types|i18n|config

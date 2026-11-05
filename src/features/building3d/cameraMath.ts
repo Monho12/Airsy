@@ -4,7 +4,7 @@ import { MathUtils } from 'three';
 
 import type { FloorId, Vec3 } from '@/domain/types';
 
-import type { BuildingLayout } from './layout';
+import { CAMERA_FOV_DEG, type BuildingLayout } from './layout';
 
 export interface CameraPose {
   position: Vec3;
@@ -82,6 +82,48 @@ export function focusPose(current: CameraPose, target: Vec3): CameraPose {
       x: current.position.x + (target.x - current.target.x),
       y: current.position.y + (target.y - current.target.y),
       z: current.position.z + (target.z - current.target.z),
+    },
+  };
+}
+
+/** Давхарт төвлөрөх өнцөг: хэвтээгээс дээш (D88) — давхрын төлөвлөлт (өрөө, коридор) уншигдана */
+export const FOCUS_ELEVATION_DEG = 40;
+/** Давхрыг дэлгэцэнд дүүргэх зай: footprint-ийн бөмбөрцгийг FOV-д багтаах зайн хувь (< 1 — бага зэрэг ойр) */
+const FOCUS_FIT_MARGIN = 0.9;
+
+/**
+ * Сонгосон давхарт төвлөрөх харагдац (D88): зорилт нь давхрын төв; хэрэглэгчийн эргүүлсэн хэвтээ чиглэл (azimuth)
+ * хадгалагдаж, дээрээс ~40° налуу өнцгөөр, давхрыг дэлгэцэнд дүүргэх зайнаас харна. Зай нь камерын хязгаарт багтана.
+ */
+export function floorFocusPose(
+  current: CameraPose,
+  layout: BuildingLayout,
+  floorId: FloorId,
+): CameraPose | null {
+  const target = floorFocusTarget(layout, floorId);
+  if (target === null) return null;
+  const dx = current.position.x - current.target.x;
+  const dz = current.position.z - current.target.z;
+  const fallback = layout.camera.position;
+  const azimuth =
+    Math.hypot(dx, dz) > 1e-6
+      ? Math.atan2(dx, dz)
+      : Math.atan2(fallback.x - layout.camera.target.x, fallback.z - layout.camera.target.z);
+  const elevation = MathUtils.degToRad(FOCUS_ELEVATION_DEG);
+  const radius = Math.hypot(layout.width, layout.depth) / 2;
+  const limits = cameraLimits(layout);
+  const distance = MathUtils.clamp(
+    (radius / Math.sin(MathUtils.degToRad(CAMERA_FOV_DEG / 2))) * FOCUS_FIT_MARGIN,
+    limits.minDistance,
+    limits.maxDistance,
+  );
+  const horizontal = Math.cos(elevation) * distance;
+  return {
+    target,
+    position: {
+      x: target.x + Math.sin(azimuth) * horizontal,
+      y: target.y + Math.sin(elevation) * distance,
+      z: target.z + Math.cos(azimuth) * horizontal,
     },
   };
 }

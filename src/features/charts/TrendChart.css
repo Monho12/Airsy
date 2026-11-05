@@ -1,0 +1,114 @@
+/*
+ * Хандлагын график (FR-T1, CLAUDE.md §8.3, D82). Recharts-ийн SVG-ийн өнгийг токеноор дарж бичнэ (CSS нь SVG-ийн
+ * presentation attribute-аас давуу). Шалгасан хослол (tooling/tokens-contrast.test.ts): өгөгдлийн шугам accent нь
+ * surface-1 дээр 9.93, 12%-ийн зурвас дээр 7.80 / 8.43; босгын шугам warning / critical нь зурвас дээр 8.44 / 5.51;
+ * тэнхлэгийн бичвэр text-muted нь surface-1 дээр 5.79. Зурвас ба сүлжээ зөвхөн чимэглэл — утгыг шугам ба бичвэр өгнө.
+ */
+
+.trend-chart__control {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-13);
+}
+
+.trend-chart__select {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-3);
+  color: var(--color-text-primary);
+  font: inherit;
+}
+
+.trend-chart__summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: var(--space-3) 0 var(--space-2);
+}
+
+.trend-chart__summary div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.trend-chart__summary dt {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-12);
+}
+
+.trend-chart__summary dd {
+  margin: 0;
+  font-size: var(--font-size-16);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.trend-chart__plot {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.trend-chart__plot .recharts-cartesian-axis-tick-value {
+  fill: var(--color-text-muted);
+  font-size: var(--font-size-11);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Recharts нь className-ийг сүлжээнд шугам бүр дээр, зурваст бүлэг (g) дээр тавьдаг */
+.trend-chart__plot .recharts-cartesian-axis-line,
+.trend-chart__plot .recharts-cartesian-axis-tick-line,
+.trend-chart__plot line.trend-chart__grid {
+  stroke: var(--color-border);
+}
+
+.trend-chart__plot .trend-chart__band path {
+  stroke: none;
+  fill-opacity: 0.12;
+}
+
+.trend-chart__plot .trend-chart__band--warning path {
+  fill: var(--color-status-warning);
+}
+
+.trend-chart__plot .trend-chart__band--critical path {
+  fill: var(--color-status-critical);
+}
+
+.trend-chart__plot .trend-chart__threshold--warning line {
+  stroke: var(--color-status-warning);
+}
+
+.trend-chart__plot .trend-chart__threshold--critical line {
+  stroke: var(--color-status-critical);
+}
+
+.trend-chart__plot .trend-chart__line path {
+  stroke: var(--color-accent);
+  stroke-width: 2;
+}
+
+.trend-chart__plot .recharts-active-dot circle {
+  fill: var(--color-accent);
+  stroke: var(--color-surface-1);
+}
+
+.trend-chart__note {
+  margin: var(--space-1) 0 var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-12);
+}
+
+.trend-chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--font-size-13);
+}
