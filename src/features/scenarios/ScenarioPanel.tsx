@@ -3,7 +3,7 @@
 // баталгаажуулах dialog; хатуу шинэчлэл үргэлж баталгаажуулалттай. Командыг зөвхөн `AerisRuntime.dispatch`-аар илгээнэ.
 import { useId, useMemo, useState } from 'react';
 
-import { Button, Dialog, EmptyState, Panel, Skeleton } from '@/components/ui';
+import { Button, Dialog, Panel, Skeleton } from '@/components/ui';
 import { mn } from '@/domain/i18n/mn';
 import type { AerisCommand, AerisRuntime } from '@/domain/runtime/AerisRuntime';
 import type { ScenarioId } from '@/domain/types';
@@ -61,7 +61,10 @@ function ScenarioRow({
           {item.name}
           {active && <span className="scenario-panel__active-tag">{text.panel.active}</span>}
         </span>
-        <span className="scenario-panel__description">{item.description}</span>
+        {/* Тайлбар 2 мөрөөр таслагдана (D85); бүтэн бичвэр DOM-д (дэлгэц уншигч) ба tooltip-д */}
+        <span className="scenario-panel__description" title={item.description}>
+          {item.description}
+        </span>
         {item.startsFromCurrent && (
           <span className="scenario-panel__note">{text.panel.startsFromCurrent}</span>
         )}
@@ -119,11 +122,12 @@ export function ScenarioPanel() {
 
   return (
     <Panel title={text.panel.title} className="scenario-panel">
-      <div className="scenario-panel__active">
+      {/* Гарчгийн мөр (D85): идэвхтэй сценарийн явц + «Зогсоох» + «Симуляцийг эхнээс нь» нэг мөрөнд */}
+      <div className="scenario-panel__bar">
         {data.active === null ? (
-          <EmptyState message={text.panel.noActive} />
+          <span className="scenario-panel__idle">{text.panel.noActive}</span>
         ) : (
-          <>
+          <div className="scenario-panel__active">
             <div className="scenario-panel__active-head">
               <span className="scenario-panel__active-name">{data.active.name}</span>
               <span className="scenario-panel__percent">
@@ -143,7 +147,11 @@ export function ScenarioPanel() {
                 style={{ width: `${data.active.percent}%` }}
               />
             </div>
-            {runtime !== null && (
+          </div>
+        )}
+        {runtime !== null && (
+          <div className="scenario-panel__actions">
+            {data.active !== null && (
               <Button
                 aria-label={text.panel.stopLabel(data.active.name)}
                 onClick={() => void send({ type: 'scenario/stop' })}
@@ -151,7 +159,10 @@ export function ScenarioPanel() {
                 {text.panel.stop}
               </Button>
             )}
-          </>
+            <Button className="ui-button--danger" onClick={() => setPending({ kind: 'reset' })}>
+              {text.panel.reset}
+            </Button>
+          </div>
         )}
       </div>
 
@@ -166,14 +177,6 @@ export function ScenarioPanel() {
           />
         ))}
       </ul>
-
-      {runtime !== null && (
-        <div className="scenario-panel__footer">
-          <Button className="ui-button--danger" onClick={() => setPending({ kind: 'reset' })}>
-            {text.panel.reset}
-          </Button>
-        </div>
-      )}
 
       {error !== null && (
         <p className="scenario-panel__error" role="alert">

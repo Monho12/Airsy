@@ -4,16 +4,35 @@
  * (surface-3 дээр 8.16:1), яаралтай мөр — on-emergency / emergency (4.83:1), focus-ring / emergency (3.33:1, тест).
  */
 
-.scenario-panel__active {
+/* Гарчгийн мөр (D85): явц зүүн талд уян, товчнууд баруун талд; нарийн өргөнд доошоо ороно */
+.scenario-panel__bar {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
   padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--color-border);
 }
 
-.scenario-panel__active > .ui-button {
-  align-self: flex-start;
+.scenario-panel__idle {
+  flex: 1 1 200px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-13);
+}
+
+.scenario-panel__active {
+  display: flex;
+  flex: 1 1 260px;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.scenario-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-left: auto;
 }
 
 .scenario-panel__active-head {
@@ -43,26 +62,31 @@
   transition: width var(--motion-base) var(--ease-standard);
 }
 
+/* Картын тор (D85): desktop 4, таблет 2–3, утас 1 багана — нэг дүрмээр */
 .scenario-panel__list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: var(--space-3);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+/* Карт: surface-1 дээр хүрээтэй (бичвэрийн хослол §8.3-ын матрицад) */
 .scenario-panel__item {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--color-border);
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
 }
 
+/* Идэвхтэй карт: accent хүрээ + accent-subtle дэвсгэр (accent-subtle@s1 — матрицад: muted 4.58, secondary 6.49) */
 .scenario-panel__item--active {
-  box-shadow: inset 2px 0 0 var(--color-accent);
-  padding-left: var(--space-2);
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
 }
 
 .scenario-panel__text {
@@ -91,9 +115,15 @@
   letter-spacing: var(--letter-spacing-label);
 }
 
+/* 2 мөрөөр таслана; бүтэн бичвэр title-д */
 .scenario-panel__description {
+  display: -webkit-box;
+  overflow: hidden;
   color: var(--color-text-secondary);
   font-size: var(--font-size-13);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .scenario-panel__note {
@@ -101,14 +131,10 @@
   font-size: var(--font-size-12);
 }
 
+/* Товч картын доод талд — картууд ижил өндөртэй үед товчнууд нэг шугамд */
 .scenario-panel__item > .ui-button {
-  flex: 0 0 auto;
-}
-
-.scenario-panel__footer {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: var(--space-3);
+  align-self: flex-start;
+  margin-top: auto;
 }
 
 .scenario-panel__error {

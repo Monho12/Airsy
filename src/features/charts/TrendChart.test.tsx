@@ -85,11 +85,14 @@ describe('TrendChart', () => {
     const plot = screen.getByRole('img', {
       name: text.chartLabel(floorLabelMn(2), mn.metrics.label.co2),
     });
-    await waitFor(() => expect(plot.querySelector('svg')).not.toBeNull());
-    await waitFor(() =>
-      expect(plot.querySelectorAll('.trend-chart__threshold').length).toBeGreaterThan(0),
+    // Бүтэн suite ачаалалтай үед lazy chunk-ийн импорт 1 с-ээс удаан болдог тул хүлээх хугацааг уртасгав
+    // (шалгах үр дүн өөрчлөгдөөгүй; D76, D81-тэй ижил арга)
+    await waitFor(() => expect(plot.querySelector('svg')).not.toBeNull(), { timeout: 15_000 });
+    await waitFor(
+      () => expect(plot.querySelectorAll('.trend-chart__threshold').length).toBeGreaterThan(0),
+      { timeout: 15_000 },
     );
-  });
+  }, 30_000);
 
   it('хэмжигдэхүүн сольход тухайн цуваа ба босгыг харуулна', async () => {
     let snapshot = withSeries(createMockSnapshot(), 'co2', [700]);

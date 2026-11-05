@@ -21,7 +21,7 @@ export interface SceneColors {
   deviceActive: string;
   /** Унтраалттай сэнсний далбаа, гэрэлгүй заагч */
   deviceIdle: string;
-  /** Агаарын урсгалын бөөмс (FR-B8) — чимэглэлийн саарал-цэнхэр, төлөв/сонголтын өнгөнөөс ялгаатай */
+  /** Агаарын урсгалын шугамын exhaust тал (FR-B8, D85; supply тал нь `selected`/accent) — чимэглэлийн саарал */
   airflow: string;
   /** Мэдрэгчийн зангилааны төлөвийн өнгө (§8.3); offline/invalid — саарал */
   status: Record<HealthStatus, string>;

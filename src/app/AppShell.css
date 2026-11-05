@@ -71,11 +71,18 @@
 
 /* ---------- Гол layout ---------- */
 .shell-main {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-3);
   min-width: 0;
-  /* Утас (< 768 px): нэг багана (табтай бүтэц Phase 7-д, §8.2) */
+}
+
+/* Дээд ба доод хэсгийн grid (D85). Утас (< 768 px): нэг багана (табтай бүтэц Phase 7-д, §8.2) */
+.shell-grid {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
   grid-template-columns: minmax(0, 1fr);
 }
 
@@ -161,14 +168,36 @@
 
 /* Таблет (768–1279 px): 3D дээд хэсэгт (~55vh), самбарууд доор хоёр баганаар (§8.2) */
 @media (min-width: 768px) {
-  .shell-main {
+  .shell-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .shell-grid--top {
     grid-template-areas:
       'building3d building3d'
       'floorList floorDetails'
-      'devices alerts'
+      'devices alerts';
+  }
+
+  .shell-grid--bottom {
+    grid-template-areas:
       'trends events'
       'scenarios scenarios';
+  }
+
+  /*
+   * Таблет ба desktop (график | үйл явдал хажуу хажуудаа, D85): үйл явдлын самбар мөрийн өндрийг тогтоохгүй
+   * (`contain: size`) — өндрийг график тогтооно, самбар дотроо гүйлгэнэ. Доод хязгаар нь график хараахан
+   * ачаалагдаагүй үед ч уншигдахуйц байлгана.
+   */
+  .shell-slot.shell-region--events {
+    contain: size;
+    min-height: 24rem;
+  }
+
+  .shell-region--events .ui-panel__body {
+    overscroll-behavior: contain;
+    scrollbar-color: var(--color-border-strong) transparent;
   }
 
   .shell-region--building3d {
@@ -176,34 +205,73 @@
   }
 }
 
-/* Desktop (≥ 1280 px): давхрын жагсаалт + 3D гол хэсэг, баруун самбар, доод хэсэг (§8.2) */
+/*
+ * Desktop (≥ 1280 px; §8.2, D85): давхрын жагсаалт + 3D гол хэсэг, баруун самбар; доор нь график | үйл явдал, хамгийн
+ * доор сценари бүтэн өргөнөөр. Дээд хэсэг (төлөвийн мөр + яаралтай мөр) sticky; давхрын жагсаалт ба 3D мөн sticky —
+ * баруун баганыг гүйлгэхэд харагдсаар, самбар доошоо сунаж хоосон хүрээ үүсгэхгүй.
+ */
 @media (min-width: 1280px) {
-  .shell-main {
+  .shell {
+    /* Sticky хэсгийн өндөр: дэлгэц − дээд хэсэг (AppShell.tsx хэмжинэ) − grid-ийн дээд/доод зай */
+    --shell-pane-height: calc(100dvh - var(--shell-top-height, 0px) - 2 * var(--space-3));
+  }
+
+  .shell-top {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .shell-grid--top {
     grid-template-columns: 200px minmax(0, 1fr) 360px;
-    grid-template-rows: repeat(3, minmax(120px, auto)) repeat(2, minmax(96px, auto));
+    grid-template-rows: repeat(3, minmax(120px, auto));
     grid-template-areas:
       'floorList building3d floorDetails'
       'floorList building3d devices'
-      'floorList building3d alerts'
-      'trends trends events'
-      'trends trends scenarios';
+      'floorList building3d alerts';
+  }
+
+  /* График 3D-ийн өргөнтэй (жагсаалт + 3D), үйл явдал баруун баганатай ижил өргөн */
+  .shell-grid--bottom {
+    grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-rows: minmax(96px, auto) auto;
+    grid-template-areas:
+      'trends events'
+      'scenarios scenarios';
+  }
+
+  .shell-slot.shell-region--floorList,
+  .shell-slot.shell-region--building3d {
+    position: sticky;
+    top: calc(var(--shell-top-height, 0px) + var(--space-3));
+    align-self: start;
+    min-height: 0;
+  }
+
+  /* Давхрын жагсаалт: самбар дэлгэцийн өндөрт, жагсаалт дотроо гүйлгэнэ */
+  .shell-slot.shell-region--floorList {
+    height: var(--shell-pane-height);
+  }
+
+  .shell-region--floorList .ui-panel__body {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+  }
+
+  .shell-region--floorList .floor-list {
+    flex: 1 1 auto;
+    max-height: none;
+    min-height: 0;
   }
 
   .shell-region--building3d {
     min-height: 0;
   }
 
-  /*
-   * 3D самбар баруун баганын агуулгаар (давхрын дэлгэрэнгүй, дохио) сунахгүй — хажуугийн давхрын жагсаалттай
-   * ижил дээд өндөр (FloorList.css-ийн desktop хязгаар). Grid-ийн талбай урт болсон ч 3D дээд хэсэгтээ үлдэнэ.
-   * Зөвхөн 3D горимд (`.building3d-region`); орлуулах тайлбар өөрийн өндрөөрөө.
-   */
-  .shell-slot.shell-region--building3d {
-    align-self: start;
-  }
-
+  /* 3D горимд canvas дэлгэцийн өндөрт; орлуулах тайлбар өөрийн өндрөөрөө */
   .shell-region--building3d .building3d-region {
-    height: min(70vh, 44rem);
+    height: var(--shell-pane-height);
   }
 }
 
