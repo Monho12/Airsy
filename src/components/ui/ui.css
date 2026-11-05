@@ -259,3 +259,37 @@
   justify-content: flex-end;
   gap: var(--space-2);
 }
+
+/* ---------- SelectField (шүүлтийн мөр, D83) ---------- */
+.ui-select-field {
+  display: inline-flex;
+  flex: 1 1 140px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-12);
+}
+
+.ui-select {
+  width: 100%;
+  max-width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-3);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-13);
+}
+
+/* Шүүлтийн мөр: талбарууд мөрөөр, жижиг дэлгэцэнд дараагийн мөрөнд шилжинэ */
+.ui-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2) var(--space-3);
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  border: 0;
+}

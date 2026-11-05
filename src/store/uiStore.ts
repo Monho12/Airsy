@@ -1,7 +1,34 @@
 // UI төлөвийн гэрээ (CLAUDE.md §10.3). Симуляцид хэзээ ч нөлөөлөхгүй — зөвхөн сонголт ба харагдац.
 import { create } from 'zustand';
 
-import type { AreaId, FloorId } from '@/domain/types';
+import type { Alert, AreaId, FloorId, MetricType, Severity, SystemEvent } from '@/domain/types';
+
+/**
+ * Дохионы шүүлт (FR-A2, Phase 6d, D83). `status: 'open'` = идэвхтэй + хүлээн авсан (анхдагч — ажиллаж буй дохио);
+ * `floor: 'building'` = давхаргүй (барилгын түвшний ба гадна мэдрэгчийн) дохио.
+ */
+export interface AlertFilter {
+  severity: 'all' | Alert['severity'];
+  floor: 'all' | 'building' | FloorId;
+  metric: 'all' | MetricType;
+  status: 'open' | 'active' | 'acknowledged' | 'resolved';
+}
+
+/** Үйл явдлын түүхийн шүүлт (FR-A3, Phase 6d, D83) */
+export interface EventFilter {
+  category: 'all' | SystemEvent['category'];
+  severity: 'all' | Severity;
+  floor: 'all' | FloorId;
+}
+
+export const defaultAlertFilter: AlertFilter = {
+  severity: 'all',
+  floor: 'all',
+  metric: 'all',
+  status: 'open',
+};
+
+export const defaultEventFilter: EventFilter = { category: 'all', severity: 'all', floor: 'all' };
 
 export interface UiState {
   selectedFloorId: FloorId | null; // 3D ба давхрын жагсаалт хоёулаа уншиж/бичнэ (FR-B4)
@@ -10,6 +37,8 @@ export interface UiState {
   reducedMotionOverride: boolean | null; // null = системийн prefers-reduced-motion-ыг дагана
   reducedMotion: boolean; // эцсийн утга (override ?? системийн тохиргоо)
   cameraResetToken: number; // «Харагдацыг сэргээх» бүрт +1
+  alertFilter: AlertFilter; // §10.2: шүүлт нь UI төлөв (D83)
+  eventFilter: EventFilter;
 }
 
 export interface UiActions {
@@ -21,6 +50,9 @@ export interface UiActions {
   /** Системийн prefers-reduced-motion өөрчлөгдөхөд app давхарга дуудна. */
   setSystemReducedMotion: (value: boolean) => void;
   requestCameraReset: () => void;
+  /** Шүүлтийн зөвхөн өгсөн талбаруудыг өөрчилнө (D83) */
+  setAlertFilter: (patch: Partial<AlertFilter>) => void;
+  setEventFilter: (patch: Partial<EventFilter>) => void;
 }
 
 export type UiStore = UiState & UiActions & { systemReducedMotion: boolean };
@@ -40,6 +72,8 @@ export const initialUiState: UiState & { systemReducedMotion: boolean } = {
   reducedMotion: false,
   systemReducedMotion: false,
   cameraResetToken: 0,
+  alertFilter: defaultAlertFilter,
+  eventFilter: defaultEventFilter,
 };
 
 export const useUiStore = create<UiStore>()((set) => ({
@@ -74,4 +108,7 @@ export const useUiStore = create<UiStore>()((set) => ({
     })),
 
   requestCameraReset: () => set((state) => ({ cameraResetToken: state.cameraResetToken + 1 })),
+
+  setAlertFilter: (patch) => set((state) => ({ alertFilter: { ...state.alertFilter, ...patch } })),
+  setEventFilter: (patch) => set((state) => ({ eventFilter: { ...state.eventFilter, ...patch } })),
 }));

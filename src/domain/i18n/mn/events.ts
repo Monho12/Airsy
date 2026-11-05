@@ -46,6 +46,25 @@ export const events = {
   /** Хоосон төлөв (§8.7) */
   empty: 'Үйл явдал алга.',
 
+  // ---------- Шүүлттэй бүрэн түүх (FR-A3, Phase 6d, D83) ----------
+  severity: {
+    info: 'Мэдээлэл',
+    warning: 'Анхааруулга',
+    critical: 'Ноцтой',
+  } satisfies Record<SystemEvent['severity'], string>,
+  filter: {
+    label: 'Үйл явдлын шүүлт',
+    category: 'Ангилал',
+    severity: 'Ач холбогдол',
+    floor: 'Давхар',
+    all: 'Бүгд',
+    reset: 'Шүүлтийг цэвэрлэх',
+    noMatch: 'Шүүлтэд тохирох үйл явдал алга.',
+  },
+  showMore: 'Цааш харуулах',
+  /** «Харуулж буй: 50 / 500» — түүх хамгийн ихдээ 500 (§11.4) */
+  shown: (shown: number, total: number) => `Харуулж буй: ${shown} / ${total}`,
+
   simulationStarted: 'Симуляци эхэлсэн — бүх утга браузер дотор үүсгэсэн симуляци.',
 
   sensorDisconnected(floorLabel: string, areaName: string, metricShortLabel: string): string {

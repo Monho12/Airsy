@@ -60,4 +60,35 @@ export const alerts = {
 
   /** Хоосон төлөв (§8.7) */
   emptyActive: 'Идэвхтэй дохио алга — бүх давхар хэвийн.',
+
+  // ---------- Шүүлт, хүлээн авах, шийдэгдсэн түүх (FR-A2, Phase 6d, D83) ----------
+  filter: {
+    label: 'Дохионы шүүлт',
+    severity: 'Ноцтой байдал',
+    floor: 'Давхар',
+    metric: 'Хэмжигдэхүүн',
+    status: 'Төлөв',
+    all: 'Бүгд',
+    building: 'Барилга (давхаргүй)',
+    statusOption: {
+      open: 'Идэвхтэй ба хүлээн авсан',
+      active: 'Идэвхтэй',
+      acknowledged: 'Хүлээн авсан',
+      resolved: 'Шийдэгдсэн',
+    },
+    reset: 'Шүүлтийг цэвэрлэх',
+    noMatch: 'Шүүлтэд тохирох дохио алга.',
+    emptyResolved: 'Шийдэгдсэн дохио алга.',
+  },
+  /** Самбарын гарчгийн тоо: «3 / 5» — шүүлтэд тохирсон / нийт */
+  shownCount: (shown: number, total: number) =>
+    shown === total ? `${total}` : `${shown} / ${total}`,
+  /** Товчны үйл үг; төлөвийн шошго нь «Хүлээн авсан» (§8.9, D83) */
+  acknowledge: 'Хүлээн авах',
+  acknowledgeLabel: (title: string) => `Дохиог хүлээн авах: ${title}`,
+  acknowledgedAt: 'Хүлээн авсан',
+  resolvedAt: 'Шийдэгдсэн',
+  raisedAt: 'Үүссэн',
+  emergencyAckNote:
+    'Идэвхтэй үед хүлээн авах боломжгүй — яаралтай симуляцийг дуусгахад шийдэгдэнэ.',
 } as const;

@@ -6,6 +6,8 @@ import { buildingConfig, METRICS, type BuildingConfig } from '@/domain/config/bu
 import { indoorThresholds, outdoorAirThresholds } from '@/domain/config/thresholds';
 import { floorLabelMn } from '@/domain/i18n/mn';
 import { scenarioDefinitions, scenarioOrder } from '@/domain/scenarios/definitions';
+
+import type { AlertFilter, EventFilter } from './uiStore';
 import type {
   Alert,
   Area,
@@ -424,4 +426,45 @@ export function selectTrendChart(
     }
   }
   return { points, thresholds, bands, domain, latest, min, max };
+}
+
+// ---------- Дохио ба үйл явдлын шүүлт (FR-A2, FR-A3, Phase 6d, D83) ----------
+
+/** Шүүлттэй дохионы жагсаалт. Шийдэгдсэн нь `recentResolved`-ээс, шинэ нь эхэнд; бусад нь идэвхтэйн эрэмбээр. */
+export function selectFilteredAlerts(snapshot: LiveSnapshot, filter: AlertFilter): Alert[] {
+  const source =
+    filter.status === 'resolved'
+      ? [...snapshot.alerts.recentResolved].sort(
+          (a, b) => (b.resolvedAt ?? 0) - (a.resolvedAt ?? 0) || a.id.localeCompare(b.id),
+        )
+      : selectActiveAlerts(snapshot).filter(
+          (alert) => filter.status === 'open' || alert.status === filter.status,
+        );
+  return source.filter(
+    (alert) =>
+      (filter.severity === 'all' || alert.severity === filter.severity) &&
+      (filter.floor === 'all' ||
+        (filter.floor === 'building'
+          ? alert.scope.floorId === undefined
+          : alert.scope.floorId === filter.floor)) &&
+      (filter.metric === 'all' || alert.scope.metric === filter.metric),
+  );
+}
+
+/** Дохионы тоо: ажиллаж буй (идэвхтэй + хүлээн авсан) ба шийдэгдсэн — шүүлтийн шошгонд */
+export function selectAlertCounts(snapshot: LiveSnapshot): { open: number; resolved: number } {
+  return { open: snapshot.alerts.active.length, resolved: snapshot.alerts.recentResolved.length };
+}
+
+/** Шүүлттэй бүрэн үйл явдлын түүх — шинэ нь эхэнд (ring buffer-ийн бүх үйл явдал, §11.4) */
+export function selectFilteredEvents(snapshot: LiveSnapshot, filter: EventFilter): SystemEvent[] {
+  const result: SystemEvent[] = [];
+  for (let i = snapshot.events.length - 1; i >= 0; i -= 1) {
+    const event = snapshot.events[i]!;
+    if (filter.category !== 'all' && event.category !== filter.category) continue;
+    if (filter.severity !== 'all' && event.severity !== filter.severity) continue;
+    if (filter.floor !== 'all' && event.floorId !== filter.floor) continue;
+    result.push(event);
+  }
+  return result;
 }

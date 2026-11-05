@@ -24,8 +24,11 @@ beforeEach(() => {
 });
 
 const region = (name: string) => screen.getByRole('region', { name });
+// Давхрын жагсаалт (`listbox`) дотроос — шүүлтийн `<select>`-үүд ч давхрын нэртэй option-той (D83)
 const floorOption = (level: number) =>
-  screen.getByRole('option', { name: new RegExp(`^${floorLabelMn(level)}`) });
+  within(screen.getByRole('listbox')).getByRole('option', {
+    name: new RegExp(`^${floorLabelMn(level)}`),
+  });
 
 function renderWith(snapshot: LiveSnapshot = createMockSnapshot()) {
   applySnapshot(snapshot);

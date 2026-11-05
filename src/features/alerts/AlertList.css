@@ -42,3 +42,23 @@
   font-size: var(--font-size-12);
   font-variant-numeric: tabular-nums;
 }
+
+/* Хүлээн авсан ба шийдэгдсэн дохио: хүрээ нимгэн тасархай — төлөвийг бичвэр («Хүлээн авсан», «Шийдэгдсэн») илэрхийлнэ */
+.alert-list__item[data-status='acknowledged'],
+.alert-list__item[data-status='resolved'] {
+  border-left-style: dashed;
+}
+
+.alert-list__item > .ui-button {
+  justify-self: start;
+}
+
+.alert-list__note {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-12);
+}
+
+.alert-list__error {
+  color: var(--color-status-critical);
+  font-size: var(--font-size-13);
+}
