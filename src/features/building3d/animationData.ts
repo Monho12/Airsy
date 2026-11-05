@@ -22,6 +22,8 @@ export const STREAMLINES_PER_PATH = 8;
 export const STREAMLINE_SEGMENTS = 40;
 /** Багцын хамгийн их хажуугийн зай, м — бүсийн дотор (бүсийн гүн 12 м, зам бүсийн төвөөр) */
 export const STREAMLINE_SPREAD = 1.4;
+/** Багцын дэлгэрэлт замын метр тутамд (D87: өрөөний ~8 м замд ≈ 1 м, 4 м замд ≈ 0.5 м) */
+export const STREAMLINE_SPREAD_PER_METRE = 0.12;
 /** Хөдөлгөөн багасгах үеийн чиглэлийн сумны далавчны урт (м) ба өнцөг */
 export const ARROW_WING_LENGTH = 1.2;
 export const ARROW_WING_ANGLE = (35 * Math.PI) / 180;
@@ -68,15 +70,19 @@ export function bundleOffset(
   t: number,
   slot: number,
   perPath = STREAMLINES_PER_PATH,
+  spread = STREAMLINE_SPREAD,
 ): { lateral: number; vertical: number } {
   const bulge = Math.sin(Math.PI * t);
   const profile = 0.3 + 0.7 * bulge;
-  const spread = perPath <= 1 ? 0 : (slot / (perPath - 1)) * 2 - 1;
+  const position = perPath <= 1 ? 0 : (slot / (perPath - 1)) * 2 - 1;
+  // Богино (өрөөний) замд багц нарийн: дэлгэрэлт ба долгион хоёулаа `spread`-тэй пропорциональ
+  const scale = spread / STREAMLINE_SPREAD;
   return {
-    lateral: spread * STREAMLINE_SPREAD * profile,
+    lateral: position * spread * profile,
     vertical:
-      0.22 * Math.sin(slot * 2.4 + 0.5) * profile +
-      0.12 * Math.sin(2 * Math.PI * t * 1.3 + slot * 1.7) * bulge,
+      scale *
+      (0.22 * Math.sin(slot * 2.4 + 0.5) * profile +
+        0.12 * Math.sin(2 * Math.PI * t * 1.3 + slot * 1.7) * bulge),
   };
 }
 
@@ -104,7 +110,9 @@ export function createAirflowLayout(
   return layout.floors.map((floorLayout) => {
     const floor = config.floors[floorLayout.id];
     if (floor === undefined) throw new Error(`Давхар тохиргоонд алга: ${floorLayout.id}`);
-    const paths = floor.ventilation.airflowPaths.map((path) => {
+    // Оффисын бүсийн зам + өрөөнөөс гарах зам (D87) — бүгд нэг geometry-д
+    const allPaths = [...floor.ventilation.airflowPaths, ...floor.interior.airflowPaths];
+    const paths = allPaths.map((path) => {
       const points = path.map(({ x, y, z }) => ({ x, y: floorLayout.elevation + y, z }));
       return { points, length: pathLength(points) };
     });
@@ -148,9 +156,13 @@ interface Ribbon {
 
 const UP = new Vector3(0, 1, 0);
 
+/** Замын урттай пропорциональ багцын дэлгэрэлт (м): оффисын урт замд дээд хязгаар, өрөөний богино замд нарийн */
+export const bundleSpread = (length: number): number =>
+  Math.min(STREAMLINE_SPREAD, STREAMLINE_SPREAD_PER_METRE * length);
+
 function bundleRibbons(
   floorIndex: number,
-  path: { points: Vec3[] },
+  path: { points: Vec3[]; length: number },
   perPath: number,
   segments: number,
   seedStart: number,
@@ -161,6 +173,7 @@ function bundleRibbons(
     'centripetal',
   );
   const ribbons: Ribbon[] = [];
+  const spread = bundleSpread(path.length);
   for (let slot = 0; slot < perPath; slot += 1) {
     const points: Vector3[] = [];
     const along: number[] = [];
@@ -170,7 +183,7 @@ function bundleRibbons(
       const tangent = curve.getTangentAt(t);
       // Хажуугийн чиглэл: шүргэгчид перпендикуляр хэвтээ вектор
       const lateral = new Vector3().crossVectors(tangent, UP).normalize();
-      const { lateral: l, vertical: v } = bundleOffset(t, slot, perPath);
+      const { lateral: l, vertical: v } = bundleOffset(t, slot, perPath, spread);
       points.push(base.addScaledVector(lateral, l).addScaledVector(UP, v));
       along.push(t);
     }

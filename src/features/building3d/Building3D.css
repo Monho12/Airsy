@@ -49,3 +49,32 @@
 .sensor-label .ui-metric__value {
   font-size: var(--font-size-14);
 }
+
+/*
+ * Дотоод бүтцийн шошго (D87, Drei `Html`): жижиг, тайван — surface-1 дэвсгэр, text-secondary бичвэр (8.20:1, §8.3).
+ * Гарц: неон ногоон дүүргэлт + бараан бичвэр (`--color-on-fill` / `--color-exit` 14.15:1). Хөдөлгөөнгүй,
+ * canvas-ийн удирдлагад саад болохгүй (pointer-events: none).
+ */
+.interior-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-11);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+
+.interior-label--exit {
+  background: var(--color-exit);
+  border-color: var(--color-exit);
+  color: var(--color-on-fill);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+}

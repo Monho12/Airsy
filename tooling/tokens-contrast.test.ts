@@ -89,6 +89,8 @@ const matrix: { fg: string; min: number; cells: Cell[] }[] = [
   { fg: 'accent-strong', min: UI, cells: [13.23, 12.38, 11.39, 10.17, null, null] },
   { fg: 'status-critical-fill', min: UI, cells: [5.1, 4.77, 4.39, 3.92, null, null] },
   { fg: 'emergency', min: UI, cells: [3.97, 3.72, 3.42, 3.05, null, null] },
+  // Яаралтай гарцын неон ногоон (D87): 3D-ийн гарцын хүрээ, сум (UI элемент)
+  { fg: 'exit', min: UI, cells: [14.15, 13.24, 12.18, 10.87, null, null] },
 ];
 
 /** Дүүргэлт дээрх бичвэр (§8.3 матрицын доорх мөр). */
@@ -100,6 +102,8 @@ const onFill: { fg: string; bg: string; expected: Cell }[] = [
   { fg: 'on-fill', bg: 'status-critical-fill', expected: 5.1 },
   { fg: 'on-fill', bg: 'status-offline', expected: 4.89 },
   { fg: 'on-emergency', bg: 'emergency', expected: 4.83 },
+  // «EXIT» гарцын шошго: неон ногоон дүүргэлт дээр бараан бичвэр (D87)
+  { fg: 'on-fill', bg: 'exit', expected: 14.15 },
   { fg: 'white', bg: 'status-critical-fill', expected: { forbidden: 3.76 } },
   // §8.3-ын токены хүснэгт: яаралтай мөрөн дээр text-primary ба text-secondary хэрэглэхгүй
   { fg: 'text-primary', bg: 'emergency', expected: { forbidden: 4.38 } },

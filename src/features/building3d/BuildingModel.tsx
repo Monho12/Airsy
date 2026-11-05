@@ -3,7 +3,8 @@
 // Зөвхөн дүрсэлнэ — domain логикгүй (§9.3-ын 5). Мэдрэгчийн зангилаа `SensorNodes.tsx`-д, төхөөрөмж
 // `DeviceModels.tsx`-д.
 import { Edges } from '@react-three/drei';
-import { DoubleSide } from 'three';
+import { useEffect, useMemo } from 'react';
+import { BoxGeometry, BufferAttribute, BufferGeometry, DoubleSide } from 'three';
 
 import type { BuildingConfig } from '@/domain/config/building';
 import type { FloorId, Vec3 } from '@/domain/types';
@@ -235,6 +236,40 @@ function RoofSlab({
   );
 }
 
+type Box = BuildingLayout['core'];
+
+/** Хэд хэдэн хайрцгийг нэг geometry болгон нэгтгэнэ — нэг mesh + нэг ирмэг (draw call хайрцгийн тоогоор өсөхгүй) */
+function mergeBoxes(boxes: readonly Box[]): BufferGeometry {
+  const parts = boxes.map((box) =>
+    new BoxGeometry(...box.size).translate(box.center.x, box.center.y, box.center.z).toNonIndexed(),
+  );
+  const count = parts.reduce((sum, part) => sum + part.getAttribute('position').count, 0);
+  const position = new Float32Array(count * 3);
+  const normal = new Float32Array(count * 3);
+  let offset = 0;
+  for (const part of parts) {
+    position.set(part.getAttribute('position').array as Float32Array, offset);
+    normal.set(part.getAttribute('normal').array as Float32Array, offset);
+    offset += part.getAttribute('position').count * 3;
+    part.dispose();
+  }
+  const merged = new BufferGeometry();
+  merged.setAttribute('position', new BufferAttribute(position, 3));
+  merged.setAttribute('normal', new BufferAttribute(normal, 3));
+  return merged;
+}
+
+function SolidShafts({ boxes, colors }: { boxes: readonly Box[]; colors: SceneColors }) {
+  const geometry = useMemo(() => mergeBoxes(boxes), [boxes]);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  return (
+    <mesh name="core" geometry={geometry}>
+      <meshStandardMaterial color={colors.core} roughness={1} />
+      <Edges color={colors.slabEdge} />
+    </mesh>
+  );
+}
+
 export function BuildingModel({
   layout,
   config,
@@ -245,6 +280,11 @@ export function BuildingModel({
   colors: SceneColors;
 }) {
   const { roofSlab, core, floors } = layout;
+  // Тогтвортой лавлагаа — geometry render бүрт дахин үүсэхгүй
+  const shaftBoxes = useMemo(
+    () => [core, ...layout.evacuationStairs],
+    [core, layout.evacuationStairs],
+  );
   return (
     <group>
       {floors.map((floor, index) => (
@@ -258,12 +298,9 @@ export function BuildingModel({
       ))}
       <RoofSlab slab={roofSlab} topFloorId={floors.at(-1)?.id ?? null} colors={colors} />
       <RoofEquipment roof={layout.roofEquipment} colors={colors} />
-      {/* Лифт/шатны хонгил (D59) — сонгогдохгүй; event handler-гүй тул давхрын сонголтод саад болохгүй */}
-      <mesh name="core" position={[core.center.x, core.center.y, core.center.z]}>
-        <boxGeometry args={core.size} />
-        <meshStandardMaterial color={colors.core} roughness={1} />
-        <Edges color={colors.slabEdge} />
-      </mesh>
+      {/* Лифт/шатны хонгил (D59) ба эвакуацийн шат (D87) — нэг geometry (draw call нэмэгдэхгүй); сонгогдохгүй,
+          event handler-гүй тул давхрын сонголтод саад болохгүй */}
+      <SolidShafts boxes={shaftBoxes} colors={colors} />
       {layout.facade.map((panel) => (
         <Facade key={panel.side} panel={panel} colors={colors} />
       ))}

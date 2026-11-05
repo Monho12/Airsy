@@ -25,6 +25,8 @@
   --color-on-emergency: #ffffff;
   --color-on-fill: #0d0f13;
   --color-focus-ring: #67e8f9;
+  /* Яаралтай гарцын тэмдэг (D87) — зөвхөн гарцад; «хэвийн» төлөвийн ногооноос (#34d399) тод ялгаатай неон ногоон */
+  --color-exit: #39ff14;
 
   /* ---------- Үсгийн хэв (§8.4) ---------- */
   --font-sans: Inter, system-ui, 'Segoe UI', Roboto, sans-serif;

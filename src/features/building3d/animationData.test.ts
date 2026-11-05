@@ -6,6 +6,7 @@ import { createMockSnapshot } from '@/store/mockSnapshot';
 
 import {
   bundleOffset,
+  bundleSpread,
   createAirflowLayout,
   createStreamlineData,
   fanAngularSpeed,
@@ -71,6 +72,15 @@ describe('урсгалын шугамын тоо ба тодрол (D85)', () =>
 });
 
 describe('багцын хэлбэр (D85)', () => {
+  it('дэлгэрэлт замын урттай пропорциональ, дээд хязгаартай', () => {
+    expect(bundleSpread(28)).toBe(STREAMLINE_SPREAD);
+    expect(bundleSpread(8)).toBeCloseTo(0.96);
+    expect(bundleSpread(4)).toBeLessThan(bundleSpread(8));
+    expect(Math.abs(bundleOffset(0.5, 0, STREAMLINES_PER_PATH, 0.5).lateral)).toBeLessThanOrEqual(
+      0.5,
+    );
+  });
+
   it('хоёр үзүүрт нийлж, дунд хэсэгт дэлгэрнэ; зай хязгаартай', () => {
     const last = STREAMLINES_PER_PATH - 1;
     const width = (t: number) => bundleOffset(t, last).lateral - bundleOffset(t, 0).lateral;
@@ -102,7 +112,9 @@ describe('агаарын урсгалын зам (§5.1.1)', () => {
     const airflow = createAirflowLayout(config, createBuildingLayout(config));
     expect(airflow).toHaveLength(12);
     const f3 = airflow.find((f) => f.floorId === 'F03')!;
-    expect(f3.paths).toHaveLength(2);
+    // 2 бүсийн зам + 6 өрөөний зам (D87); лоббид зөвхөн бүсийн зам
+    expect(f3.paths).toHaveLength(8);
+    expect(airflow.find((f) => f.floorId === 'F01')!.paths).toHaveLength(2);
     expect(f3.paths[0]!.points[0]!.y).toBeCloseTo(2 * config.building.floorHeight + 2.8);
   });
 });
@@ -120,14 +132,14 @@ describe('урсгалын шугамын geometry (D85)', () => {
     expect(data.side.length).toBe(vertices);
     expect(data.position.length).toBe(vertices * 3);
     expect(data.index.length).toBe((data.lineCount * STREAMLINE_SEGMENTS + data.arrowCount) * 6);
-    expect(Math.max(...data.index)).toBe(vertices - 1);
+    expect(data.index.reduce((m, v) => Math.max(m, v), 0)).toBe(vertices - 1);
   });
 
   it('атрибутын муж: along [0, 1], тал ±1, давхрын индекс, нэгж шүргэгч', () => {
     expect(data.along.every((a) => a >= 0 && a <= 1)).toBe(true);
     expect(data.side.every((s) => s === 1 || s === -1)).toBe(true);
-    expect(Math.min(...data.floor)).toBe(0);
-    expect(Math.max(...data.floor)).toBe(floors.length - 1);
+    expect(data.floor.reduce((m, v) => Math.min(m, v), Infinity)).toBe(0);
+    expect(data.floor.reduce((m, v) => Math.max(m, v), 0)).toBe(floors.length - 1);
     for (let v = 0; v < data.side.length; v += 97) {
       const t = data.tangent.subarray(v * 3, v * 3 + 3);
       expect(Math.hypot(t[0]!, t[1]!, t[2]!)).toBeCloseTo(1, 5);
@@ -153,7 +165,7 @@ describe('урсгалын шугамын geometry (D85)', () => {
   it('20 давхарт ч нэг geometry (давхрын индекс 0–19)', () => {
     const c20 = createBuildingConfig(20);
     const d20 = createStreamlineData(createAirflowLayout(c20, createBuildingLayout(c20)));
-    expect(Math.max(...d20.floor)).toBe(19);
+    expect(d20.floor.reduce((m, v) => Math.max(m, v), 0)).toBe(19);
   });
 });
 

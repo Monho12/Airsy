@@ -23,6 +23,8 @@ export interface SceneColors {
   deviceIdle: string;
   /** Агаарын урсгалын шугамын exhaust тал (FR-B8, D85; supply тал нь `selected`/accent) — чимэглэлийн саарал */
   airflow: string;
+  /** Яаралтай гарц (D87) — неон ногоон, зөвхөн гарцын хүрээ, сум ба «EXIT» тэмдэгт */
+  exit: string;
   /** Мэдрэгчийн зангилааны төлөвийн өнгө (§8.3); offline/invalid — саарал */
   status: Record<HealthStatus, string>;
 }
@@ -44,6 +46,7 @@ export function readSceneColors(): SceneColors {
     deviceActive: readCssToken('--color-text-primary'),
     deviceIdle: readCssToken('--color-border-strong'),
     airflow: readCssToken('--color-text-secondary'),
+    exit: readCssToken('--color-exit'),
     status: {
       normal: readCssToken('--color-status-normal'),
       warning: readCssToken('--color-status-warning'),

@@ -5,14 +5,22 @@ import type {
   Area,
   AreaId,
   Building,
+  CoreLayout,
   DeviceId,
+  DoorOpening,
+  EmergencyExit,
   DeviceKind,
   Floor,
   FloorId,
+  FloorInteriorLayout,
   FloorVentilationLayout,
+  InteriorRoom,
   MetricType,
+  Rect2D,
+  Segment2D,
   Sensor,
   SensorId,
+  Vec3,
 } from '@/domain/types';
 
 import { metricSpecs } from './thresholds';
@@ -169,6 +177,198 @@ function createVentilationLayout(): FloorVentilationLayout {
   };
 }
 
+// ---------- Дотоод бүтэц (D86, D87) — зөвхөн дүрслэлд; ⚠️ прототипийн таамаг утга ----------
+// Төлөвлөлт (дээрээс, урд тал доор): арын хананд хонгилын хоёр талд ариун цэврийн өрөө ба гал тогоо; дөрвөн буланд
+// хурлын өрөө 1, 2 (хойд), захирлын өрөө ба агуулах/сервер (урд); голд нээлттэй оффис А, Б; хонгилоос коридор хүртэл
+// нээлттэй лифтний танхим; коридорын хоёр үзүүрт эвакуацийн шат. Бүх хана мэдрэгч, төхөөрөмж, supply/exhaust цэг ба
+// агаарын урсгалын замаас ≥ 1 м (building.test.ts).
+/** Коридорын хагас өргөн (коридор z −1.5…1.5) */
+const CORRIDOR_HALF_WIDTH = 1.5;
+/** Булангийн өрөөний өргөн (x чиглэлд); supply/exhaust цэгээс (x = ±14) 1 м зайтай */
+const ROOM_WIDTH = 5;
+const ROOM_DOOR_WIDTH = 1;
+/** Эвакуацийн шат: коридорын үзүүрт, 3 × 3 м, бүх өндрөөр (D87) */
+const EVAC_STAIR_SIZE = 3;
+const EXIT_WIDTH = 1.2;
+/** Урд талын нээлттэй оффис руу орох нүх: x = ±8, 2 м */
+const OFFICE_OPENING_X = 8;
+const OFFICE_OPENING_WIDTH = 2;
+/** Арын хананы өрөө (ариун цэврийн өрөө, гал тогоо): хонгилын хоёр талд, x 8…14, z −12…−8 */
+const BACK_ROOM = { inner: 8, outer: 14, front: -8 } as const;
+
+/** Хонгилын хуваалт: 2 лифт (тус бүр 2 м) + шат (4 м); хаалга нь коридор талын нүүрэнд */
+const CORE_LAYOUT: CoreLayout = {
+  lifts: [
+    { x: CORE.x, z: CORE.z, width: 2, depth: CORE.depth },
+    { x: CORE.x + 2, z: CORE.z, width: 2, depth: CORE.depth },
+  ],
+  stair: { x: CORE.x + 4, z: CORE.z, width: CORE.width - 4, depth: CORE.depth },
+  doorWidth: 1,
+};
+
+/** Эвакуацийн шатны хонгил: коридорын хоёр үзүүрт, гадна хананд наалдсан (D87) */
+const EVACUATION_STAIRS: Rect2D[] = [-1, 1].map((side) => ({
+  x: side < 0 ? -FOOTPRINT.width / 2 : FOOTPRINT.width / 2 - EVAC_STAIR_SIZE,
+  z: -EVAC_STAIR_SIZE / 2,
+  width: EVAC_STAIR_SIZE,
+  depth: EVAC_STAIR_SIZE,
+}));
+
+/** Тэнхлэгийн дагуух хананаас хаалганы нүхийг хасна (`fixed` — хананы тогтмол координат) */
+function wallWithGaps(
+  axis: 'x' | 'z',
+  fixed: number,
+  from: number,
+  to: number,
+  gaps: readonly { center: number; width: number }[],
+): Segment2D[] {
+  const segment = (a: number, b: number): Segment2D =>
+    axis === 'x' ? { x1: a, z1: fixed, x2: b, z2: fixed } : { x1: fixed, z1: a, x2: fixed, z2: b };
+  const sorted = [...gaps].sort((a, b) => a.center - b.center);
+  const segments: Segment2D[] = [];
+  let cursor = from;
+  for (const gap of sorted) {
+    const start = gap.center - gap.width / 2;
+    if (start > cursor) segments.push(segment(cursor, start));
+    cursor = gap.center + gap.width / 2;
+  }
+  if (cursor < to) segments.push(segment(cursor, to));
+  return segments;
+}
+
+type Gap = { center: number; width: number; kind: DoorOpening['kind'] };
+
+/** Нэг тэнхлэгийн хана + түүний хаалга (`axis` — хананы чиглэл) */
+function wallLine(axis: 'x' | 'z', fixed: number, from: number, to: number, gaps: Gap[]) {
+  return {
+    walls: wallWithGaps(axis, fixed, from, to, gaps),
+    doors: gaps.map((gap): DoorOpening => ({
+      x: axis === 'x' ? gap.center : fixed,
+      z: axis === 'x' ? fixed : gap.center,
+      width: gap.width,
+      axis,
+      kind: gap.kind,
+    })),
+  };
+}
+
+/** Өрөөний агаарын урсгал: эхлэл → бага зэрэг доош хотойсон дунд цэг → төгсгөл (supply → exhaust, D87) */
+const roomPath = (from: { x: number; z: number }, to: { x: number; z: number }): Vec3[] => [
+  { x: from.x, y: 2.8, z: from.z },
+  { x: (from.x + to.x) / 2, y: 2.0, z: (from.z + to.z) / 2 },
+  { x: to.x, y: 2.8, z: to.z },
+];
+
+/**
+ * Давхрын дотоод бүтэц (D86, D87). Лобби (F01) нээлттэй орон зай тул өрөө, хана, лифтний танхимгүй — коридорын
+ * контур ба эвакуацийн шатны гарц л.
+ */
+function createInteriorLayout(usage: Usage): FloorInteriorLayout {
+  const halfW = FOOTPRINT.width / 2;
+  const halfD = FOOTPRINT.depth / 2;
+  const c = CORRIDOR_HALF_WIDTH;
+  const stairInner = halfW - EVAC_STAIR_SIZE; // эвакуацийн шатны коридор талын нүүр (±17)
+  const corridor = { x: -stairInner, z: -c, width: 2 * stairInner, depth: 2 * c };
+  // Гарц: шатны нүүрэн дээр, коридороос шат руу зугтана
+  const exits: EmergencyExit[] = [-1, 1].map((side) => ({
+    x: side * stairInner,
+    z: 0,
+    width: EXIT_WIDTH,
+    outward: { x: side, z: 0 },
+  }));
+  if (usage === 'lobby') {
+    return { corridor, liftLobby: null, rooms: [], walls: [], doors: [], exits, airflowPaths: [] };
+  }
+
+  const roomInner = halfW - ROOM_WIDTH; // булангийн өрөөний дотор талын хана (±15)
+  const roomDoorX = (stairInner + roomInner) / 2; // ±16 — шат ба өрөөний ханын хооронд
+  const coreFront = CORE.z + CORE.depth; // −8
+  const liftLobby = { x: CORE.x, z: coreFront, width: CORE.width, depth: -c - coreFront };
+  const corner = (xSide: number, zSide: number): Rect2D => ({
+    x: xSide < 0 ? -halfW : roomInner,
+    z: zSide < 0 ? -halfD : c,
+    width: ROOM_WIDTH,
+    depth: halfD - c,
+  });
+  const back = (xSide: number): Rect2D => ({
+    x: xSide < 0 ? -BACK_ROOM.outer : BACK_ROOM.inner,
+    z: -halfD,
+    width: BACK_ROOM.outer - BACK_ROOM.inner,
+    depth: BACK_ROOM.front + halfD,
+  });
+  const rooms: InteriorRoom[] = [
+    { kind: 'meeting', number: 1, bounds: corner(-1, -1) },
+    { kind: 'meeting', number: 2, bounds: corner(1, -1) },
+    { kind: 'director', number: null, bounds: corner(-1, 1) },
+    { kind: 'storage', number: null, bounds: corner(1, 1) },
+    { kind: 'restroom', number: null, bounds: back(-1) },
+    { kind: 'kitchen', number: null, bounds: back(1) },
+  ];
+
+  const backDoorX = (BACK_ROOM.inner + BACK_ROOM.outer) / 2; // ±11
+  const lines = [
+    // Коридорын хойд хана: булангийн өрөөний хаалга, лифтний танхим руу нээлттэй хэсэг
+    wallLine('x', -c, -stairInner, stairInner, [
+      { center: -roomDoorX, width: ROOM_DOOR_WIDTH, kind: 'room' },
+      { center: 0, width: CORE.width, kind: 'office' },
+      { center: roomDoorX, width: ROOM_DOOR_WIDTH, kind: 'room' },
+    ]),
+    // Коридорын урд хана: булангийн өрөөний хаалга, нээлттэй оффис Б руу 2 нүх
+    wallLine('x', c, -stairInner, stairInner, [
+      { center: -roomDoorX, width: ROOM_DOOR_WIDTH, kind: 'room' },
+      { center: -OFFICE_OPENING_X, width: OFFICE_OPENING_WIDTH, kind: 'office' },
+      { center: OFFICE_OPENING_X, width: OFFICE_OPENING_WIDTH, kind: 'office' },
+      { center: roomDoorX, width: ROOM_DOOR_WIDTH, kind: 'room' },
+    ]),
+    // Булангийн өрөөний дотор хана
+    ...[-roomInner, roomInner].flatMap((x) => [
+      wallLine('z', x, -halfD, -c, []),
+      wallLine('z', x, c, halfD, []),
+    ]),
+    // Арын өрөө (ариун цэврийн өрөө, гал тогоо): хоёр хажуу хана ба оффис руу хаалгатай урд хана
+    ...[-1, 1].flatMap((side) => [
+      wallLine('z', side * BACK_ROOM.inner, -halfD, BACK_ROOM.front, []),
+      wallLine('z', side * BACK_ROOM.outer, -halfD, BACK_ROOM.front, []),
+      wallLine(
+        'x',
+        BACK_ROOM.front,
+        Math.min(side * BACK_ROOM.inner, side * BACK_ROOM.outer),
+        Math.max(side * BACK_ROOM.inner, side * BACK_ROOM.outer),
+        [{ center: side * backDoorX, width: ROOM_DOOR_WIDTH, kind: 'room' }],
+      ),
+    ]),
+  ];
+
+  // Өрөө бүрээс гарах агаарын урсгал: булангийн өрөөнд гадна хананаас коридор руу, арын өрөөнд хажуугаас хажуу руу
+  const cornerX = halfW - ROOM_WIDTH / 2; // ±17.5
+  const airflowPaths = [
+    ...[-1, 1].flatMap((xSide) =>
+      [-1, 1].map((zSide) =>
+        roomPath(
+          { x: xSide * cornerX, z: zSide * (halfD - 1) },
+          { x: xSide * cornerX, z: zSide * (c + 1.5) },
+        ),
+      ),
+    ),
+    ...[-1, 1].map((side) =>
+      roomPath(
+        { x: side * (BACK_ROOM.outer - 1), z: -halfD + 1.5 },
+        { x: side * (BACK_ROOM.inner + 1), z: -halfD + 1.5 },
+      ),
+    ),
+  ];
+
+  return {
+    corridor,
+    liftLobby,
+    rooms,
+    walls: lines.flatMap((line) => line.walls),
+    doors: lines.flatMap((line) => line.doors),
+    exits,
+    airflowPaths,
+  };
+}
+
 // ---------- ID (§5.2) ----------
 export const floorIdOf = (level: number): FloorId => `F${String(level).padStart(2, '0')}`;
 export const areaIdOf = (floorId: FloorId, letter: string): AreaId => `${floorId}-${letter}`;
@@ -257,6 +457,7 @@ export function createBuildingConfig(floorCount: number = DEFAULT_FLOOR_COUNT): 
       areaIds,
       deviceIds,
       ventilation: createVentilationLayout(),
+      interior: createInteriorLayout(template.usage),
     };
   }
 
@@ -282,6 +483,12 @@ export function createBuildingConfig(floorCount: number = DEFAULT_FLOOR_COUNT): 
     outdoorSensorIds,
     shafts: { supply: { x: -6, y: 0, z: -6 }, exhaust: { x: 6, y: 0, z: -6 } },
     core: { ...CORE },
+    coreLayout: {
+      lifts: CORE_LAYOUT.lifts.map((lift) => ({ ...lift })),
+      stair: { ...CORE_LAYOUT.stair },
+      doorWidth: CORE_LAYOUT.doorWidth,
+    },
+    evacuationStairs: EVACUATION_STAIRS.map((stair) => ({ ...stair })),
   };
 
   return { building, floors, areas, sensors, devices };

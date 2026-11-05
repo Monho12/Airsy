@@ -201,3 +201,192 @@ describe('§5.1.2: лифт/шатны хонгил (D59)', () => {
     expect(createBuildingConfig(count).building.core).toEqual(core);
   });
 });
+
+describe('дотоод бүтэц, хонгил, эвакуацийн шат (D86, D87)', () => {
+  const { building, areas, floors } = buildingConfig;
+  const halfW = building.footprint.width / 2;
+  const halfD = building.footprint.depth / 2;
+  type Rect = { x: number; z: number; width: number; depth: number };
+  const inside = (r: Rect, p: { x: number; z: number }) =>
+    p.x > r.x && p.x < r.x + r.width && p.z > r.z && p.z < r.z + r.depth;
+  const overlaps = (a: Rect, b: Rect) =>
+    a.x < b.x + b.width && b.x < a.x + a.width && a.z < b.z + b.depth && b.z < a.z + a.depth;
+  /** Цэгээс хэрчим хүртэлх хэвтээ зай */
+  const distanceToSegment = (
+    p: { x: number; z: number },
+    s: { x1: number; z1: number; x2: number; z2: number },
+  ) => {
+    const dx = s.x2 - s.x1;
+    const dz = s.z2 - s.z1;
+    const t = Math.max(
+      0,
+      Math.min(1, ((p.x - s.x1) * dx + (p.z - s.z1) * dz) / (dx * dx + dz * dz)),
+    );
+    return Math.hypot(p.x - (s.x1 + dx * t), p.z - (s.z1 + dz * t));
+  };
+  /** Замын хэрчмийг нягт түүвэрлэнэ */
+  const samplePath = (path: { x: number; z: number }[]) =>
+    path.slice(1).flatMap((b, i) => {
+      const a = path[i]!;
+      return Array.from({ length: 51 }, (_, k) => ({
+        x: a.x + ((b.x - a.x) * k) / 50,
+        z: a.z + ((b.z - a.z) * k) / 50,
+      }));
+    });
+  const solids = [building.core, ...building.evacuationStairs];
+
+  it('оффис давхар: 6 өрөө (хурлын 1, 2, захирал, агуулах, ариун цэврийн, гал тогоо), лифтний танхим, 2 гарц', () => {
+    const interior = floors.F07!.interior;
+    expect(interior.rooms.map((r) => `${r.kind}${r.number ?? ''}`)).toEqual([
+      'meeting1',
+      'meeting2',
+      'director',
+      'storage',
+      'restroom',
+      'kitchen',
+    ]);
+    expect(interior.liftLobby).not.toBeNull();
+    expect(interior.exits).toHaveLength(2);
+    expect(interior.airflowPaths).toHaveLength(6);
+    expect(interior.doors.filter((d) => d.kind === 'room')).toHaveLength(6);
+  });
+
+  it('лобби (F01): өрөө, хана, лифтний танхим, өрөөний урсгалгүй; коридор ба гарц л', () => {
+    const interior = floors.F01!.interior;
+    expect(interior.rooms).toEqual([]);
+    expect(interior.walls).toEqual([]);
+    expect(interior.doors).toEqual([]);
+    expect(interior.liftLobby).toBeNull();
+    expect(interior.airflowPaths).toEqual([]);
+    expect(interior.exits).toHaveLength(2);
+  });
+
+  it('өрөө footprint дотор, хоорондоо ба хонгил/шаттай давхцахгүй', () => {
+    for (const floor of Object.values(floors)) {
+      const rects = floor.interior.rooms.map((r) => r.bounds);
+      for (const r of rects) {
+        expect(r.x).toBeGreaterThanOrEqual(-halfW);
+        expect(r.x + r.width).toBeLessThanOrEqual(halfW);
+        expect(r.z).toBeGreaterThanOrEqual(-halfD);
+        expect(r.z + r.depth).toBeLessThanOrEqual(halfD);
+        for (const solid of solids) expect(overlaps(r, solid)).toBe(false);
+      }
+      rects.forEach((a, i) =>
+        rects.slice(i + 1).forEach((b) => expect(overlaps(a, b)).toBe(false)),
+      );
+    }
+  });
+
+  it('эвакуацийн шат коридорын хоёр үзүүрт, гарц шатны нүүрэнд, зугтах чиглэл шат руу', () => {
+    expect(building.evacuationStairs).toHaveLength(2);
+    for (const floor of Object.values(floors)) {
+      const { exits, corridor } = floor.interior;
+      for (const exit of exits) {
+        const stair = building.evacuationStairs.find((s) =>
+          inside(
+            { x: s.x - 0.01, z: s.z, width: s.width + 0.02, depth: s.depth },
+            { x: exit.x, z: exit.z },
+          ),
+        );
+        expect(stair).toBeDefined();
+        expect(Math.abs(exit.x)).toBe(corridor.x + corridor.width);
+        // Гарцаас зугтах чиглэлд нэг алхам — шатны дотор
+        expect(inside(stair!, { x: exit.x + exit.outward.x, z: exit.z + exit.outward.z })).toBe(
+          true,
+        );
+      }
+    }
+  });
+
+  it('хаалганы нүх хананд таслагдсан (нүхний төвөөс хана ≥ хагас өргөн)', () => {
+    const { walls, doors } = floors.F07!.interior;
+    for (const door of doors) {
+      // Зөвхөн хаалгатай ижил шугам дээрх хана (эсрэг талын хана хамаарахгүй)
+      const sameLine = walls.filter((w) =>
+        door.axis === 'x' ? w.z1 === door.z && w.z2 === door.z : w.x1 === door.x && w.x2 === door.x,
+      );
+      expect(sameLine.length).toBeGreaterThan(0);
+      for (const wall of sameLine) {
+        expect(distanceToSegment(door, wall)).toBeGreaterThanOrEqual(door.width / 2 - 1e-9);
+      }
+    }
+  });
+
+  it('мэдрэгчийн тэмдэг, supply/exhaust цэг, төхөөрөмж өрөөн дотор биш ба хананаас ≥ 1 м', () => {
+    for (const floor of Object.values(floors)) {
+      const points = [
+        ...floor.areaIds.map((id) => areas[id]!.markerPosition),
+        ...floor.ventilation.supplyPoints,
+        ...floor.ventilation.exhaustPoints,
+        ...Object.values(floor.ventilation.devicePositions),
+      ];
+      for (const p of points) {
+        for (const room of floor.interior.rooms) expect(inside(room.bounds, p)).toBe(false);
+        for (const wall of floor.interior.walls) {
+          expect(distanceToSegment(p, wall)).toBeGreaterThanOrEqual(1);
+        }
+      }
+    }
+  });
+
+  it('оффисын ба өрөөний агаарын урсгалын зам хананаас ≥ 1 м', () => {
+    for (const floor of Object.values(floors)) {
+      const paths = [...floor.ventilation.airflowPaths, ...floor.interior.airflowPaths];
+      for (const path of paths) {
+        for (const p of samplePath(path)) {
+          for (const wall of floor.interior.walls) {
+            expect(distanceToSegment(p, wall)).toBeGreaterThanOrEqual(1 - 1e-9);
+          }
+        }
+      }
+    }
+  });
+
+  it('өрөөний урсгал тухайн өрөөн дотор (өрөө бүрт нэг)', () => {
+    const { rooms, airflowPaths } = floors.F07!.interior;
+    for (const room of rooms) {
+      const own = airflowPaths.filter((path) => path.every((p) => inside(room.bounds, p)));
+      expect(own).toHaveLength(1);
+    }
+  });
+
+  it('хонгил: 2 лифт + шат core-ийг давхцалгүй бүрэн хуваана', () => {
+    const { core, coreLayout } = building;
+    const parts = [...coreLayout.lifts, coreLayout.stair];
+    expect(coreLayout.lifts).toHaveLength(2);
+    expect(parts.reduce((sum, p) => sum + p.width * p.depth, 0)).toBe(core.width * core.depth);
+    const sorted = [...parts].sort((a, b) => a.x - b.x);
+    expect(sorted[0]!.x).toBe(core.x);
+    for (let i = 1; i < sorted.length; i += 1) {
+      expect(sorted[i]!.x).toBe(sorted[i - 1]!.x + sorted[i - 1]!.width);
+    }
+    expect(sorted.at(-1)!.x + sorted.at(-1)!.width).toBe(core.x + core.width);
+  });
+
+  it('эвакуацийн шат footprint дотор, урсгалын зам, мэдрэгч, төхөөрөмжөөс хол', () => {
+    for (const stair of building.evacuationStairs) {
+      expect(stair.x).toBeGreaterThanOrEqual(-halfW);
+      expect(stair.x + stair.width).toBeLessThanOrEqual(halfW);
+      for (const floor of Object.values(floors)) {
+        const points = [
+          ...floor.areaIds.map((id) => areas[id]!.markerPosition),
+          ...floor.ventilation.supplyPoints,
+          ...floor.ventilation.exhaustPoints,
+          ...[...floor.ventilation.airflowPaths, ...floor.interior.airflowPaths].flatMap(
+            samplePath,
+          ),
+        ];
+        for (const p of points) expect(inside(stair, p)).toBe(false);
+      }
+    }
+  });
+
+  it.each([1, 6, 20])('давхрын тоо бүрт дотоод бүтэцтэй (%i давхар)', (count) => {
+    const config = createBuildingConfig(count);
+    expect(config.building.evacuationStairs).toEqual(building.evacuationStairs);
+    for (const floor of Object.values(config.floors)) {
+      expect(floor.interior.exits).toHaveLength(2);
+      expect(floor.interior.rooms).toHaveLength(floor.usage === 'lobby' ? 0 : 6);
+    }
+  });
+});

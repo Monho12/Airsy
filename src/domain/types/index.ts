@@ -25,9 +25,16 @@ export type {
 export type {
   Area,
   Building,
+  CoreLayout,
+  DoorOpening,
+  EmergencyExit,
   Floor,
+  FloorInteriorLayout,
   FloorVentilationLayout,
+  InteriorRoom,
+  InteriorRoomKind,
   Rect2D,
+  Segment2D,
   Sensor,
   Vec3,
 } from './building';
