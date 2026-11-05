@@ -110,7 +110,19 @@ const onFill: { fg: string; bg: string; expected: Cell }[] = [
 const uiPairs: { fg: string; bg: string; expected: number }[] = [
   // Яаралтай мөрөн дээрх товчны focus-ийн хүрээ
   { fg: 'focus-ring', bg: 'emergency', expected: 3.33 },
+  // Хандлагын график (D82): өгөгдлийн шугам ба босгын шугам нь 12%-ийн босгын зурвас (surface-1 дээр) дээр
+  { fg: 'accent', bg: 'warning-band@s1', expected: 7.8 },
+  { fg: 'accent', bg: 'critical-band@s1', expected: 8.43 },
+  { fg: 'status-warning', bg: 'warning-band@s1', expected: 8.44 },
+  { fg: 'status-critical', bg: 'critical-band@s1', expected: 5.51 },
 ];
+
+/** Графикийн босгын зурвасын тунгалаг байдал (TrendChart.css-тэй ижил, D82) */
+const CHART_BAND_ALPHA = 0.12;
+const blendedBackgrounds: Record<string, () => Rgb> = {
+  'warning-band@s1': () => blend(color('status-warning'), color('surface-1'), CHART_BAND_ALPHA),
+  'critical-band@s1': () => blend(color('status-critical'), color('surface-1'), CHART_BAND_ALPHA),
+};
 
 const WHITE: Rgb = [255, 255, 255];
 /** Баримт 2 оронтой тоогоор (дугуйлж) бичигдсэн тул тооцоолсон утга баримтын утгаас ±0.005 дотор байх ёстой. */
@@ -161,7 +173,8 @@ describe('§8.3 зөвхөн чимэглэлийн хүрээ', () => {
 describe('§8.3 UI элементийн нэмэлт хослол (3:1)', () => {
   for (const pair of uiPairs) {
     it(`${pair.fg} / ${pair.bg}: ${pair.expected}`, () => {
-      const ratio = contrast(color(pair.fg), color(pair.bg));
+      const bg = blendedBackgrounds[pair.bg]?.() ?? color(pair.bg);
+      const ratio = contrast(color(pair.fg), bg);
       expect(Math.abs(ratio - pair.expected)).toBeLessThan(TOLERANCE);
       expect(ratio).toBeGreaterThanOrEqual(UI);
     });

@@ -56,6 +56,22 @@ export const common = {
     live: 'ШУУД',
     paused: 'ТҮР ЗОГССОН',
   },
+  /** Хандлагын график (FR-T1, §8.2, Phase 6c, D82) */
+  trends: {
+    metricLabel: 'Хэмжигдэхүүн',
+    noFloor: 'Хандлагыг харахын тулд давхар сонгоно уу.',
+    noData: 'Энэ хэмжигдэхүүнд зөв хэмжилт алга — өгөгдөлгүй.',
+    chartLabel: (floorLabel: string, metricLabel: string) =>
+      `${floorLabel}: ${metricLabel} — хандлагын график (давхрын хамгийн их утга)`,
+    seriesNote: 'Давхрын хамгийн их утга, сүүлийн 5 минут (симуляцийн цаг)',
+    latest: 'Сүүлийн',
+    max: 'Хамгийн их',
+    min: 'Хамгийн бага',
+    noValue: 'Өгөгдөлгүй',
+    thresholdsLabel: 'Босго',
+    threshold: (side: 'high' | 'low', levelLabel: string, value: string) =>
+      `${levelLabel} ${side === 'high' ? '≥' : '≤'} ${value}`,
+  },
   /** Runtime-ийн командын татгалзлын шалтгаан (§9.4, §9.4.1, D71) */
   runtime: {
     notRunning: 'Симуляци ажиллахгүй байна — командыг гүйцэтгэх боломжгүй.',

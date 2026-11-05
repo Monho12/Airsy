@@ -101,7 +101,8 @@ describe('Dashboard — жишээ snapshot-оор', () => {
 
   it('давхрын жагсаалт тохиргооны бүх давхрыг дээрээс доош харуулна', () => {
     renderWith();
-    const options = screen.getAllByRole('option');
+    // Зөвхөн давхрын жагсаалтын сонголтууд (хандлагын графикийн <select> ч option-той)
+    const options = within(screen.getByRole('listbox')).getAllByRole('option');
     expect(options).toHaveLength(buildingConfig.building.floorIds.length);
     expect(options[0]).toHaveTextContent(floorLabelMn(buildingConfig.building.floorIds.length));
     expect(options.at(-1)).toHaveTextContent(floorLabelMn(1));

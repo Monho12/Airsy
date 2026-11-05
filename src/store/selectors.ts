@@ -3,7 +3,7 @@
 import { aggregateFloorMetric, isValidMeasurement, summarizeHealth } from '@/domain/classification';
 import type { HealthSummary } from '@/domain/classification';
 import { buildingConfig, METRICS, type BuildingConfig } from '@/domain/config/building';
-import { outdoorAirThresholds } from '@/domain/config/thresholds';
+import { indoorThresholds, outdoorAirThresholds } from '@/domain/config/thresholds';
 import { floorLabelMn } from '@/domain/i18n/mn';
 import { scenarioDefinitions, scenarioOrder } from '@/domain/scenarios/definitions';
 import type {
@@ -18,6 +18,8 @@ import type {
   OutdoorConditions,
   ScenarioId,
   SensorReading,
+  ThresholdConditionId,
+  TrendPoint,
   SimTimeMs,
   SystemEvent,
   VentilationDevice,
@@ -310,4 +312,116 @@ export function selectScenarioPanel(
           percent: Math.round(Math.min(1, Math.max(0, running.progress)) * 100),
         };
   return { items, active, emergency };
+}
+
+// ---------- Хандлагын график (FR-T1, §5.6 «Графикт max-ийг зурна», Phase 6c) ----------
+
+/** Нэг босгын шугам: тал, түвшин, орох утга (§5.5) */
+export interface TrendThreshold {
+  condition: ThresholdConditionId;
+  side: 'high' | 'low';
+  level: 'warning' | 'critical';
+  value: number;
+}
+
+/** Босгын зурвас (чимэглэлийн дэвсгэр): `from` < `to`, y тэнхлэгийн мужаар хайчилсан */
+export interface TrendBand {
+  level: 'warning' | 'critical';
+  from: number;
+  to: number;
+}
+
+export interface TrendChartData {
+  points: readonly TrendPoint[];
+  thresholds: TrendThreshold[];
+  bands: TrendBand[];
+  /** y тэнхлэгийн муж; зөв утга нэг ч байхгүй бол `null` */
+  domain: [number, number] | null;
+  latest: number | null;
+  min: number | null;
+  max: number | null;
+}
+
+/** Хоосон түүхийн тогтвортой лавлагаа (selector бүр шинэ массив буцаахгүй) */
+const EMPTY_POINTS: readonly TrendPoint[] = [];
+
+/** Давхар × хэмжигдэхүүний хандлагын цуваа (snapshot-ийн лавлагаа — structural sharing, §11.2) */
+export function selectTrendPoints(
+  snapshot: LiveSnapshot,
+  floorId: FloorId,
+  metric: MetricType,
+): readonly TrendPoint[] {
+  return snapshot.history[floorId]?.[metric] ?? EMPTY_POINTS;
+}
+
+/** Тухайн хэмжигдэхүүний босгын шугамууд (§5.5; дотоод босго) */
+export function trendThresholds(metric: MetricType): TrendThreshold[] {
+  const result: TrendThreshold[] = [];
+  for (const [condition, definition] of Object.entries(indoorThresholds) as [
+    ThresholdConditionId,
+    (typeof indoorThresholds)[ThresholdConditionId],
+  ][]) {
+    if (definition.metric !== metric) continue;
+    result.push(
+      { condition, side: definition.side, level: 'warning', value: definition.warningEnter },
+      { condition, side: definition.side, level: 'critical', value: definition.criticalEnter },
+    );
+  }
+  return result;
+}
+
+/**
+ * Хандлагын графикийн өгөгдөл. y тэнхлэгийн муж нь утгыг бүхэлд нь багтааж, хамгийн ойрын анхааруулгын босгыг үргэлж
+ * харуулна; утга анхааруулгын босгыг давсан бол ноцтой босгыг ч багтаана (босго хүртэлх зай харагдана). `null` цэг
+ * (зөв хэмжилтгүй) нь тасархай болж үлдэнэ — хэзээ ч тэг биш (FR-M5).
+ */
+export function selectTrendChart(
+  points: readonly TrendPoint[],
+  metric: MetricType,
+): TrendChartData {
+  const values = points.flatMap((point) => (point.value === null ? [] : [point.value]));
+  const thresholds = trendThresholds(metric);
+  if (values.length === 0) {
+    return { points, thresholds, bands: [], domain: null, latest: null, min: null, max: null };
+  }
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const last = points[points.length - 1];
+  const latest = last?.value ?? null;
+
+  let low = min;
+  let high = max;
+  for (const side of ['high', 'low'] as const) {
+    const warning = thresholds.find((t) => t.side === side && t.level === 'warning');
+    const critical = thresholds.find((t) => t.side === side && t.level === 'critical');
+    if (warning === undefined || critical === undefined) continue;
+    if (side === 'high') {
+      high = Math.max(high, max >= warning.value ? critical.value : warning.value);
+    } else {
+      low = Math.min(low, min <= warning.value ? critical.value : warning.value);
+    }
+  }
+  // Ирмэгт 8%-ийн зай; муж тэг өргөнтэй бол нэгж зай
+  const pad = high > low ? (high - low) * 0.08 : 1;
+  const domain: [number, number] = [low - pad, high + pad];
+
+  const bands: TrendBand[] = [];
+  const clip = (level: TrendBand['level'], from: number, to: number) => {
+    const a = Math.max(from, domain[0]);
+    const b = Math.min(to, domain[1]);
+    if (b > a) bands.push({ level, from: a, to: b });
+  };
+  for (const side of ['high', 'low'] as const) {
+    const warning = thresholds.find((t) => t.side === side && t.level === 'warning');
+    const critical = thresholds.find((t) => t.side === side && t.level === 'critical');
+    if (warning === undefined || critical === undefined) continue;
+    if (side === 'high') {
+      clip('warning', warning.value, critical.value);
+      clip('critical', critical.value, domain[1]);
+    } else {
+      clip('warning', critical.value, warning.value);
+      clip('critical', domain[0], critical.value);
+    }
+  }
+  return { points, thresholds, bands, domain, latest, min, max };
 }
