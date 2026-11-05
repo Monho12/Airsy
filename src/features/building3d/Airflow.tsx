@@ -4,7 +4,7 @@
 // Хөдөлгөөн багасгах үед бөөмс нуугдана (§8.5). Дүрслэл — агаарын урсгалын физик загвар биш.
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
-import { Object3D, type InstancedMesh } from 'three';
+import { Color, Object3D, type InstancedMesh } from 'three';
 
 import type { BuildingConfig } from '@/domain/config/building';
 import type { Vec3 } from '@/domain/types';
@@ -20,6 +20,7 @@ import {
   pointOnPath,
   PARTICLE_MAX_SPEED,
 } from './animationData';
+import { emergencyFloorRole } from './emergencyData';
 import type { BuildingLayout } from './layout';
 import type { SceneColors } from './sceneColors';
 
@@ -28,6 +29,8 @@ const PARTICLE_RADIUS = 0.12;
 // Frame бүрт объект үүсгэхгүй (§11.3)
 const scratch = new Object3D();
 const point: Vec3 = { x: 0, y: 0, z: 0 };
+const normalColor = new Color();
+const fireColor = new Color();
 
 export function Airflow({
   config,
@@ -49,13 +52,20 @@ export function Airflow({
   useFrame((state, delta) => {
     const mesh = meshRef.current;
     if (mesh === null || reducedMotion) return;
-    const devices = useLiveStore.getState().snapshot?.devices ?? null;
+    const snapshot = useLiveStore.getState().snapshot;
+    const devices = snapshot?.devices ?? null;
+    const emergency = snapshot?.control.emergency ?? null;
+    normalColor.set(colors.airflow);
+    fireColor.set(colors.status.critical);
     // Таб нуугдсаны дараах том delta-г хязгаарлана (бөөмс үсрэхгүй)
     const dt = Math.min(delta, 0.1);
     floors.forEach((floor, f) => {
       const airflow = floorAirflow(devices, config, floor.floorId);
       const count = particleCount(budget, airflow);
       const pathCount = floor.paths.length;
+      // Яаралтай байдлын үед галын давхрын бөөмс улаан (§8.6; жишээ дүрслэл — утааны тархалт биш)
+      const tint =
+        emergencyFloorRole(floor.floorId, emergency, config) === 'fire' ? fireColor : normalColor;
       const meanLength =
         pathCount === 0 ? 1 : floor.paths.reduce((sum, p) => sum + p.length, 0) / pathCount;
       progress.current[f] =
@@ -72,9 +82,11 @@ export function Airflow({
         }
         scratch.updateMatrix();
         mesh.setMatrixAt(index, scratch.matrix);
+        mesh.setColorAt(index, tint);
       }
     });
     mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor !== null) mesh.instanceColor.needsUpdate = true;
     // `frameloop="demand"`: анимацитай үед дараагийн frame-ийг хүснэ
     state.invalidate();
   });
@@ -90,7 +102,7 @@ export function Airflow({
       frustumCulled={false}
     >
       <sphereGeometry args={[PARTICLE_RADIUS, 6, 4]} />
-      <meshBasicMaterial color={colors.airflow} transparent opacity={0.7} depthWrite={false} />
+      <meshBasicMaterial transparent opacity={0.7} depthWrite={false} />
     </instancedMesh>
   );
 }

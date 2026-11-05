@@ -207,6 +207,7 @@ describe('Яаралтай байдал (§6.9, §7.4 A, B)', () => {
     expect(bar).toHaveTextContent(text.emergencyBar.title);
     expect(bar).toHaveTextContent(text.emergencyDisclaimer);
     expect(bar).toHaveTextContent(text.emergencyBar.fireFloor(floorLabelMn(8)));
+    expect(bar).toHaveTextContent(text.emergencyBar.visualNote);
     await user.click(within(bar).getByRole('button', { name: text.emergencyBar.end }));
     expect(dispatch).toHaveBeenCalledWith({ type: 'emergency/end' });
   });

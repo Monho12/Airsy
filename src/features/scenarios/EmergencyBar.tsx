@@ -41,6 +41,7 @@ export function EmergencyBar() {
           {text.emergencyBar.fireFloor(emergency.fireFloorLabel)}
         </p>
         <p className="emergency-bar__disclaimer">{text.emergencyDisclaimer}</p>
+        <p className="emergency-bar__note">{text.emergencyBar.visualNote}</p>
         {error !== null && <p className="emergency-bar__error">{error}</p>}
       </div>
       {runtime !== null && (

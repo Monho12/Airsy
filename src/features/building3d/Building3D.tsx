@@ -56,7 +56,7 @@ export function Building3D({ onFallback, config = defaultBuildingConfig }: Build
         <ambientLight intensity={0.9} />
         <directionalLight position={[30, 60, 40]} intensity={1.2} />
         <CameraRig layout={layout} />
-        <BuildingModel layout={layout} colors={colors} />
+        <BuildingModel layout={layout} config={config} colors={colors} />
         <SensorNodes config={config} layout={layout} colors={colors} />
         <DeviceModels config={config} layout={layout} colors={colors} />
         <Airflow config={config} layout={layout} colors={colors} />

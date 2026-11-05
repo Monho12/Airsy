@@ -5,6 +5,7 @@
 import { Edges } from '@react-three/drei';
 import { DoubleSide } from 'three';
 
+import type { BuildingConfig } from '@/domain/config/building';
 import type { FloorId, Vec3 } from '@/domain/types';
 
 import type {
@@ -14,6 +15,7 @@ import type {
   RoofEquipmentLayout,
   ZoneLayout,
 } from './layout';
+import { useEmergencyFloorRole } from './emergencyData';
 import type { SceneColors } from './sceneColors';
 import {
   CEILING_SLAB_OPACITY,
@@ -102,22 +104,31 @@ function Zone({
 function FloorSlab({
   floor,
   floorBelowId,
+  config,
   colors,
 }: {
   floor: FloorLayout;
   /** Энэ хавтангийн яг доорх давхар (1-р давхарт `null`) */
   floorBelowId: FloorId | null;
+  config: BuildingConfig;
   colors: SceneColors;
 }) {
   const { visual, onClick, onPointerOver, onPointerOut } = useFloorInteraction(floor.id);
   const ceiling = useIsCeilingOfSelected(floorBelowId);
+  // Яаралтай байдлын тодруулга (§7.2 S6): галын давхар — ноцтойн өнгө, даралттай хөрш — анхааруулгын өнгө.
+  // Сонголт (accent) давуу — сонгосон давхар үргэлж танигдана (§8.3).
+  const emergencyRole = useEmergencyFloorRole(floor.id, config);
   const { center, size } = floor.slab;
   const edgeColor =
     visual === 'selected'
       ? colors.selected
-      : visual === 'hovered'
-        ? colors.hovered
-        : colors.slabEdge;
+      : emergencyRole === 'fire'
+        ? colors.status.critical
+        : emergencyRole === 'neighbor'
+          ? colors.status.warning
+          : visual === 'hovered'
+            ? colors.hovered
+            : colors.slabEdge;
   const overlayOpacity = slabOverlayOpacity(visual, ceiling);
 
   return (
@@ -224,7 +235,15 @@ function RoofSlab({
   );
 }
 
-export function BuildingModel({ layout, colors }: { layout: BuildingLayout; colors: SceneColors }) {
+export function BuildingModel({
+  layout,
+  config,
+  colors,
+}: {
+  layout: BuildingLayout;
+  config: BuildingConfig;
+  colors: SceneColors;
+}) {
   const { roofSlab, core, floors } = layout;
   return (
     <group>
@@ -233,6 +252,7 @@ export function BuildingModel({ layout, colors }: { layout: BuildingLayout; colo
           key={floor.id}
           floor={floor}
           floorBelowId={floors[index - 1]?.id ?? null}
+          config={config}
           colors={colors}
         />
       ))}

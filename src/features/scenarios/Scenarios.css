@@ -154,6 +154,7 @@
 
 .emergency-bar__floor,
 .emergency-bar__disclaimer,
+.emergency-bar__note,
 .emergency-bar__error {
   font-size: var(--font-size-13);
 }
