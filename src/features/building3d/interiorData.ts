@@ -192,7 +192,8 @@ export function interiorLabels(
       key: `room-${i}`,
       kind: room.kind,
       number: room.number,
-      areaId: null,
+      // Өрөөний шошгыг дарахад тэр бүс сонгогдоно (С7, D93)
+      areaId: room.areaId,
       position: at(c.x, c.z),
     });
   });

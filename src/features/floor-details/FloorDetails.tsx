@@ -1,6 +1,6 @@
 // Сонгосон давхрын дэлгэрэнгүй: давхрын төлөв, бүс бүрийн 5 утга ба ангилал (FR-M1, FR-M3, FR-M5, CLAUDE.md §8.2).
 // Тоон босго энд байхгүй — ангилал, тайлбар snapshot-оос, нарийвчлал тохиргооноос (FR-M2).
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { EmptyState, HealthIndicator, MetricValue, Panel, Skeleton } from '@/components/ui';
 import { METRICS } from '@/domain/config/building';
@@ -16,6 +16,7 @@ import {
 } from '@/store/selectors';
 import { useUiStore } from '@/store/uiStore';
 
+import { RoomScenarios } from './RoomScenarios';
 import './FloorDetails.css';
 
 /** Бүсийн холболтын бичвэр. Нэг ч мэдрэгч холболтгүй/хуучирсан бол «Холбогдсон» гэж хэзээ ч бичихгүй (FR-M1, FR-M5). */
@@ -80,17 +81,39 @@ function AreaBody({ readings, connection }: Pick<AreaSummary, 'readings' | 'conn
  * төлөвтэй хэмжигдэхүүн (selector тооцно).
  */
 function RoomRow({ summary }: { summary: AreaSummary }) {
-  const [open, setOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
   const { area, readings, health, connection, keyMetric } = summary;
+  // 3D-д өрөө (шошго эсвэл мэдрэгчийн зангилаа) сонгогдоход мөр задарна (С7, D93)
+  const selected = useUiStore((state) => state.selectedAreaId === area.id);
+  const selectArea = useUiStore((state) => state.selectArea);
+  const open = manualOpen || selected;
+  // Хаагдах үед агуулга шилжилт дуустал үлдэнэ (D94); хөдөлгөөн багасгах үед шууд
+  const reducedMotion = useUiStore((state) => state.reducedMotion);
+  const [rendered, setRendered] = useState(open);
+  if (open && !rendered) setRendered(true);
+  if (!open && rendered && reducedMotion) setRendered(false);
+  const rowRef = useRef<HTMLLIElement>(null);
+  useEffect(() => {
+    // jsdom-д scrollIntoView байхгүй
+    if (selected) rowRef.current?.scrollIntoView?.({ block: 'nearest' });
+  }, [selected]);
+  const toggle = () => {
+    if (open) {
+      setManualOpen(false);
+      if (selected) selectArea(null);
+    } else {
+      setManualOpen(true);
+    }
+  };
   const bodyId = `room-${area.id}`;
   return (
-    <li className="floor-details__room">
+    <li ref={rowRef} className="floor-details__room">
       <button
         type="button"
         className="floor-details__room-row"
         aria-expanded={open}
         aria-controls={bodyId}
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggle}
       >
         <span className="floor-details__room-name">
           {area.name}
@@ -104,11 +127,29 @@ function RoomRow({ summary }: { summary: AreaSummary }) {
         </span>
         <HealthIndicator {...health} />
       </button>
-      {open && (
-        <section id={bodyId} className="floor-details__room-body" aria-label={area.name}>
-          <AreaBody readings={readings} connection={connection} />
-        </section>
-      )}
+      <div
+        className="floor-details__room-collapse"
+        data-open={open}
+        onTransitionEnd={(event) => {
+          if (event.target === event.currentTarget && !open) setRendered(false);
+        }}
+      >
+        <div className="floor-details__room-collapse-inner">
+          {rendered && (
+            <section
+              id={bodyId}
+              className="floor-details__room-body"
+              aria-label={area.name}
+              // Хаагдаж буй агуулга дэлгэц уншигч ба гарын focus-ээс гадуур
+              aria-hidden={open ? undefined : true}
+              inert={!open}
+            >
+              <AreaBody readings={readings} connection={connection} />
+              <RoomScenarios area={area} />
+            </section>
+          )}
+        </div>
+      </div>
     </li>
   );
 }

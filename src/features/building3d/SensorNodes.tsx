@@ -3,7 +3,7 @@
 // саарал цагираг. Дэлгэрэнгүй `Html` шошго нэг л удаа: сонгосон зангилаанд, сонголтгүй үед hover хийсэн зангилаанд
 // (`detailLabelAreaId`). Хөдөлгөөнгүй (§8.5).
 import { Html } from '@react-three/drei';
-import { useThree } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Color, Object3D, Vector3, type Camera, type InstancedMesh } from 'three';
 
@@ -16,6 +16,7 @@ import { useLiveStore } from '@/store/liveStore';
 import { selectAreaSummary } from '@/store/selectors';
 import { useUiStore } from '@/store/uiStore';
 
+import { fadeStep } from './fade';
 import { placeLabel, type Size } from './labelPlacement';
 import type { BuildingLayout } from './layout';
 import type { SceneColors } from './sceneColors';
@@ -159,24 +160,63 @@ export function SensorNodes({
   const [hoveredAreaId, setHoveredAreaId] = useState<AreaId | null>(null);
   const meshRef = useRef<InstancedMesh>(null);
   const invalidate = useThree((state) => state.invalidate);
+  const reducedMotion = useUiStore((state) => state.reducedMotion);
+  // Зангилаа бүрийн одоогийн ба зорилтот масштаб — сонголт солигдоход зөөлөн шилжинэ (D94)
+  const scalesRef = useRef<{ current: number[]; target: number[]; animating: boolean } | null>(
+    null,
+  );
 
-  // Байрлал (тохиргоо эсвэл сонголт өөрчлөгдөхөд). Сонгосон давхрын дээрх зангилаа нуугдана (D88) — масштаб 0
-  // тул raycast-д ч оролцохгүй (дээрээс доорх давхрын зангилааг дарахад саад болохгүй)
+  const writeMatrices = useCallback(
+    (mesh: InstancedMesh, scales: readonly number[]) => {
+      nodes.forEach((node, index) => {
+        scratchObject.position.set(node.position.x, node.position.y, node.position.z);
+        scratchObject.scale.setScalar(scales[index] ?? node.scale);
+        scratchObject.updateMatrix();
+        mesh.setMatrixAt(index, scratchObject.matrix);
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+    },
+    [nodes],
+  );
+
+  // Байрлал ба зорилтот масштаб (тохиргоо эсвэл сонголт өөрчлөгдөхөд). Сонгосон давхрын дээрх зангилаа нуугдана
+  // (D88) — масштаб 0 тул raycast-д ч оролцохгүй (дээрээс доорх давхрын зангилааг дарахад саад болохгүй)
   useLayoutEffect(() => {
     const mesh = meshRef.current;
     if (mesh === null) return;
-    nodes.forEach((node, index) => {
-      scratchObject.position.set(node.position.x, node.position.y, node.position.z);
-      scratchObject.scale.setScalar(
-        isAboveSelected(node.floorId, selectedFloorId) ? 0 : node.scale,
-      );
-      scratchObject.updateMatrix();
-      mesh.setMatrixAt(index, scratchObject.matrix);
-    });
-    mesh.instanceMatrix.needsUpdate = true;
-    mesh.computeBoundingSphere(); // raycast зөв instance-ийг олно
+    const target = nodes.map((node) =>
+      isAboveSelected(node.floorId, selectedFloorId) ? 0 : node.scale,
+    );
+    const previous = scalesRef.current;
+    if (previous === null || previous.current.length !== target.length || reducedMotion) {
+      // Анх эсвэл хөдөлгөөн багасгах үед шууд
+      scalesRef.current = { current: [...target], target, animating: false };
+      writeMatrices(mesh, target);
+      mesh.computeBoundingSphere(); // raycast зөв instance-ийг олно
+    } else {
+      scalesRef.current = { current: previous.current, target, animating: true };
+    }
     invalidate();
-  }, [nodes, selectedFloorId, invalidate]);
+  }, [nodes, selectedFloorId, reducedMotion, writeMatrices, invalidate]);
+
+  useFrame((_, delta) => {
+    const mesh = meshRef.current;
+    const scales = scalesRef.current;
+    if (mesh === null || scales === null || !scales.animating) return;
+    let done = true;
+    scales.current = scales.current.map((value, index) => {
+      const step = fadeStep(value, scales.target[index]!, delta);
+      done &&= step.done;
+      return step.value;
+    });
+    writeMatrices(mesh, scales.current);
+    if (done) {
+      scales.animating = false;
+      mesh.computeBoundingSphere();
+    } else {
+      invalidate();
+    }
+  });
 
   // Төлөвийн өнгө (snapshot өөрчлөгдөхөд)
   useLayoutEffect(() => {

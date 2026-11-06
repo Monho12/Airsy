@@ -125,9 +125,16 @@ export interface ScenarioSources {
   vocSource: number;
   /** µg/m³/с */
   pmSource: number;
+  /** % RH/с — өрөөний сценарийн чийгийн эх үүсвэр (D93); чийг бууруулах загвар биш (§2.2) */
+  moistureSource: number;
 }
 
-export const NO_EXTRA_SOURCES: ScenarioSources = { heatGain: 0, vocSource: 0, pmSource: 0 };
+export const NO_EXTRA_SOURCES: ScenarioSources = {
+  heatGain: 0,
+  vocSource: 0,
+  pmSource: 0,
+  moistureSource: 0,
+};
 
 /**
  * §5.8-ын нэг алхам (тодорхой Euler). Тохируулсан суурь эх үүсвэр (D68) дээр сценарийн нэмэлт эх үүсвэр (`extra`)
@@ -168,7 +175,8 @@ export function stepAreaEnvironment(
     humidity:
       state.humidity +
       dt *
-        (c.moistureSource -
+        (c.moistureSource +
+          extra.moistureSource -
           rates.outdoorAir * (state.humidity - outdoor.humidity) * model.humidityCoupling),
   };
 }

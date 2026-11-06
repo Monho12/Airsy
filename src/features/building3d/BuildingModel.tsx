@@ -3,8 +3,16 @@
 // Зөвхөн дүрсэлнэ — domain логикгүй (§9.3-ын 5). Мэдрэгчийн зангилаа `SensorNodes.tsx`-д, төхөөрөмж
 // `DeviceModels.tsx`-д.
 import { Edges } from '@react-three/drei';
-import { useEffect, useMemo } from 'react';
-import { BoxGeometry, BufferAttribute, BufferGeometry, DoubleSide, Mesh } from 'three';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  BoxGeometry,
+  BufferAttribute,
+  BufferGeometry,
+  DoubleSide,
+  Mesh,
+  type MeshBasicMaterial,
+  type MeshStandardMaterial,
+} from 'three';
 
 import type { BuildingConfig } from '@/domain/config/building';
 import type { FloorId, Vec3 } from '@/domain/types';
@@ -18,6 +26,7 @@ import type {
   ZoneLayout,
 } from './layout';
 import { useEmergencyFloorRole } from './emergencyData';
+import { useOpacityFade } from './fade';
 import type { SceneColors } from './sceneColors';
 import { selectedCeilingY, splitShaftBoxes } from './focusView';
 import {
@@ -48,25 +57,74 @@ const GHOST_ZONE_OPACITY = 0.02;
 function SlabOverlay({
   center,
   size,
-  opacity,
+  target,
   colors,
+  onSettled,
 }: {
   center: Vec3;
   size: [number, number, number];
-  opacity: number;
+  /** Зорилтот opacity; давхарга тунгалаг бус хавтангаас (1) эхэлж зөөлөн шилжинэ (D94) */
+  target: number;
   colors: SceneColors;
+  onSettled?: () => void;
 }) {
+  const fadeRef = useOpacityFade<MeshStandardMaterial>(target, onSettled, 1);
   return (
     <mesh position={[center.x, center.y, center.z]} raycast={ignoreRaycast}>
       <boxGeometry args={size} />
       <meshStandardMaterial
+        ref={fadeRef}
         color={colors.slab}
         roughness={1}
         transparent
-        opacity={opacity}
         depthWrite={false}
       />
     </mesh>
+  );
+}
+
+/**
+ * Хавтан + хүрээ + тунгалаг давхарга (D66, D94). `overlay === null` — тунгалаг бус. Тунгалаг бус руу буцахад давхарга
+ * opacity 1 хүртэл зөөлөн өсч, дараа нь л үндсэн (тунгалаг бус) материал гарна — «пид» гэж солигдохгүй.
+ */
+function SlabBody({
+  center,
+  size,
+  overlay,
+  colors,
+  edgeColor,
+  raycast,
+}: {
+  center: Vec3;
+  size: [number, number, number];
+  overlay: number | null;
+  colors: SceneColors;
+  edgeColor: string;
+  raycast?: Mesh['raycast'];
+}) {
+  const reducedMotion = useUiStore((state) => state.reducedMotion);
+  const [opaqueShown, setOpaqueShown] = useState(overlay === null);
+  // Render-ийн үеийн төлөвийн засвар (React-ийн зөвшөөрсөн хэв маяг): тунгалаг болоход тэр даруй давхарга руу
+  if (overlay !== null && opaqueShown) setOpaqueShown(false);
+  if (overlay === null && reducedMotion && !opaqueShown) setOpaqueShown(true);
+  return (
+    <>
+      <mesh position={[center.x, center.y, center.z]} raycast={raycast}>
+        <boxGeometry args={size} />
+        {/* Үргэлж тунгалаг бус; тунгалаг үед материалыг нууна (raycast ба хүрээ хэвээр) — оронд нь SlabOverlay */}
+        <meshStandardMaterial color={colors.slab} roughness={1} visible={opaqueShown} />
+        <Edges color={edgeColor} />
+      </mesh>
+      {!opaqueShown && (
+        <SlabOverlay
+          center={center}
+          size={size}
+          target={overlay ?? 1}
+          colors={colors}
+          onSettled={overlay === null ? () => setOpaqueShown(true) : undefined}
+        />
+      )}
+    </>
   );
 }
 
@@ -84,7 +142,7 @@ function Zone({
   const selected = useZoneSelected(zone.id);
   const highlighted = selected || floorVisual === 'selected';
   const ghost = floorVisual === 'ghost';
-  const opacity = selected
+  const target = selected
     ? 0.4
     : highlighted
       ? 0.16
@@ -95,6 +153,7 @@ function Zone({
           : floorVisual === 'dimmed'
             ? 0.3
             : 0.85;
+  const fadeRef = useOpacityFade<MeshBasicMaterial>(target);
   return (
     <mesh
       position={[zone.center.x, zone.center.y, zone.center.z]}
@@ -103,9 +162,9 @@ function Zone({
     >
       <planeGeometry args={zone.size} />
       <meshBasicMaterial
+        ref={fadeRef}
         color={highlighted ? colors.selected : colors.zone}
         transparent
-        opacity={opacity}
         depthWrite={false}
       />
       {/* Бүс бүрийн хүрээ — хөрш бүсээс тод тусгаарлана */}
@@ -152,18 +211,14 @@ function FloorSlab({
       onPointerOut={onPointerOut}
     >
       {/* Сүүдэр давхар (D88) сонгогдохгүй — дээрээс доорх сонгосон давхар руу дарахад саад болохгүй */}
-      <mesh
-        position={[center.x, center.y, center.z]}
+      <SlabBody
+        center={center}
+        size={size}
+        overlay={overlayOpacity}
+        colors={colors}
+        edgeColor={edgeColor}
         raycast={visual === 'ghost' ? ignoreRaycast : Mesh.prototype.raycast}
-      >
-        <boxGeometry args={size} />
-        {/* Үргэлж тунгалаг бус; тунгалаг үед материалыг нууна (raycast ба хүрээ хэвээр) — оронд нь SlabOverlay */}
-        <meshStandardMaterial color={colors.slab} roughness={1} visible={overlayOpacity === null} />
-        <Edges color={edgeColor} />
-      </mesh>
-      {overlayOpacity !== null && (
-        <SlabOverlay center={center} size={size} opacity={overlayOpacity} colors={colors} />
-      )}
+      />
       {floor.zones.map((zone) => (
         <Zone key={zone.id} zone={zone} colors={colors} floorVisual={visual} ceiling={ceiling} />
       ))}
@@ -238,16 +293,13 @@ function RoofSlab({
   const ceiling = useIsCeilingOfSelected(topFloorId);
   const overlay = ghost ? GHOST_SLAB_OPACITY : ceiling ? CEILING_SLAB_OPACITY : null;
   return (
-    <>
-      <mesh position={[slab.center.x, slab.center.y, slab.center.z]}>
-        <boxGeometry args={slab.size} />
-        <meshStandardMaterial color={colors.slab} roughness={1} visible={overlay === null} />
-        <Edges color={colors.slabEdge} />
-      </mesh>
-      {overlay !== null && (
-        <SlabOverlay center={slab.center} size={slab.size} opacity={overlay} colors={colors} />
-      )}
-    </>
+    <SlabBody
+      center={slab.center}
+      size={slab.size}
+      overlay={overlay}
+      colors={colors}
+      edgeColor={colors.slabEdge}
+    />
   );
 }
 

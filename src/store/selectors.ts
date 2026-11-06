@@ -9,12 +9,14 @@ import {
 import type { HealthSummary } from '@/domain/classification';
 import { buildingConfig, METRICS, type BuildingConfig } from '@/domain/config/building';
 import { indoorThresholds, outdoorAirThresholds } from '@/domain/config/thresholds';
-import { floorLabelMn } from '@/domain/i18n/mn';
+import { floorLabelMn, mn } from '@/domain/i18n/mn';
 import { scenarioDefinitions, scenarioOrder } from '@/domain/scenarios/definitions';
+import { roomScenarioIdsFor } from '@/domain/scenarios/rooms';
 
 import type { AlertFilter, EventFilter } from './uiStore';
 import type {
   Alert,
+  AnyScenarioId,
   Area,
   AreaId,
   Floor,
@@ -23,6 +25,7 @@ import type {
   LiveSnapshot,
   MetricType,
   OutdoorConditions,
+  RoomScenarioId,
   ScenarioId,
   SensorReading,
   ThresholdConditionId,
@@ -291,7 +294,9 @@ export interface ScenarioItem {
 }
 
 export interface ActiveScenarioView {
-  id: ScenarioId;
+  id: AnyScenarioId;
+  /** Өрөөний сценарийн зорилтот бүс (С7, D93); тогтмол сценарид `null` */
+  targetAreaId: AreaId | null;
   name: string;
   /** 0–100, бүхэл хувь */
   percent: number;
@@ -345,10 +350,57 @@ export function selectScenarioPanel(
       ? null
       : {
           id: running.id,
-          name: scenarioDefinitions[running.id].name,
+          targetAreaId: running.targetAreaId,
+          name: activeScenarioName(running.id, running.targetAreaId, config),
           percent: Math.round(Math.min(1, Math.max(0, running.progress)) * 100),
         };
   return { items, active, emergency };
+}
+
+const isRoomScenarioId = (id: AnyScenarioId): id is RoomScenarioId => id.startsWith('room-');
+
+/** Идэвхтэй сценарийн нэр; өрөөний сценарид «Загвар — Өрөө, N-р давхар» (С7, D93) */
+function activeScenarioName(
+  id: AnyScenarioId,
+  targetAreaId: AreaId | null,
+  config: BuildingConfig,
+): string {
+  if (!isRoomScenarioId(id)) return scenarioDefinitions[id].name;
+  const templateName = mn.scenarios.room.name[id];
+  const area = targetAreaId === null ? undefined : config.areas[targetAreaId];
+  if (area === undefined) return templateName;
+  const floor = config.floors[area.floorId];
+  return mn.scenarios.room.fullName(
+    templateName,
+    area.name,
+    floor === undefined ? area.floorId : floorLabelMn(floor.level),
+  );
+}
+
+/** Өрөөнд эхлүүлж болох сценарийн загвар (С7, D93) */
+export interface RoomScenarioOption {
+  id: RoomScenarioId;
+  name: string;
+  description: string;
+  /** Яг энэ өрөөнд энэ загвар одоо идэвхтэй */
+  active: boolean;
+}
+
+/** Бүсийн өрөөний сценарийн сонголтууд; нээлттэй оффис эсвэл тохиргоонд алга бол хоосон */
+export function selectRoomScenarioOptions(
+  snapshot: LiveSnapshot,
+  areaId: AreaId,
+  config: BuildingConfig = buildingConfig,
+): RoomScenarioOption[] {
+  const area = config.areas[areaId];
+  if (area === undefined) return [];
+  const running = snapshot.simulation.activeScenario;
+  return roomScenarioIdsFor(area).map((id) => ({
+    id,
+    name: mn.scenarios.room.name[id],
+    description: mn.scenarios.room.description[id],
+    active: running?.id === id && running.targetAreaId === areaId,
+  }));
 }
 
 // ---------- Хандлагын график (FR-T1, §5.6 «Графикт max-ийг зурна», Phase 6c) ----------

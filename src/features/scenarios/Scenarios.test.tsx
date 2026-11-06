@@ -33,7 +33,7 @@ function withActive(snapshot: LiveSnapshot, progress = 0.42): LiveSnapshot {
     ...snapshot,
     simulation: {
       ...snapshot.simulation,
-      activeScenario: { id: 'high-co2', startedAt: snapshot.simTime, progress },
+      activeScenario: { id: 'high-co2', targetAreaId: null, startedAt: snapshot.simTime, progress },
     },
   };
 }
@@ -43,7 +43,12 @@ function withEmergency(snapshot: LiveSnapshot): LiveSnapshot {
     ...withActive(snapshot),
     simulation: {
       ...snapshot.simulation,
-      activeScenario: { id: 'fire-emergency', startedAt: snapshot.simTime, progress: 0.9 },
+      activeScenario: {
+        id: 'fire-emergency',
+        targetAreaId: null,
+        startedAt: snapshot.simTime,
+        progress: 0.9,
+      },
     },
     control: {
       ...snapshot.control,

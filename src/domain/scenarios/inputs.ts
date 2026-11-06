@@ -34,10 +34,10 @@ const retarget = (ramp: Ramp, to: number, now: SimTimeMs, rampMs = 0): Ramp => (
   endAt: now + rampMs,
 });
 
-/** VOC/PM2.5-ын түр эх үүсвэр (`pulseSource`) */
+/** Бүсийн түр эх үүсвэр (`pulseSource`): VOC, PM2.5, чийг (% RH/с), дулаан (°C/с; өрөөний сценари, D93) */
 export interface Pulse {
   areaIds: AreaId[];
-  metric: 'voc' | 'pm25';
+  metric: 'voc' | 'pm25' | 'humidity' | 'temperature';
   rate: number;
   startAt: SimTimeMs;
   endAt: SimTimeMs;
@@ -185,11 +185,17 @@ export const occupantsAt = (inputs: ScenarioInputs, area: Area, now: SimTimeMs) 
 export function sourcesAt(inputs: ScenarioInputs, area: Area, now: SimTimeMs): ScenarioSources {
   let vocSource = 0;
   let pmSource = 0;
+  let moistureSource = 0;
+  let areaHeat = 0;
   for (const pulse of inputs.pulses) {
     if (now < pulse.startAt || now >= pulse.endAt || !pulse.areaIds.includes(area.id)) continue;
     if (pulse.metric === 'voc') vocSource += pulse.rate;
-    else pmSource += pulse.rate;
+    else if (pulse.metric === 'pm25') pmSource += pulse.rate;
+    else if (pulse.metric === 'humidity') moistureSource += pulse.rate;
+    else areaHeat += pulse.rate;
   }
+  // Давхрын нэмэлт дулаан (`setHeatGain`) + тухайн бүсийн дулааны импульс
   const heat = inputs.heatGain[area.floorId];
-  return { heatGain: heat === undefined ? 0 : rampValue(heat, now), vocSource, pmSource };
+  const floorHeat = heat === undefined ? 0 : rampValue(heat, now);
+  return { heatGain: floorHeat + areaHeat, vocSource, pmSource, moistureSource };
 }

@@ -3,7 +3,7 @@ import type { Alert } from './alerts';
 import type { ControlDecision, ControlState } from './control';
 import type { VentilationDevice } from './devices';
 import type { SystemEvent } from './events';
-import type { DeviceId, FloorId, ScenarioId, SensorId, SimTimeMs } from './ids';
+import type { AnyScenarioId, AreaId, DeviceId, FloorId, SensorId, SimTimeMs } from './ids';
 import type { MetricType } from './metrics';
 import type { SensorReading } from './readings';
 
@@ -16,7 +16,13 @@ export interface LiveSnapshot {
     running: boolean;
     speed: SimulationSpeed;
     seed: number;
-    activeScenario: { id: ScenarioId; startedAt: SimTimeMs; progress: number } | null;
+    activeScenario: {
+      id: AnyScenarioId;
+      /** Өрөөний сценарийн зорилтот бүс (С7, D93); тогтмол сценарид `null` */
+      targetAreaId: AreaId | null;
+      startedAt: SimTimeMs;
+      progress: number;
+    } | null;
   };
   readings: Record<SensorId, SensorReading>;
   devices: Record<DeviceId, VentilationDevice>;

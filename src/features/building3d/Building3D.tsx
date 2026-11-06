@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { buildingConfig as defaultBuildingConfig } from '@/domain/config/building';
 import { mn } from '@/domain/i18n/mn';
+import { useUiStore } from '@/store/uiStore';
 
 import { Airflow } from './Airflow';
 import { BuildingModel } from './BuildingModel';
@@ -15,6 +16,7 @@ import { DeviceModels } from './DeviceModels';
 import { CoreDetails, FloorInterior, InteriorLabels } from './Interior';
 import { CAMERA_FOV_DEG, createBuildingLayout } from './layout';
 import { readSceneColors } from './sceneColors';
+import { clearSelectionStep } from './selection';
 import { SensorNodes } from './SensorNodes';
 import type { Building3DProps } from './types';
 
@@ -50,6 +52,10 @@ export function Building3D({ onFallback, config = defaultBuildingConfig }: Build
           near: 0.5,
           far: layout.height * 20,
           position: [position.x, position.y, position.z],
+        }}
+        // Хоосон талбайд (объект онохгүй) зүүн товчоор дарахад сонголтыг алхамаар цуцална
+        onPointerMissed={(event) => {
+          if (event.type === 'click') clearSelectionStep(useUiStore.getState());
         }}
         onCreated={({ gl }) => {
           // Материал тус бүрийн clipping plane (D88: сонгосон давхрын дээрх төхөөрөмжийг тайрах)

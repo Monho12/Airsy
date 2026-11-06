@@ -127,6 +127,10 @@ describe('сонгосон давхрын шошго (D87)', () => {
       'F07-A',
       'F07-B',
     ]);
+    // Өрөөний шошго өрөөний бүстэй холбоотой (С7, D93: дарахад сонгогдоно)
+    expect(
+      labels.filter((l) => l.kind !== 'office' && l.areaId !== null).map((l) => l.areaId),
+    ).toEqual(['F07-C', 'F07-D', 'F07-E', 'F07-F', 'F07-G', 'F07-H']);
     expect(new Set(labels.map((l) => l.key)).size).toBe(labels.length);
   });
 

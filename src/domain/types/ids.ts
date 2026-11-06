@@ -23,5 +23,19 @@ export type ScenarioId =
   | 'sensor-disconnection'
   | 'recovery';
 
+/**
+ * Өрөөний сценарийн загвар (С7, D93): нэг загвар дурын давхрын тохирох өрөөнд ажиллана — зорилтот бүсийг
+ * `scenario/startRoom` командаар өгнө.
+ */
+export type RoomScenarioId =
+  | 'room-meeting'
+  | 'room-server-overheat'
+  | 'room-kitchen-cooking'
+  | 'room-restroom-humidity'
+  | 'room-sensor-disconnect';
+
+/** Тогтмол 8 сценари эсвэл өрөөний сценарийн загвар */
+export type AnyScenarioId = ScenarioId | RoomScenarioId;
+
 /** Симуляцийн epoch миллисекунд (бодит цаг БИШ) */
 export type SimTimeMs = number;

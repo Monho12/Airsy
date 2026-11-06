@@ -37,7 +37,12 @@ describe('суурь оролт', () => {
     const inputs = base();
     const area = buildingConfig.areas['F07-A']!;
     expect(occupantsAt(inputs, area, T0)).toBe(area.occupancyCapacity * area.baselineOccupancy);
-    expect(sourcesAt(inputs, area, T0)).toEqual({ heatGain: 0, vocSource: 0, pmSource: 0 });
+    expect(sourcesAt(inputs, area, T0)).toEqual({
+      heatGain: 0,
+      vocSource: 0,
+      pmSource: 0,
+      moistureSource: 0,
+    });
     expect(outdoorAt(inputs, 420, T0)).toEqual(baselineOutdoor);
   });
 });

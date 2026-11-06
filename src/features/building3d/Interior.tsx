@@ -187,6 +187,7 @@ export function InteriorLabels({
 }) {
   const selectedFloorId = useUiStore((state) => state.selectedFloorId);
   const selectedAreaId = useUiStore((state) => state.selectedAreaId);
+  const selectArea = useUiStore((state) => state.selectArea);
   const labels = useMemo(
     () => interiorLabels(config, layout, selectedFloorId),
     [config, layout, selectedFloorId],
@@ -197,6 +198,31 @@ export function InteriorLabels({
       {labels.map((label) => {
         const Icon = LABEL_ICONS[label.kind];
         const exit = label.kind === 'exit';
+        // Өрөөний шошго товч (С7, D93): дарахад өрөө сонгогдож, «Сонгосон давхар» самбарт мөр нь задарна
+        const roomAreaId = label.kind === 'office' ? null : label.areaId;
+        if (roomAreaId !== null) {
+          const name = labelText(label, config);
+          return (
+            <Html
+              key={label.key}
+              position={[label.position.x, label.position.y, label.position.z]}
+              center
+              pointerEvents="auto"
+              zIndexRange={[100, 0]}
+              wrapperClass="interior-label-wrapper"
+            >
+              <button
+                type="button"
+                className="interior-label interior-label--button"
+                aria-label={mn.scenarios.room.selectLabel(name)}
+                onClick={() => selectArea(roomAreaId)}
+              >
+                <Icon size={12} aria-hidden="true" />
+                {name}
+              </button>
+            </Html>
+          );
+        }
         return (
           <Html
             key={label.key}
@@ -205,6 +231,7 @@ export function InteriorLabels({
             pointerEvents="none"
             // Мэдрэгчийн шошгоос доор (Drei-ийн анхдагч zIndex 16777271…0)
             zIndexRange={[100, 0]}
+            wrapperClass="interior-label-wrapper"
           >
             <span
               className={exit ? 'interior-label interior-label--exit' : 'interior-label'}
