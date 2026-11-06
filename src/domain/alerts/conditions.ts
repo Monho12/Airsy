@@ -3,7 +3,7 @@
 import type { BuildingConfig } from '@/domain/config/building';
 import { indoorThresholds, metricSpecs } from '@/domain/config/thresholds';
 import { floorLabelMn, mn } from '@/domain/i18n/mn';
-import type { FloorAggregates } from '@/domain/simulation/floorAggregates';
+import type { AreaAggregates, FloorAggregates } from '@/domain/simulation/floorAggregates';
 import type { Sensor, SensorId, SensorReading, ThresholdConditionId } from '@/domain/types';
 
 import type { AlertCondition, ConditionLevel } from './evaluator';
@@ -28,56 +28,89 @@ const areaNameOf = (sensor: Sensor, config: BuildingConfig) =>
     ? mn.common.outdoorStation
     : (config.areas[sensor.areaId]?.name ?? sensor.areaId);
 
-/** Давхрын нэгтгэлийн тухайн талын түвшнээс босгын дохио (§4.4: түлхүүр `threshold:{condition}:{floorId}`) */
+type MetricAggregates = FloorAggregates[string];
+
+/**
+ * Нэгтгэлийн тухайн талын түвшнээс босгын дохио (§4.4). `scopeId` нь давхар (`threshold:{condition}:{floorId}`) эсвэл
+ * техникийн өрөөний бүс (`threshold:{condition}:{areaId}`, D89); `location` нь гарчгийн байршил.
+ */
+function scopeThresholdConditions(
+  scopeId: string,
+  scope: { floorId: string; areaId?: string },
+  location: string,
+  metrics: MetricAggregates | undefined,
+): AlertCondition[] {
+  const conditions: AlertCondition[] = [];
+  for (const [id, def] of Object.entries(indoorThresholds) as [
+    ThresholdConditionId,
+    (typeof indoorThresholds)[ThresholdConditionId],
+  ][]) {
+    const aggregate = metrics?.[def.metric];
+    const spec = metricSpecs[def.metric];
+    let level: ConditionLevel | null = null;
+    let value: number | null = null;
+    if (aggregate !== undefined) {
+      const levels = aggregate.levels;
+      level =
+        def.side === 'high' ? levels.high : levels.kind === 'two-sided' ? levels.low : 'normal';
+      value = def.side === 'high' ? aggregate.max : aggregate.min;
+    }
+    let message = '';
+    if (value !== null && (level === 'warning' || level === 'critical')) {
+      const enter = level === 'critical' ? def.criticalEnter : def.warningEnter;
+      const reached = def.side === 'high' ? value >= enter : value <= enter;
+      message = mn.classification.threshold({
+        metric: def.metric,
+        unit: spec.unit,
+        decimals: spec.decimals,
+        value,
+        level,
+        side: def.side,
+        enter,
+        exit: level === 'critical' ? def.criticalExit : def.warningExit,
+        heldByHysteresis: !reached,
+      });
+    }
+    conditions.push({
+      key: `threshold:${id}:${scopeId}`,
+      type: 'threshold',
+      scope: { ...scope, metric: def.metric, condition: id },
+      level,
+      title: mn.alerts.thresholdTitle(mn.metrics.shortLabel[def.metric], def.side, location),
+      message,
+      value,
+      peak: def.side === 'high' ? 'max' : 'min',
+    });
+  }
+  return conditions;
+}
+
+/** Давхар бүрийн (удирдлагад оролцох бүсүүдийн) ба техникийн өрөө бүрийн босгын дохио (D89) */
 function thresholdConditions(
   config: BuildingConfig,
   aggregates: FloorAggregates,
+  areaAggregates: AreaAggregates,
 ): AlertCondition[] {
   const conditions: AlertCondition[] = [];
   for (const floorId of config.building.floorIds) {
     const floor = config.floors[floorId];
     if (floor === undefined) continue;
     const floorLabel = floorLabelMn(floor.level);
-    for (const [id, def] of Object.entries(indoorThresholds) as [
-      ThresholdConditionId,
-      (typeof indoorThresholds)[ThresholdConditionId],
-    ][]) {
-      const aggregate = aggregates[floorId]?.[def.metric];
-      const spec = metricSpecs[def.metric];
-      let level: ConditionLevel | null = null;
-      let value: number | null = null;
-      if (aggregate !== undefined) {
-        const levels = aggregate.levels;
-        level =
-          def.side === 'high' ? levels.high : levels.kind === 'two-sided' ? levels.low : 'normal';
-        value = def.side === 'high' ? aggregate.max : aggregate.min;
-      }
-      let message = '';
-      if (value !== null && (level === 'warning' || level === 'critical')) {
-        const enter = level === 'critical' ? def.criticalEnter : def.warningEnter;
-        const reached = def.side === 'high' ? value >= enter : value <= enter;
-        message = mn.classification.threshold({
-          metric: def.metric,
-          unit: spec.unit,
-          decimals: spec.decimals,
-          value,
-          level,
-          side: def.side,
-          enter,
-          exit: level === 'critical' ? def.criticalExit : def.warningExit,
-          heldByHysteresis: !reached,
-        });
-      }
-      conditions.push({
-        key: `threshold:${id}:${floorId}`,
-        type: 'threshold',
-        scope: { floorId, metric: def.metric, condition: id },
-        level,
-        title: mn.alerts.thresholdTitle(mn.metrics.shortLabel[def.metric], def.side, floorLabel),
-        message,
-        value,
-        peak: def.side === 'high' ? 'max' : 'min',
-      });
+    conditions.push(
+      ...scopeThresholdConditions(floorId, { floorId }, floorLabel, aggregates[floorId]),
+    );
+    for (const areaId of floor.areaIds) {
+      const area = config.areas[areaId];
+      // Техникийн өрөө — нэгтгэл дамжуулсан бол л (зөв хэмжилтгүй өрөөнд `{}` → level null, D75-тай ижил)
+      if (area?.controlRole !== 'monitorOnly' || areaAggregates[areaId] === undefined) continue;
+      conditions.push(
+        ...scopeThresholdConditions(
+          areaId,
+          { floorId, areaId },
+          `${floorLabel}, ${area.name}`,
+          areaAggregates[areaId],
+        ),
+      );
     }
   }
   return conditions;
@@ -132,6 +165,11 @@ export function buildAlertConditions(
   config: BuildingConfig,
   readings: Readonly<Record<SensorId, SensorReading>>,
   aggregates: FloorAggregates,
+  /** Техникийн өрөө бүрийн нэгтгэл (D89); өгөөгүй бол өрөөний босгын дохио үнэлэгдэхгүй */
+  areaAggregates: AreaAggregates = {},
 ): AlertCondition[] {
-  return [...thresholdConditions(config, aggregates), ...sensorConditions(config, readings)];
+  return [
+    ...thresholdConditions(config, aggregates, areaAggregates),
+    ...sensorConditions(config, readings),
+  ];
 }

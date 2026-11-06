@@ -222,11 +222,12 @@ const sensorDisconnection: SimulationScenario = {
       'control_degraded:F04',
       'sensor_invalid:F04-A-humidity',
     ],
+    // D89: нээлттэй оффис А CO₂-гүй болмогц (эхний салалт) нөөц горим — харалган цэг → болгоомжтой
     events: [
-      'SENSOR_DISCONNECTED',
       'SENSOR_DISCONNECTED',
       'CONTROL_FALLBACK_ACTIVE',
       'DEVICE_STATE_CHANGED',
+      'SENSOR_DISCONNECTED',
       'SENSOR_INVALID_READING',
     ],
   },

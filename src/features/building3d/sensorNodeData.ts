@@ -14,7 +14,12 @@ export interface SensorNodeLayout {
   floorId: FloorId;
   /** Барилгын координат: x/z = markerPosition, y = давхрын шалны өндөр + markerPosition.y */
   position: Vec3;
+  /** Зангилааны хэмжээ: нээлттэй оффис 1, өрөө `ROOM_NODE_SCALE` (D89 — өрөөний зангилаа жижиг) */
+  scale: number;
 }
+
+/** Өрөөний зангилааны харьцангуй хэмжээ (D89) */
+export const ROOM_NODE_SCALE = 0.55;
 
 /**
  * Зангилаа бүр нэг instance; массивын индекс = `instanceId` (§8.6-ийн `instanceId → areaId` хүснэгт).
@@ -29,7 +34,12 @@ export function createSensorNodes(
       const area = config.areas[zone.id];
       if (area === undefined) throw new Error(`Бүс тохиргоонд алга: ${zone.id}`);
       const { x, y, z } = area.markerPosition;
-      return { areaId: area.id, floorId: floor.id, position: { x, y: floor.elevation + y, z } };
+      return {
+        areaId: area.id,
+        floorId: floor.id,
+        position: { x, y: floor.elevation + y, z },
+        scale: area.roomKind === null ? 1 : ROOM_NODE_SCALE,
+      };
     }),
   );
 }

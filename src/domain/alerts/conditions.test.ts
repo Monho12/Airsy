@@ -5,7 +5,12 @@ import { buildingConfig, createBuildingConfig } from '@/domain/config/building';
 import { indoorThresholds } from '@/domain/config/thresholds';
 import { mn } from '@/domain/i18n/mn';
 import { LocalSimulationRuntime } from '@/domain/runtime/LocalSimulationRuntime';
-import { computeFloorAggregates, indexFloorSensors } from '@/domain/simulation/floorAggregates';
+import {
+  computeAreaAggregates,
+  computeFloorAggregates,
+  indexAreaSensors,
+  indexFloorSensors,
+} from '@/domain/simulation/floorAggregates';
 import { nextReading } from '@/domain/simulation/sensors';
 import type { SensorReading } from '@/domain/types';
 
@@ -17,16 +22,22 @@ const index = indexFloorSensors(buildingConfig);
 const now = baseline.simTime;
 
 describe('buildAlertConditions', () => {
+  const monitorIndex = indexAreaSensors(buildingConfig, 'monitorOnly');
   const conditions = buildAlertConditions(
     buildingConfig,
     baseline.readings,
     computeFloorAggregates(index, baseline.readings, now),
+    computeAreaAggregates(monitorIndex, baseline.readings, now),
   );
 
-  it('түлхүүр (§5.2): давхар бүрт 7 босгын нөхцөл + мэдрэгч бүрт offline ба invalid', () => {
+  it('түлхүүр (§5.2): давхар ба техникийн өрөө бүрт 7 босгын нөхцөл + мэдрэгч бүрт offline ба invalid', () => {
     const floors = buildingConfig.building.floorIds.length;
+    const monitorRooms = Object.keys(monitorIndex).length;
     const sensors = Object.keys(buildingConfig.sensors).length;
-    expect(conditions).toHaveLength(floors * Object.keys(indoorThresholds).length + sensors * 2);
+    expect(monitorRooms).toBe(11 * 3);
+    expect(conditions).toHaveLength(
+      (floors + monitorRooms) * Object.keys(indoorThresholds).length + sensors * 2,
+    );
     const keys = conditions.map((c) => c.key);
     expect(new Set(keys).size).toBe(keys.length);
     expect(keys).toContain('threshold:co2:F02');
@@ -35,6 +46,21 @@ describe('buildAlertConditions', () => {
     expect(keys).toContain('sensor_offline:F04-A-co2');
     expect(keys).toContain('sensor_invalid:F04-A-humidity');
     expect(keys).toContain('sensor_offline:OUT-pm25');
+    // D89: техникийн өрөөний бүсийн түлхүүр; хүнтэй өрөө давхрын түлхүүрт нэгтгэгдэнэ
+    expect(keys).toContain('threshold:temperature-high:F03-F');
+    expect(keys).not.toContain('threshold:co2:F07-C');
+    const server = conditions.find((c) => c.key === 'threshold:temperature-high:F03-F')!;
+    expect(server.scope).toMatchObject({ floorId: 'F03', areaId: 'F03-F' });
+    expect(server.title).toContain('Сервер өрөө');
+  });
+
+  it('өрөөний нэгтгэл дамжуулаагүй бол техникийн өрөөний нөхцөл үүсэхгүй', () => {
+    const withoutRooms = buildAlertConditions(
+      buildingConfig,
+      baseline.readings,
+      computeFloorAggregates(index, baseline.readings, now),
+    );
+    expect(withoutRooms.some((c) => c.key === 'threshold:temperature-high:F03-F')).toBe(false);
   });
 
   it('суурь төлөвт бүх нөхцөл normal (S1: дохио байхгүй)', () => {

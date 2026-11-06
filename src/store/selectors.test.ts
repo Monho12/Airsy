@@ -44,18 +44,21 @@ describe('selectFloorList / selectFloorSummary (§5.6)', () => {
     const f02 = selectFloorSummary(snapshot, 'F02')!;
     expect(f02.health).toEqual({ worst: 'warning', worstValid: 'warning', hasDataIssue: false });
     expect(f02.activeAlertCount).toBe(1);
-    expect(f02.aggregates.co2).toMatchObject({ max: MOCK_SAMPLE.warningValue, validCount: 2 });
+    // D89: нэгтгэл нь удирдлагад оролцох бүсээс (A, B ба хүнтэй өрөө C–E); техникийн өрөө орохгүй
+    expect(f02.aggregates.co2).toMatchObject({ max: MOCK_SAMPLE.warningValue, validCount: 5 });
     expect(f02.aggregates.co2?.levels).toEqual({ kind: 'one-sided', high: 'warning' });
   });
 
-  it('F04: холболтгүй мэдрэгч нэгтгэлд орохгүй — min/max нь 0 биш, validCount 1', () => {
+  it('F04: холболтгүй мэдрэгч нэгтгэлд орохгүй — min/max нь 0 биш, validCount 4 (B–E)', () => {
     const f04 = selectFloorSummary(snapshot, 'F04')!;
     expect(f04.health).toEqual({ worst: 'offline', worstValid: 'normal', hasDataIssue: true });
-    const baseline = buildingConfig.areas['F04-B']!.baseline.co2;
+    const baselines = ['B', 'C', 'D', 'E'].map(
+      (l) => buildingConfig.areas[`F04-${l}`]!.baseline.co2,
+    );
     expect(f04.aggregates.co2).toEqual({
-      max: baseline,
-      min: baseline,
-      validCount: 1,
+      max: Math.max(...baselines),
+      min: Math.min(...baselines),
+      validCount: 4,
       levels: { kind: 'one-sided', high: 'normal' },
     });
   });
@@ -103,6 +106,20 @@ describe('selectAreaSummary', () => {
     expect(area.readings.co2!.value).toBeNull();
     expect(area.health.hasDataIssue).toBe(true);
     expect(selectAreaSummary(snapshot, 'F99-A')).toBeUndefined();
+  });
+
+  it('keyMetric (D89): хамгийн муу төлөвтэй хэмжигдэхүүн; хэвийн үед хүнтэй бүсэд CO₂, техникийн өрөөнд температур', () => {
+    expect(selectAreaSummary(snapshot, 'F04-A')!.keyMetric).toBe('co2'); // холболтгүй CO₂
+    expect(selectAreaSummary(snapshot, 'F07-C')!.keyMetric).toBe('co2');
+    expect(selectAreaSummary(snapshot, 'F07-H')!.keyMetric).toBe('temperature');
+    const hot: LiveSnapshot = {
+      ...snapshot,
+      readings: {
+        ...snapshot.readings,
+        'F07-H-voc': { ...snapshot.readings['F07-H-voc']!, status: 'warning' },
+      },
+    };
+    expect(selectAreaSummary(hot, 'F07-H')!.keyMetric).toBe('voc');
   });
 });
 

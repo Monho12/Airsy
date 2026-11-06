@@ -167,7 +167,9 @@ export function SensorNodes({
     if (mesh === null) return;
     nodes.forEach((node, index) => {
       scratchObject.position.set(node.position.x, node.position.y, node.position.z);
-      scratchObject.scale.setScalar(isAboveSelected(node.floorId, selectedFloorId) ? 0 : 1);
+      scratchObject.scale.setScalar(
+        isAboveSelected(node.floorId, selectedFloorId) ? 0 : node.scale,
+      );
       scratchObject.updateMatrix();
       mesh.setMatrixAt(index, scratchObject.matrix);
     });
@@ -218,6 +220,7 @@ export function SensorNodes({
             key={`issue-${node.areaId}`}
             position={[node.position.x, node.position.y, node.position.z]}
             rotation-x={-Math.PI / 2}
+            scale={node.scale}
           >
             <torusGeometry args={[NODE_RADIUS * 1.5, 0.08, 8, 32]} />
             <meshBasicMaterial color={colors.status.offline} />
@@ -231,6 +234,7 @@ export function SensorNodes({
             key={`selected-${node.areaId}`}
             position={[node.position.x, node.position.y, node.position.z]}
             rotation-x={-Math.PI / 2}
+            scale={node.scale}
           >
             <torusGeometry args={[NODE_RADIUS * 2.1, 0.14, 8, 40]} />
             <meshBasicMaterial color={colors.selected} />

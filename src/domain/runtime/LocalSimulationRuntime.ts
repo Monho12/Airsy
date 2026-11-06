@@ -59,7 +59,11 @@ import {
   type OutdoorEnvironment,
 } from '@/domain/simulation/environment';
 import {
+  computeAreaAggregates,
+  computeCo2Gaps,
   computeFloorAggregates,
+  indexAreaSensors,
+  type AreaSensorIndex,
   indexFloorSensors,
   type FloorAggregates,
   type FloorSensorIndex,
@@ -150,6 +154,9 @@ export class LocalSimulationRuntime implements AerisRuntime {
   private readonly seed: number;
   private rng: Rng;
   private readonly floorSensors: FloorSensorIndex;
+  /** Удирдлагад оролцох бүс ба техникийн өрөөний мэдрэгч (D89) */
+  private readonly ventilationAreaSensors: AreaSensorIndex;
+  private readonly monitorAreaSensors: AreaSensorIndex;
   private readonly calibrations = new Map<AreaId, AreaCalibration>();
   /** Сценарийн оролт (§5.8, §7.1) — энэ алхмын гадна нөхцөл ба ачаалал эндээс */
   private inputs: ScenarioInputs;
@@ -193,6 +200,8 @@ export class LocalSimulationRuntime implements AerisRuntime {
     this.seed = seed;
     this.rng = createRng(seed);
     this.floorSensors = indexFloorSensors(config);
+    this.ventilationAreaSensors = indexAreaSensors(config, 'ventilation');
+    this.monitorAreaSensors = indexAreaSensors(config, 'monitorOnly');
 
     for (const area of Object.values(config.areas)) {
       this.calibrations.set(area.id, calibrateArea(area));
@@ -330,7 +339,12 @@ export class LocalSimulationRuntime implements AerisRuntime {
     const aggregates = this.aggregates();
     const evaluation = evaluateAlerts(
       this.alerts,
-      buildAlertConditions(this.config, this.readings, aggregates),
+      buildAlertConditions(
+        this.config,
+        this.readings,
+        aggregates,
+        computeAreaAggregates(this.monitorAreaSensors, this.readings, this.simTime),
+      ),
       this.simTime,
     );
     this.alerts = evaluation.state;
@@ -341,6 +355,12 @@ export class LocalSimulationRuntime implements AerisRuntime {
       config: this.config,
       devices: this.devices,
       aggregates,
+      co2Gaps: computeCo2Gaps(
+        this.config,
+        this.ventilationAreaSensors,
+        this.readings,
+        this.simTime,
+      ),
       outdoor: outdoorConditionsOf(this.readings, this.simTime),
       control: this.control,
       debounce: this.ruleDebounce,

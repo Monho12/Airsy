@@ -28,6 +28,12 @@ export const common = {
   } satisfies Record<ConnectionStatus, string>,
   sensorsOffline: (count: number) => `${count} мэдрэгч холболтгүй`,
   sensorsStale: (count: number) => `${count} мэдрэгч хуучирсан`,
+  /** «Сонгосон давхар» самбарын өрөөний нягт жагсаалт (D89) */
+  rooms: {
+    heading: 'Өрөөнүүд',
+    /** Техникийн өрөө — зөвхөн хянаж, дохио өгнө; давхрын агааржуулалтад нөлөөлөхгүй */
+    monitorOnly: 'Зөвхөн хяналт',
+  },
   /** 3D барилга (FR-B9, §8.6, §8.7, D57). Орлуулах шалтгааны түлхүүр нь `Building3DFallbackReason`-тэй ижил. */
   building3d: {
     canvasLabel: 'AERIS Tower-ийн 3D загвар. Давхрыг давхрын жагсаалтаас ч сонгож болно.',

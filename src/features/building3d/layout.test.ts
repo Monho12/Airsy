@@ -23,10 +23,10 @@ describe('createBuildingLayout — давхар ба бүс (FR-B1)', () => {
     expect(layout.height).toBeCloseTo(count * config.building.floorHeight);
   });
 
-  it('анхдагч барилга: 12 давхар, 24 бүс', () => {
+  it('анхдагч барилга: 12 давхар, 90 бүс (лобби 2 + 11 × 8 — өрөө бүр бүс, D89)', () => {
     const layout = createBuildingLayout(buildingConfig);
     expect(layout.floors).toHaveLength(12);
-    expect(layout.floors.flatMap((floor) => floor.zones)).toHaveLength(24);
+    expect(layout.floors.flatMap((floor) => floor.zones)).toHaveLength(2 + 11 * 8);
   });
 
   it('давхрын өндөр = (level − 1) × floorHeight, хавтан тэр өндөр дээр (§5.1.1)', () => {
@@ -60,14 +60,19 @@ describe('createBuildingLayout — давхар ба бүс (FR-B1)', () => {
   it('хөрш бүсүүд давхцахгүй, хооронд нь харагдах зай үлдэнэ; бүс хавтангаас хэтрэхгүй', () => {
     const { footprint } = buildingConfig.building;
     for (const floor of createBuildingLayout(buildingConfig).floors) {
-      const spans = floor.zones
-        .map(
-          (zone) => [zone.center.z - zone.size[1] / 2, zone.center.z + zone.size[1] / 2] as const,
-        )
-        .sort((a, b) => a[0] - b[0]);
-      for (let i = 1; i < spans.length; i += 1) {
-        expect(spans[i]![0] - spans[i - 1]![1]).toBeCloseTo(2 * ZONE_INSET);
-      }
+      // Хоёр бүс бүр x эсвэл z тэнхлэгээр дор хаяж 2 × ZONE_INSET зайтай (өрөө нь нээлттэй оффисын хажууд — D89)
+      const rects = floor.zones.map((zone) => ({
+        x0: zone.center.x - zone.size[0] / 2,
+        x1: zone.center.x + zone.size[0] / 2,
+        z0: zone.center.z - zone.size[1] / 2,
+        z1: zone.center.z + zone.size[1] / 2,
+      }));
+      rects.forEach((a, i) =>
+        rects.slice(i + 1).forEach((b) => {
+          const gap = Math.max(b.x0 - a.x1, a.x0 - b.x1, b.z0 - a.z1, a.z0 - b.z1);
+          expect(gap).toBeGreaterThanOrEqual(2 * ZONE_INSET - 1e-9);
+        }),
+      );
       for (const zone of floor.zones) {
         expect(Math.abs(zone.center.x) + zone.size[0] / 2).toBeLessThanOrEqual(footprint.width / 2);
         expect(Math.abs(zone.center.z) + zone.size[1] / 2).toBeLessThanOrEqual(footprint.depth / 2);

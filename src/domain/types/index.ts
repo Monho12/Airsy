@@ -24,6 +24,7 @@ export type {
 } from './metrics';
 export type {
   Area,
+  AreaControlRole,
   Building,
   CoreLayout,
   DoorOpening,
