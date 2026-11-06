@@ -3,6 +3,7 @@
 // 3D болон UI компонент барилгын өгөгдлийг энд л уншина; geometry-г компонентод хатуу бичихгүй.
 import type {
   Area,
+  AreaControlRole,
   AreaId,
   Building,
   CoreLayout,
@@ -15,6 +16,7 @@ import type {
   FloorInteriorLayout,
   FloorVentilationLayout,
   InteriorRoom,
+  InteriorRoomKind,
   MetricType,
   Rect2D,
   Segment2D,
@@ -158,6 +160,85 @@ const AREA_GEOMETRY = [
   },
 ] as const;
 
+/**
+ * Өрөөтэй давхарт (лоббиос бусад) нээлттэй оффис А/Б-ийн хил — өрөөнүүд, хонгил, арын өрөөтэй давхцахгүй (D89).
+ * Тэмдэг ба агаарын урсгалын зам хил дотор хэвээр. Тохируулга бүсээр (D68) тул эзлэхүүн багассан ч суурь утга ба
+ * хариу хугацаа өөрчлөгдөхгүй.
+ */
+const OPEN_AREA_BOUNDS_WITH_ROOMS = {
+  A: { x: -15, z: -8, width: 30, depth: 6.5 },
+  B: { x: -15, z: 1.5, width: 30, depth: 10.5 },
+} as const;
+
+/**
+ * Өрөөний бүсийн загвар (D89; ⚠️ прототипийн таамаг). Суурь утга S1-ийн дотоод мужид (температур 21–24 °C, CO₂ 500–800,
+ * RH 40–50%, PM2.5 3–8, VOC 80–120) ба анхааруулгын босгоос доош; ачаалал > 0 (CO₂-ийн тохируулгад, D68).
+ * `controlRole`: хүнтэй өрөө давхрын удирдлагад оролцоно, техникийн өрөө зөвхөн хянана.
+ */
+const ROOM_TEMPLATES: Record<
+  InteriorRoomKind,
+  {
+    name: (number: number | null) => string;
+    capacity: number;
+    baselineOccupancy: number;
+    baseline: Baseline;
+    controlRole: AreaControlRole;
+  }
+> = {
+  meeting: {
+    name: (number) => (number === null ? 'Хурлын өрөө' : `Хурлын өрөө ${number}`),
+    capacity: 10,
+    baselineOccupancy: 0.3,
+    baseline: { temperature: 22.0, co2: 700, humidity: 45, pm25: 5, voc: 100 },
+    controlRole: 'ventilation',
+  },
+  director: {
+    name: () => 'Захирлын өрөө',
+    capacity: 4,
+    baselineOccupancy: 0.5,
+    baseline: BASELINE.office,
+    controlRole: 'ventilation',
+  },
+  workroom: {
+    name: () => 'Ажлын өрөө',
+    capacity: 6,
+    baselineOccupancy: 0.5,
+    baseline: BASELINE.office,
+    controlRole: 'ventilation',
+  },
+  storage: {
+    name: () => 'Агуулах',
+    capacity: 2,
+    baselineOccupancy: 0.1,
+    baseline: { temperature: 21.5, co2: 520, humidity: 42, pm25: 6, voc: 105 },
+    controlRole: 'monitorOnly',
+  },
+  server: {
+    name: () => 'Сервер өрөө',
+    capacity: 2,
+    baselineOccupancy: 0.1,
+    baseline: { temperature: 23.5, co2: 520, humidity: 40, pm25: 3, voc: 90 },
+    controlRole: 'monitorOnly',
+  },
+  restroom: {
+    name: () => 'Ариун цэврийн өрөө',
+    capacity: 4,
+    baselineOccupancy: 0.25,
+    baseline: { temperature: 22.0, co2: 600, humidity: 50, pm25: 4, voc: 115 },
+    controlRole: 'monitorOnly',
+  },
+  kitchen: {
+    name: () => 'Гал тогоо',
+    capacity: 8,
+    baselineOccupancy: 0.3,
+    baseline: { temperature: 22.5, co2: 700, humidity: 48, pm25: 7, voc: 115 },
+    controlRole: 'monitorOnly',
+  },
+};
+
+/** Өрөөний бүсийн үсэг (§5.2 `{floorId}-{үсэг}`; A/B — нээлттэй оффис) — өрөөний жагсаалтын дарааллаар */
+const ROOM_AREA_LETTERS = ['C', 'D', 'E', 'F', 'G', 'H'] as const;
+
 /** Давхар бүрт ижил агааржуулалтын байрлал (нэг туслах функцээс, §5.1.1). */
 function createVentilationLayout(): FloorVentilationLayout {
   const zs = [-6, 6];
@@ -287,6 +368,7 @@ function uniqueRoomFloors(usageByLevel: readonly Usage[]): UniqueRoomFloors {
  * ажлын өрөө ба агуулах.
  */
 function createInteriorLayout(
+  floorId: FloorId,
   usage: Usage,
   unique: { director: boolean; server: boolean },
 ): FloorInteriorLayout {
@@ -322,7 +404,7 @@ function createInteriorLayout(
     width: BACK_ROOM.outer - BACK_ROOM.inner,
     depth: BACK_ROOM.front + halfD,
   });
-  const rooms: InteriorRoom[] = [
+  const roomSpecs: Omit<InteriorRoom, 'areaId'>[] = [
     { kind: 'meeting', number: 1, bounds: corner(-1, -1) },
     { kind: 'meeting', number: 2, bounds: corner(1, -1) },
     { kind: unique.director ? 'director' : 'workroom', number: null, bounds: corner(-1, 1) },
@@ -330,6 +412,11 @@ function createInteriorLayout(
     { kind: 'restroom', number: null, bounds: back(-1) },
     { kind: 'kitchen', number: null, bounds: back(1) },
   ];
+  // Өрөө бүр симуляцийн бүс (D89): `{floorId}-C…H`
+  const rooms: InteriorRoom[] = roomSpecs.map((room, i) => ({
+    ...room,
+    areaId: areaIdOf(floorId, ROOM_AREA_LETTERS[i]!),
+  }));
 
   const backDoorX = (BACK_ROOM.inner + BACK_ROOM.outer) / 2; // ±11
   const lines = [
@@ -446,33 +533,67 @@ export function createBuildingConfig(floorCount: number = DEFAULT_FLOOR_COUNT): 
     const floorId = floorIdOf(level);
     floorIds.push(floorId);
 
-    const areaIds = AREA_GEOMETRY.map((geometry, index) => {
-      const areaTemplate = template.areas[index]!;
-      const areaId = areaIdOf(floorId, geometry.letter);
-      areas[areaId] = {
-        id: areaId,
-        floorId,
-        name: areaTemplate.name,
-        bounds: { ...geometry.bounds },
-        markerPosition: { ...geometry.markerPosition },
-        volumeM3: geometry.bounds.width * geometry.bounds.depth * CEILING_HEIGHT,
-        occupancyCapacity: areaTemplate.capacity,
-        baselineOccupancy: areaTemplate.baselineOccupancy,
-        baseline: { ...areaTemplate.baseline },
-      };
+    const interior = createInteriorLayout(floorId, template.usage, {
+      director: level === unique.director,
+      server: level === unique.server,
+    });
+    const hasRooms = interior.rooms.length > 0;
+
+    /** Бүс ба түүний 5 мэдрэгчийг бүртгэнэ (§5.3) */
+    const addArea = (area: Area): AreaId => {
+      areas[area.id] = area;
       for (const metric of METRICS) {
-        const sensorId = indoorSensorIdOf(areaId, metric);
+        const sensorId = indoorSensorIdOf(area.id, metric);
         sensors[sensorId] = {
           id: sensorId,
           floorId,
-          areaId,
+          areaId: area.id,
           metric,
           unit: metricSpecs[metric].unit,
           location: 'indoor',
         };
       }
-      return areaId;
+      return area.id;
+    };
+
+    // Давхрын үндсэн бүс A/B — өрөөтэй давхарт нээлттэй оффисын хэсэг л (D89)
+    const openAreaIds = AREA_GEOMETRY.map((geometry, index) => {
+      const areaTemplate = template.areas[index]!;
+      const bounds = hasRooms ? OPEN_AREA_BOUNDS_WITH_ROOMS[geometry.letter] : geometry.bounds;
+      return addArea({
+        id: areaIdOf(floorId, geometry.letter),
+        floorId,
+        name: areaTemplate.name,
+        bounds: { ...bounds },
+        markerPosition: { ...geometry.markerPosition },
+        volumeM3: bounds.width * bounds.depth * CEILING_HEIGHT,
+        occupancyCapacity: areaTemplate.capacity,
+        baselineOccupancy: areaTemplate.baselineOccupancy,
+        baseline: { ...areaTemplate.baseline },
+        roomKind: null,
+        controlRole: 'ventilation',
+      });
     });
+
+    // 6g-ийн өрөө бүр — 5 мэдрэгчтэй бүс (D89); тэмдэг өрөөний төвд
+    const roomAreaIds = interior.rooms.map((room) => {
+      const roomTemplate = ROOM_TEMPLATES[room.kind];
+      const { x, z, width, depth } = room.bounds;
+      return addArea({
+        id: room.areaId,
+        floorId,
+        name: roomTemplate.name(room.number),
+        bounds: { ...room.bounds },
+        markerPosition: { x: x + width / 2, y: 1.2, z: z + depth / 2 },
+        volumeM3: width * depth * CEILING_HEIGHT,
+        occupancyCapacity: roomTemplate.capacity,
+        baselineOccupancy: roomTemplate.baselineOccupancy,
+        baseline: { ...roomTemplate.baseline },
+        roomKind: room.kind,
+        controlRole: roomTemplate.controlRole,
+      });
+    });
+    const areaIds = [...openAreaIds, ...roomAreaIds];
 
     const deviceIds = DEVICE_KINDS.map((kind) => {
       const deviceId = deviceIdOf(floorId, kind);
@@ -489,10 +610,7 @@ export function createBuildingConfig(floorCount: number = DEFAULT_FLOOR_COUNT): 
       areaIds,
       deviceIds,
       ventilation: createVentilationLayout(),
-      interior: createInteriorLayout(template.usage, {
-        director: level === unique.director,
-        server: level === unique.server,
-      }),
+      interior,
     };
   }
 

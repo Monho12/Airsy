@@ -84,7 +84,14 @@ describe('сценари бүр — хүлээгдэх дохио ба үйл я
       position: 'OPEN',
     });
     expect(snapshot.control.freeCoolingFloors).toContain('F12');
-    expect(snapshot.alerts.active.map((a) => a.key)).toEqual(['threshold:temperature-high:F12']);
+    // Бусад давхар хэвийн: идэвхтэй дохио бүгд F12-ынх. Давхрын түлхүүр + F12-ын техникийн өрөөнүүд (агуулах, ариун
+    // цэврийн, гал тогоо) нь давхрын удирдлагад оролцохгүй тул өөрийн бүсийн дохиотой (D89)
+    const keys = snapshot.alerts.active.map((a) => a.key);
+    expect(keys).toContain('threshold:temperature-high:F12');
+    expect(snapshot.alerts.active.every((a) => a.scope.floorId === 'F12')).toBe(true);
+    for (const key of keys.filter((k) => k !== 'threshold:temperature-high:F12')) {
+      expect(key).toMatch(/^threshold:temperature-high:F12-[FGH]$/);
+    }
     runtime.stop();
   });
 

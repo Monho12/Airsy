@@ -127,6 +127,11 @@ export function nextFreeCooling(
 export interface StageZeroInput {
   floorIds: readonly FloorId[];
   aggregates: FloorAggregates;
+  /**
+   * Давхар бүрт удирдлагад оролцох аль нэг бүсэд CO₂-ийн зөв хэмжилт алга эсэх (D89). Өгөөгүй бол давхрын нэгтгэлд
+   * CO₂ огт байхгүй эсэхээр (D78-ийн анхны нөхцөл).
+   */
+  co2Gaps?: Readonly<Record<FloorId, boolean>>;
   outdoor: OutdoorConditions;
   previous: {
     outdoorAirRestricted: boolean;
@@ -150,6 +155,7 @@ export interface StageZeroResult {
 export function evaluateStageZero({
   floorIds,
   aggregates,
+  co2Gaps,
   outdoor,
   previous,
   debounce,
@@ -194,7 +200,8 @@ export function evaluateStageZero({
       floorConfirmed[condition] = levels[condition].confirmed;
     }
     // `co2-missing`: баталгаажсаны дараа нөөц горим; зөв хэмжилт эргэн ирмэгц тэр даруй цуцлагдана (§6.6)
-    const co2MissingSteps = floor.co2 === undefined ? (prev?.co2MissingSteps ?? 0) + 1 : 0;
+    const co2Missing = co2Gaps?.[floorId] ?? floor.co2 === undefined;
+    const co2MissingSteps = co2Missing ? (prev?.co2MissingSteps ?? 0) + 1 : 0;
     if (co2MissingSteps >= debounceSteps) fallbackFloors.push(floorId);
     nextDebounce[floorId] = { levels, co2MissingSteps };
     confirmed[floorId] = floorConfirmed;

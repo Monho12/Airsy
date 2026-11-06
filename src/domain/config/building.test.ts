@@ -12,16 +12,16 @@ import {
 import { indoorThresholds } from './thresholds';
 
 describe('createBuildingConfig (§5.1, §5.2, FR-B1)', () => {
-  it('анхдагч 12 давхар: F01–F12, 24 бүс, 120 дотоод + 3 гадна мэдрэгч, 36 төхөөрөмж', () => {
+  it('анхдагч 12 давхар: F01–F12, 90 бүс (лобби 2 + 11 × 8, D89), 450 дотоод + 3 гадна мэдрэгч, 36 төхөөрөмж', () => {
     const { building, floors, areas, sensors, devices } = buildingConfig;
     expect(building.id).toBe('aeris-tower');
     expect(building.floorIds).toEqual(
       Array.from({ length: 12 }, (_, i) => `F${String(i + 1).padStart(2, '0')}`),
     );
     expect(Object.keys(floors)).toHaveLength(12);
-    expect(Object.keys(areas)).toHaveLength(24);
+    expect(Object.keys(areas)).toHaveLength(2 + 11 * 8);
     const all = Object.values(sensors);
-    expect(all.filter((s) => s.location === 'indoor')).toHaveLength(120);
+    expect(all.filter((s) => s.location === 'indoor')).toHaveLength((2 + 11 * 8) * 5);
     expect(building.outdoorSensorIds).toEqual(OUTDOOR_METRICS.map((m) => `OUT-${m}`));
     expect(Object.keys(devices)).toHaveLength(36);
   });
@@ -29,7 +29,19 @@ describe('createBuildingConfig (§5.1, §5.2, FR-B1)', () => {
   it('ID нь §5.2-ын загвартай бөгөөд объектуудын хооронд тууштай', () => {
     const { floors, areas, sensors, devices } = buildingConfig;
     const floor = floors.F07!;
-    expect(floor.areaIds).toEqual(['F07-A', 'F07-B']);
+    // A/B — нээлттэй оффис, C…H — 6g-ийн өрөө (D89)
+    expect(floor.areaIds).toEqual([
+      'F07-A',
+      'F07-B',
+      'F07-C',
+      'F07-D',
+      'F07-E',
+      'F07-F',
+      'F07-G',
+      'F07-H',
+    ]);
+    expect(floors.F01!.areaIds).toEqual(['F01-A', 'F01-B']);
+    expect(floor.interior.rooms.map((r) => r.areaId)).toEqual(floor.areaIds.slice(2));
     expect(floor.deviceIds).toEqual(['F07-SF', 'F07-EF', 'F07-OAD']);
     expect(devices['F07-OAD']).toEqual({
       id: 'F07-OAD',
@@ -76,7 +88,7 @@ describe('createBuildingConfig (§5.1, §5.2, FR-B1)', () => {
       expect(tall.areas[`${id}-A`]!.name).toBe('Нээлттэй оффис (хойд)');
       expect(tall.areas[`${id}-B`]!.name).toBe('Нээлттэй оффис (урд)');
     }
-    expect(Object.keys(tall.sensors)).toHaveLength(20 * 2 * 5 + 3);
+    expect(Object.keys(tall.sensors)).toHaveLength((2 + 19 * 8) * 5 + 3);
   });
 
   it.each([0, 21, 2.5, Number.NaN, -1])('давхрын тоо %s → RangeError', (count) => {
@@ -94,7 +106,7 @@ describe('§5.1.2-ын прототипийн утга (D50)', () => {
       expect(shaft.z).toBeLessThan(0);
   });
 
-  it('бүс: footprint дотор, тэмдэг бүсийн дотор ба x < 0 (cutaway-ийн ард нуугдахгүй), эзлэхүүн 1440 м³', () => {
+  it('бүс: footprint дотор, тэмдэг бүсийн дотор, эзлэхүүн = талбай × 3 м; нээлттэй бүсийн тэмдэг x < 0', () => {
     for (const area of Object.values(areas)) {
       const { bounds, markerPosition } = area;
       expect(bounds.x).toBeGreaterThanOrEqual(-building.footprint.width / 2);
@@ -102,13 +114,47 @@ describe('§5.1.2-ын прототипийн утга (D50)', () => {
       expect(bounds.z).toBeGreaterThanOrEqual(-building.footprint.depth / 2);
       expect(bounds.z + bounds.depth).toBeLessThanOrEqual(building.footprint.depth / 2);
       expect(markerPosition.x).toBeGreaterThan(bounds.x);
-      expect(markerPosition.x).toBeLessThan(0);
+      expect(markerPosition.x).toBeLessThan(bounds.x + bounds.width);
       expect(markerPosition.z).toBeGreaterThan(bounds.z);
       expect(markerPosition.z).toBeLessThan(bounds.z + bounds.depth);
-      expect(area.volumeM3).toBe(1440);
-      // §5.1.2: 0.5–0.7; F02 нь 0.45 (D80)
-      expect(area.baselineOccupancy).toBeGreaterThanOrEqual(area.floorId === 'F02' ? 0.45 : 0.5);
-      expect(area.baselineOccupancy).toBeLessThanOrEqual(0.7);
+      expect(area.volumeM3).toBeCloseTo(bounds.width * bounds.depth * 3);
+      if (area.roomKind === null) {
+        expect(markerPosition.x).toBeLessThan(0);
+        // §5.1.2: 0.5–0.7; F02 нь 0.45 (D80)
+        expect(area.baselineOccupancy).toBeGreaterThanOrEqual(area.floorId === 'F02' ? 0.45 : 0.5);
+        expect(area.baselineOccupancy).toBeLessThanOrEqual(0.7);
+      } else {
+        // Өрөө (D89): ачаалал > 0 — CO₂-ийн тохируулгад (D68)
+        expect(area.occupancyCapacity * area.baselineOccupancy).toBeGreaterThan(0);
+      }
+    }
+    // Лобби нээлттэй (өрөөгүй) — А/Б бүтэн 1440 м³; өрөөтэй давхарт А/Б зөвхөн нээлттэй оффис (D89)
+    expect(areas['F01-A']!.volumeM3).toBe(1440);
+    expect(areas['F07-A']!.bounds).toEqual({ x: -15, z: -8, width: 30, depth: 6.5 });
+    expect(areas['F07-B']!.bounds).toEqual({ x: -15, z: 1.5, width: 30, depth: 10.5 });
+  });
+
+  it('өрөөний бүс (D89): зориулалт, удирдлагад оролцоо; бүсүүд давхцахгүй', () => {
+    const roleOf = (id: string) => areas[id]!.controlRole;
+    expect(['A', 'B', 'C', 'D', 'E'].map((l) => roleOf(`F07-${l}`))).toEqual(
+      Array(5).fill('ventilation'),
+    );
+    expect(['F', 'G', 'H'].map((l) => roleOf(`F07-${l}`))).toEqual(Array(3).fill('monitorOnly'));
+    expect(areas['F07-C']!.name).toBe('Хурлын өрөө 1');
+    expect(areas['F10-E']!.name).toBe('Захирлын өрөө');
+    expect(areas['F03-F']!.name).toBe('Сервер өрөө');
+    for (const floor of Object.values(floors)) {
+      const rects = floor.areaIds.map((id) => areas[id]!.bounds);
+      rects.forEach((a, i) =>
+        rects.slice(i + 1).forEach((b) => {
+          const overlap =
+            a.x < b.x + b.width &&
+            b.x < a.x + a.width &&
+            a.z < b.z + b.depth &&
+            b.z < a.z + a.depth;
+          expect(overlap).toBe(false);
+        }),
+      );
     }
   });
 
@@ -318,10 +364,20 @@ describe('дотоод бүтэц, хонгил, эвакуацийн шат (D8
     }
   });
 
-  it('мэдрэгчийн тэмдэг, supply/exhaust цэг, төхөөрөмж өрөөн дотор биш ба хананаас ≥ 1 м', () => {
+  it('нээлттэй бүсийн тэмдэг, supply/exhaust цэг, төхөөрөмж өрөөн дотор биш ба хананаас ≥ 1 м; өрөөний тэмдэг өрөөндөө', () => {
     for (const floor of Object.values(floors)) {
+      for (const room of floor.interior.rooms) {
+        expect(inside(room.bounds, areas[room.areaId]!.markerPosition)).toBe(true);
+        for (const wall of floor.interior.walls) {
+          expect(
+            distanceToSegment(areas[room.areaId]!.markerPosition, wall),
+          ).toBeGreaterThanOrEqual(1);
+        }
+      }
       const points = [
-        ...floor.areaIds.map((id) => areas[id]!.markerPosition),
+        ...floor.areaIds
+          .filter((id) => areas[id]!.roomKind === null)
+          .map((id) => areas[id]!.markerPosition),
         ...floor.ventilation.supplyPoints,
         ...floor.ventilation.exhaustPoints,
         ...Object.values(floor.ventilation.devicePositions),

@@ -48,7 +48,7 @@ export const alerts = {
     return `Удирдлага нөөц горимд — ${floorLabel}`;
   },
   controlDegradedMessage(floorLabel: string): string {
-    return `${floorLabel}: CO₂-ийн зөв хэмжилт алга. Агааржуулалтыг доод тал нь «Дунд» түвшинд барьж байна.`;
+    return `${floorLabel}: нэг ба түүнээс олон бүсэд CO₂-ийн зөв хэмжилт алга. Агааржуулалтыг доод тал нь «Дунд» түвшинд барьж байна.`;
   },
   outdoorAirRestrictedTitle: 'Гадна агаарыг хязгаарласан — барилга',
   outdoorAirRestrictedMessage:

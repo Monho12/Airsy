@@ -100,10 +100,11 @@ describe('calibrateArea — тэнцвэр = Area.baseline (D68, Q1)', () => {
     },
   );
 
-  it('CO₂-ийн ялгаруулалт бүсээр ялгаатай (ганц g_co2 биш — D68): оффис 191.67, Их танхим 93.33 (D80), лобби 288', () => {
-    // Зориуд бэхэлсэн утга (D68-д бүртгэсэн тооцоо)
-    expect(calibrateArea(area('F07-A')).co2PerOccupant).toBeCloseTo(191.6667, 3);
-    expect(calibrateArea(area('F02-A')).co2PerOccupant).toBeCloseTo(93.3333, 3);
+  it('CO₂-ийн ялгаруулалт бүсээр ялгаатай (ганц g_co2 биш — D68): эзлэхүүнтэй пропорциональ', () => {
+    // Зориуд бэхэлсэн утга (D68-ийн тооцоо). D89: өрөөтэй давхарт А/Б-ийн эзлэхүүн 1440 → 585 м³ болсон тул
+    // g_co2 ∝ V (191.67 · 585/1440, 93.33 · 585/1440); лобби (өрөөгүй) 1440 м³ хэвээр. Тэнцвэр, хариу хугацаа өөрчлөгдөхгүй.
+    expect(calibrateArea(area('F07-A')).co2PerOccupant).toBeCloseTo((191.6667 * 585) / 1440, 3);
+    expect(calibrateArea(area('F02-A')).co2PerOccupant).toBeCloseTo((93.3333 * 585) / 1440, 3);
     expect(calibrateArea(area('F01-A')).co2PerOccupant).toBeCloseTo(288, 6);
   });
 

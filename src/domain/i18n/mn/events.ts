@@ -130,9 +130,9 @@ export const events = {
   },
   constraintCleared: 'Гадна агаарын хязгаарлалт арилав.',
   fallbackActive(floorLabel: string): string {
-    return `${floorLabel}: CO₂-ийн зөв хэмжилт алга — удирдлага нөөц горимд орлоо.`;
+    return `${floorLabel}: нэг ба түүнээс олон бүсэд CO₂-ийн зөв хэмжилт алга — удирдлага нөөц горимд орлоо.`;
   },
   fallbackCleared(floorLabel: string): string {
-    return `${floorLabel}: CO₂-ийн хэмжилт сэргэж, нөөц горим дуусав.`;
+    return `${floorLabel}: бүх бүсийн CO₂-ийн хэмжилт сэргэж, нөөц горим дуусав.`;
   },
 } as const;

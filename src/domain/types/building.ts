@@ -83,6 +83,8 @@ export type InteriorRoomKind =
   'meeting' | 'director' | 'workroom' | 'storage' | 'server' | 'restroom' | 'kitchen';
 
 export interface InteriorRoom {
+  /** Өрөөний симуляцийн бүс (D89; `{floorId}-C…H`) — мэдрэгч ба утга нь тэр бүсийнх */
+  areaId: AreaId;
   kind: InteriorRoomKind;
   /** Ижил зориулалттай өрөөний дугаар (жишээ нь «Хурлын өрөө 1»); ганц бол null */
   number: number | null;
@@ -126,7 +128,17 @@ export interface Area {
   occupancyCapacity: number;
   baselineOccupancy: number; // 0–1, тогтмол суурь ачаалал (§5.8)
   baseline: Record<MetricType, number>; // ердийн утга (VOC суурь ≈ 100)
+  /** Бүсийн төрөл: давхрын үндсэн бүс (нээлттэй оффис, танхим — A/B) бол null; 6g-ийн өрөө бол түүний зориулалт (D89) */
+  roomKind: InteriorRoomKind | null;
+  /**
+   * Давхрын нэгтгэл ба агааржуулалтын удирдлагад оролцох эсэх (D89): `ventilation` — хүнтэй бүс (нээлттэй оффис,
+   * хурлын, захирлын/ажлын өрөө); `monitorOnly` — техникийн өрөө (агуулах/сервер, ариун цэврийн, гал тогоо) зөвхөн
+   * хянаж, бүсийн түлхүүртэй дохио өгнө (бодит барилгад тусдаа хөргөлт/гаргах сэнстэй; загварчлахгүй)
+   */
+  controlRole: AreaControlRole;
 }
+
+export type AreaControlRole = 'ventilation' | 'monitorOnly';
 
 export interface Sensor {
   id: SensorId;

@@ -34,6 +34,8 @@ export interface ControlEngineInput {
   devices: Readonly<Record<DeviceId, VentilationDevice>>;
   /** Энэ алхмын давхрын нэгтгэл (зөвхөн зөв хэмжилт, §5.6) */
   aggregates: FloorAggregates;
+  /** Удирдлагад оролцох аль нэг бүсэд CO₂ алга эсэх (D89; нөөц горимын нөхцөл) */
+  co2Gaps?: Readonly<Record<FloorId, boolean>>;
   outdoor: OutdoorConditions;
   control: ControlState;
   debounce: RuleDebounceState;
@@ -131,6 +133,7 @@ export function evaluateControl(input: ControlEngineInput): ControlEngineOutput 
   const stage = evaluateStageZero({
     floorIds: config.building.floorIds,
     aggregates,
+    ...(input.co2Gaps === undefined ? {} : { co2Gaps: input.co2Gaps }),
     outdoor,
     previous,
     debounce: input.debounce,

@@ -1,6 +1,11 @@
 // Snapshot-оос гаргаж авах өгөгдөл (CLAUDE.md §5.6, §10.2). Цэвэр функцүүд — төлөвийг хэзээ ч хадгалахгүй.
 // Бүс/давхар/барилгын төлөв, тоо, жагсаалтыг уншихдаа тооцно. UI нь эдгээрийг memo-той дуудна (§11.2).
-import { aggregateFloorMetric, isValidMeasurement, summarizeHealth } from '@/domain/classification';
+import {
+  aggregateFloorMetric,
+  isValidMeasurement,
+  statusRank,
+  summarizeHealth,
+} from '@/domain/classification';
 import type { HealthSummary } from '@/domain/classification';
 import { buildingConfig, METRICS, type BuildingConfig } from '@/domain/config/building';
 import { indoorThresholds, outdoorAirThresholds } from '@/domain/config/thresholds';
@@ -94,6 +99,28 @@ export interface AreaSummary {
   /** Бүсийн төлөв = 5 мэдрэгчийн хамгийн муу (өгөгдлийн асуудлыг тусад нь, §5.6) */
   health: HealthSummary;
   connection: AreaConnectionSummary;
+  /**
+   * Нягт мөрөнд харуулах гол хэмжигдэхүүн (D89): хамгийн муу төлөвтэй утга (тэнцвэл METRICS-ийн дарааллаар); бүгд
+   * хэвийн бол удирдлагад оролцох бүсэд CO₂, техникийн өрөөнд температур.
+   */
+  keyMetric: MetricType;
+}
+
+function areaKeyMetric(
+  area: Area,
+  readings: Partial<Record<MetricType, SensorReading>>,
+): MetricType {
+  let key: MetricType = area.controlRole === 'monitorOnly' ? 'temperature' : 'co2';
+  let worst = statusRank('normal');
+  for (const metric of METRICS) {
+    const reading = readings[metric];
+    const rank = reading === undefined ? statusRank('offline') : statusRank(reading.status);
+    if (rank > worst) {
+      worst = rank;
+      key = metric;
+    }
+  }
+  return key;
 }
 
 function summarizeAreaConnection(
@@ -134,6 +161,7 @@ export function selectAreaSummary(
     readings,
     health: summarizeHealth(Object.values(readings).map((r) => r.status)),
     connection: summarizeAreaConnection(snapshot, areaId, config),
+    keyMetric: areaKeyMetric(area, readings),
   };
 }
 
@@ -159,10 +187,17 @@ export function selectFloorSummary(
   const floor = config.floors[floorId];
   if (floor === undefined) return undefined;
   const readings = floorReadings(snapshot, floorId, config);
+  // Нэгтгэл нь domain-тай ижил — зөвхөн удирдлагад оролцох бүсээс (D89); төлөв нь бүх бүсээс (техникийн өрөө орно)
+  const ventilationReadings = readings.filter((reading) => {
+    const areaId = config.sensors[reading.sensorId]?.areaId;
+    return areaId !== null && areaId !== undefined
+      ? config.areas[areaId]?.controlRole === 'ventilation'
+      : false;
+  });
   const aggregates: Partial<Record<MetricType, FloorMetricAggregate>> = {};
   for (const metric of METRICS) {
     const aggregate = aggregateFloorMetric(
-      readings.filter((reading) => reading.metric === metric),
+      ventilationReadings.filter((reading) => reading.metric === metric),
       snapshot.simTime,
     );
     if (aggregate !== undefined) aggregates[metric] = aggregate;

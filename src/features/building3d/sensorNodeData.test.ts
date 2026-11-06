@@ -9,6 +9,7 @@ import {
   areaIdAtInstance,
   createSensorNodes,
   detailLabelAreaId,
+  ROOM_NODE_SCALE,
   sensorNodeStatuses,
 } from './sensorNodeData';
 
@@ -26,11 +27,16 @@ describe('createSensorNodes — байрлал (§5.1.1, §5.3)', () => {
       expect(result.map((node) => node.areaId)).toEqual(
         l.floors.flatMap((floor) => floor.zones.map((zone) => zone.id)),
       );
-      expect(result).toHaveLength(count * 2);
+      expect(result).toHaveLength(Object.keys(config.areas).length);
     },
   );
 
-  it('анхдагч барилга: 24 зангилаа (120 дотоод мэдрэгч ÷ 5 хэмжигдэхүүн)', () => {
+  it('анхдагч барилга: 90 зангилаа (450 дотоод мэдрэгч ÷ 5 хэмжигдэхүүн, D89)', () => {
+    expect(nodes).toHaveLength(90);
+    // Өрөөний зангилаа жижиг (D89)
+    expect(nodes.find((n) => n.areaId === 'F07-A')!.scale).toBe(1);
+    expect(nodes.find((n) => n.areaId === 'F07-C')!.scale).toBe(ROOM_NODE_SCALE);
+    expect(ROOM_NODE_SCALE).toBeLessThan(1);
     const indoor = Object.values(buildingConfig.sensors).filter((s) => s.location === 'indoor');
     expect(nodes).toHaveLength(indoor.length / 5);
     expect(new Set(nodes.map((node) => node.areaId)).size).toBe(nodes.length);

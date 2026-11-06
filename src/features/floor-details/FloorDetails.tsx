@@ -1,11 +1,12 @@
 // Сонгосон давхрын дэлгэрэнгүй: давхрын төлөв, бүс бүрийн 5 утга ба ангилал (FR-M1, FR-M3, FR-M5, CLAUDE.md §8.2).
 // Тоон босго энд байхгүй — ангилал, тайлбар snapshot-оос, нарийвчлал тохиргооноос (FR-M2).
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import { EmptyState, HealthIndicator, MetricValue, Panel, Skeleton } from '@/components/ui';
 import { METRICS } from '@/domain/config/building';
 import { metricSpecs } from '@/domain/config/thresholds';
-import { floorLabelMn, formatTimeMn, mn } from '@/domain/i18n/mn';
+import { floorLabelMn, formatMetricValueMn, formatTimeMn, mn } from '@/domain/i18n/mn';
+import type { SensorReading } from '@/domain/types';
 import { useLiveStore } from '@/store/liveStore';
 import {
   selectAreaSummary,
@@ -46,6 +47,72 @@ function AreaMeasurementMeta({ connection }: { connection: AreaConnectionSummary
   );
 }
 
+/** Нягт мөрийн утга — холболтгүй/буруу утгыг хэзээ ч 0 гэж харуулахгүй (FR-M5; MetricValue-тэй ижил дүрэм) */
+function compactValue(reading: SensorReading | undefined, decimals: number): string {
+  if (reading === undefined || reading.status === 'offline' || reading.value === null) {
+    return mn.common.noData;
+  }
+  if (reading.status === 'invalid') return mn.classification.statusLabel.invalid;
+  return formatMetricValueMn(reading.value, reading.unit, decimals);
+}
+
+/** Бүсийн бүтэн дэлгэрэнгүй: хэмжилтийн мөр + 5 утга */
+function AreaBody({ readings, connection }: Pick<AreaSummary, 'readings' | 'connection'>) {
+  return (
+    <>
+      <AreaMeasurementMeta connection={connection} />
+      <div className="floor-details__metrics">
+        {METRICS.map((metric) => (
+          <MetricValue
+            key={metric}
+            label={mn.metrics.label[metric]}
+            reading={readings[metric]}
+            decimals={metricSpecs[metric].decimals}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+
+/**
+ * Өрөөний нягт мөр (D89): нэр + төлөв + гол утга; дарахад бүтэн дэлгэрэнгүй задарна. Гол утга нь хамгийн муу
+ * төлөвтэй хэмжигдэхүүн (selector тооцно).
+ */
+function RoomRow({ summary }: { summary: AreaSummary }) {
+  const [open, setOpen] = useState(false);
+  const { area, readings, health, connection, keyMetric } = summary;
+  const bodyId = `room-${area.id}`;
+  return (
+    <li className="floor-details__room">
+      <button
+        type="button"
+        className="floor-details__room-row"
+        aria-expanded={open}
+        aria-controls={bodyId}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <span className="floor-details__room-name">
+          {area.name}
+          {area.controlRole === 'monitorOnly' && (
+            <span className="floor-details__room-tag">{mn.common.rooms.monitorOnly}</span>
+          )}
+        </span>
+        <span className="floor-details__room-value">
+          {mn.metrics.shortLabel[keyMetric]}{' '}
+          {compactValue(readings[keyMetric], metricSpecs[keyMetric].decimals)}
+        </span>
+        <HealthIndicator {...health} />
+      </button>
+      {open && (
+        <section id={bodyId} className="floor-details__room-body" aria-label={area.name}>
+          <AreaBody readings={readings} connection={connection} />
+        </section>
+      )}
+    </li>
+  );
+}
+
 export function FloorDetails() {
   const snapshot = useLiveStore((state) => state.snapshot);
   const selectedFloorId = useUiStore((state) => state.selectedFloorId);
@@ -77,6 +144,9 @@ export function FloorDetails() {
   }
 
   const { summary, areas } = data;
+  // Нээлттэй бүс (А/Б) бүтнээр, өрөө нягт мөрөөр (D89)
+  const openAreas = areas.filter(({ area }) => area.roomKind === null);
+  const rooms = areas.filter(({ area }) => area.roomKind !== null);
   return (
     <Panel
       title={title}
@@ -93,25 +163,26 @@ export function FloorDetails() {
           </h3>
           <HealthIndicator {...summary.health} />
         </div>
-        {areas.map(({ area, readings, health, connection }) => (
+        {openAreas.map(({ area, readings, health, connection }) => (
           <section key={area.id} className="floor-details__area" aria-label={area.name}>
             <div className="floor-details__area-heading">
               <h4 className="floor-details__area-name">{area.name}</h4>
               <HealthIndicator {...health} />
             </div>
-            <AreaMeasurementMeta connection={connection} />
-            <div className="floor-details__metrics">
-              {METRICS.map((metric) => (
-                <MetricValue
-                  key={metric}
-                  label={mn.metrics.label[metric]}
-                  reading={readings[metric]}
-                  decimals={metricSpecs[metric].decimals}
-                />
-              ))}
-            </div>
+            <AreaBody readings={readings} connection={connection} />
           </section>
         ))}
+        {rooms.length > 0 && (
+          <div className="floor-details__area">
+            <h4 className="floor-details__area-name">{mn.common.rooms.heading}</h4>
+            {/* key — өөр давхар сонгоход задарсан төлөв цэвэрлэгдэнэ */}
+            <ul className="floor-details__rooms" key={summary.floor.id}>
+              {rooms.map((room) => (
+                <RoomRow key={room.area.id} summary={room} />
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </Panel>
   );

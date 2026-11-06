@@ -285,8 +285,12 @@ describe('мэдрэгчийн эвдрэл → дохио (FR-S5, §9.4.1, D72)
       type: 'sensor_offline',
       severity: 'warning',
     });
-    // Нэг CO₂ мэдрэгч зөв хэвээр тул давхрын нэгтгэл байгаа — босгын дохиогүй
-    expect(runtime.getSnapshot().alerts.active).toHaveLength(1);
+    // Давхрын бусад бүсэд CO₂ байгаа тул босгын дохиогүй; харин нээлттэй оффис А харалган болсон тул нөөц горим
+    // ба `control_degraded` (D89: аль нэг удирдлагад оролцох бүсэд CO₂ алга)
+    expect(runtime.getSnapshot().alerts.active.map((a) => a.key)).toEqual([
+      'sensor_offline:F04-A-co2',
+      'control_degraded:F04',
+    ]);
     runtime.stop();
   });
 
@@ -333,7 +337,7 @@ describe('мэдрэгчийн эвдрэл → дохио (FR-S5, §9.4.1, D72)
     runtime.stop();
   });
 
-  it('F04-ийн бүх CO₂ салвал босгын CO₂ нөхцөл үнэлэгдэхгүй (тэг биш) — мэдрэгчийн ба нөөц горимын дохио', async () => {
+  it('F04-ийн нээлттэй оффисын CO₂ салвал — мэдрэгчийн ба нөөц горимын дохио; хандлага өрөөний CO₂-оор (D89)', async () => {
     const { runtime } = started();
     await runtime.dispatch({ type: 'sensor/disconnect', sensorId: 'F04-A-co2' });
     await runtime.dispatch({ type: 'sensor/disconnect', sensorId: 'F04-B-co2' });
@@ -345,7 +349,30 @@ describe('мэдрэгчийн эвдрэл → дохио (FR-S5, §9.4.1, D72)
       'sensor_offline:F04-B-co2',
       'control_degraded:F04',
     ]);
+    // Хүнтэй өрөөнүүд (C–E) CO₂-оо хэмжсээр — давхрын нэгтгэл тэдгээрээс (тэг биш, хоосон ч биш)
+    expect(runtime.getSnapshot().history['F04']!.co2.at(-1)!.value).not.toBeNull();
+    runtime.stop();
+  });
+
+  it('удирдлагад оролцох бүх бүсийн CO₂ салвал давхрын CO₂ нэгтгэл алга (хандлага null, тэг биш)', async () => {
+    const { runtime } = started();
+    for (const letter of ['A', 'B', 'C', 'D', 'E']) {
+      await runtime.dispatch({ type: 'sensor/disconnect', sensorId: `F04-${letter}-co2` });
+    }
+    runtime.advance(N + 5);
     expect(runtime.getSnapshot().history['F04']!.co2.at(-1)!.value).toBeNull();
+    expect(runtime.getSnapshot().alerts.active.map((a) => a.key)).toContain('control_degraded:F04');
+    runtime.stop();
+  });
+
+  it('техникийн өрөөний CO₂ салсан ч нөөц горимд орохгүй (зөвхөн хянана, D89)', async () => {
+    const { runtime } = started();
+    await runtime.dispatch({ type: 'sensor/disconnect', sensorId: 'F04-G-co2' });
+    runtime.advance(N + 5);
+    expect(runtime.getSnapshot().alerts.active.map((a) => a.key)).toEqual([
+      'sensor_offline:F04-G-co2',
+    ]);
+    expect(runtime.getSnapshot().control.fallbackFloors).toEqual([]);
     runtime.stop();
   });
 

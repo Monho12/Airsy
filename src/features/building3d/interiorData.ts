@@ -221,10 +221,10 @@ export function interiorLabels(
       position: at(exit.x - exit.outward.x * 1.2, exit.z - exit.outward.z * 1.2),
     });
   });
-  // Нээлттэй оффис: бүсийн баруун хэсэгт, коридор ба урсгалын замын (z = ±6) хооронд
+  // Нээлттэй оффис (өрөөнөөс бусад бүс, D89): бүсийн баруун хэсэгт, коридор ба урсгалын замын (z = ±6) хооронд
   for (const areaId of floor.areaIds) {
     const area = config.areas[areaId];
-    if (area === undefined) continue;
+    if (area === undefined || area.roomKind !== null) continue;
     const { x, z, width, depth } = area.bounds;
     const north = z + depth <= 0;
     labels.push({

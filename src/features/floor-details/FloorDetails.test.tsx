@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { buildingConfig } from '@/domain/config/building';
@@ -102,5 +103,41 @@ describe('FloorDetails — бүсийн хэмжилтийн хугацаа ба
     expect(meta).toHaveTextContent(mn.common.sensorsStale(1));
     expect(meta).not.toHaveTextContent(mn.common.connection.online);
     expect(meta).toHaveAttribute('data-connection', 'stale');
+  });
+});
+
+describe('FloorDetails — өрөөний нягт мөр (D89)', () => {
+  it('А/Б бүтнээр, өрөө нягт мөрөөр; дарахад дэлгэрэнгүй задарна', async () => {
+    const user = userEvent.setup();
+    renderFloor('F07');
+    // Нээлттэй оффис бүтнээр
+    expect(
+      screen.getByRole('region', { name: buildingConfig.areas['F07-A']!.name }),
+    ).toBeInTheDocument();
+    // Өрөө бүр нэг товч (хураасан)
+    const roomIds = ['C', 'D', 'E', 'F', 'G', 'H'].map((l) => `F07-${l}`);
+    const rows = roomIds.map((id) =>
+      screen.getByRole('button', { name: new RegExp(buildingConfig.areas[id]!.name) }),
+    );
+    rows.forEach((row) => expect(row).toHaveAttribute('aria-expanded', 'false'));
+    const kitchen = buildingConfig.areas['F07-H']!;
+    expect(screen.queryByRole('region', { name: kitchen.name })).toBeNull();
+    // Техникийн өрөөнд «Зөвхөн хяналт», хүнтэй өрөөнд үгүй
+    expect(rows[5]).toHaveTextContent(mn.common.rooms.monitorOnly);
+    expect(rows[0]).not.toHaveTextContent(mn.common.rooms.monitorOnly);
+    // Гол утга: хэвийн үед техникийн өрөөнд температур, хүнтэй өрөөнд CO₂
+    expect(rows[5]).toHaveTextContent(mn.metrics.shortLabel.temperature);
+    expect(rows[0]).toHaveTextContent(mn.metrics.shortLabel.co2);
+
+    await user.click(rows[5]!);
+    expect(rows[5]).toHaveAttribute('aria-expanded', 'true');
+    const body = screen.getByRole('region', { name: kitchen.name });
+    expect(within(body).getByText(mn.metrics.label.voc)).toBeInTheDocument();
+    expect(body.querySelector('[data-connection]')).not.toBeNull();
+  });
+
+  it('лобби (F01) өрөөгүй — өрөөний жагсаалт харагдахгүй', () => {
+    renderFloor('F01');
+    expect(screen.queryByText(mn.common.rooms.heading)).toBeNull();
   });
 });
