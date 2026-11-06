@@ -1,13 +1,15 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { buildingConfig } from '@/domain/config/building';
 import { formatTimeMn, mn } from '@/domain/i18n/mn';
+import type { AerisCommand, AerisRuntime, CommandResult } from '@/domain/runtime/AerisRuntime';
 import type { LiveSnapshot, SensorReading } from '@/domain/types';
 import { applySnapshot } from '@/store/adapter';
 import { initialLiveState, useLiveStore } from '@/store/liveStore';
 import { createMockSnapshot } from '@/store/mockSnapshot';
+import { registerRuntime } from '@/store/runtime';
 import { initialUiState, useUiStore } from '@/store/uiStore';
 
 import { FloorDetails } from './FloorDetails';
@@ -139,5 +141,121 @@ describe('FloorDetails — өрөөний нягт мөр (D89)', () => {
   it('лобби (F01) өрөөгүй — өрөөний жагсаалт харагдахгүй', () => {
     renderFloor('F01');
     expect(screen.queryByText(mn.common.rooms.heading)).toBeNull();
+  });
+});
+
+describe('FloorDetails — өрөөний сценари (С7, D93)', () => {
+  const room = mn.scenarios.room;
+  function withRuntime() {
+    const dispatch = vi.fn<(command: AerisCommand) => Promise<CommandResult>>(async () => ({
+      ok: true,
+    }));
+    const runtime: AerisRuntime = {
+      start: vi.fn(),
+      stop: vi.fn(),
+      getSnapshot: vi.fn(),
+      subscribe: vi.fn(() => () => {}),
+      dispatch,
+    };
+    registerRuntime(runtime);
+    return dispatch;
+  }
+  afterEach(() => registerRuntime(null));
+
+  it('гал тогооны мөрийг задлахад загварууд гарч, дарахад scenario/startRoom илгээнэ', async () => {
+    const dispatch = withRuntime();
+    const user = userEvent.setup();
+    renderFloor('F07');
+    const kitchen = buildingConfig.areas['F07-H']!;
+    await user.click(screen.getByRole('button', { name: new RegExp(kitchen.name) }));
+    const cooking = screen.getByRole('button', {
+      name: room.panel.startLabel(room.name['room-kitchen-cooking'], kitchen.name),
+    });
+    expect(
+      screen.getByRole('button', {
+        name: room.panel.startLabel(room.name['room-sensor-disconnect'], kitchen.name),
+      }),
+    ).toBeInTheDocument();
+    // Гал/утааны сценари өрөөнөөс байхгүй (§6.9)
+    expect(screen.queryByText(mn.scenarios.name['fire-emergency'])).toBeNull();
+    await user.click(cooking);
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'scenario/startRoom',
+      scenarioId: 'room-kitchen-cooking',
+      areaId: 'F07-H',
+    });
+  });
+
+  it('өөр сценари идэвхтэй бол баталгаажуулалт асууна; «Болих» юу ч илгээхгүй', async () => {
+    const dispatch = withRuntime();
+    const user = userEvent.setup();
+    const base = createMockSnapshot();
+    renderFloor('F07', {
+      ...base,
+      simulation: {
+        ...base.simulation,
+        activeScenario: {
+          id: 'high-co2',
+          targetAreaId: null,
+          startedAt: base.simTime,
+          progress: 0.2,
+        },
+      },
+    });
+    const meeting = buildingConfig.areas['F07-C']!;
+    await user.click(screen.getByRole('button', { name: new RegExp(`^${meeting.name}`) }));
+    await user.click(
+      screen.getByRole('button', {
+        name: room.panel.startLabel(room.name['room-meeting'], meeting.name),
+      }),
+    );
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveTextContent(mn.scenarios.name['high-co2']);
+    await user.click(within(dialog).getByRole('button', { name: mn.scenarios.confirm.cancel }));
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it('3D-д өрөө сонгогдоход (selectArea) мөр нь задарна; нээлттэй оффист сценари товч байхгүй', () => {
+    withRuntime();
+    renderFloor('F07');
+    act(() => useUiStore.getState().selectArea('F07-G'));
+    const restroom = buildingConfig.areas['F07-G']!;
+    expect(screen.getByRole('button', { name: new RegExp(`^${restroom.name}`) })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(screen.getByRole('region', { name: restroom.name })).toBeInTheDocument();
+    const office = screen.getByRole('region', { name: buildingConfig.areas['F07-A']!.name });
+    expect(within(office).queryByText(room.panel.heading)).toBeNull();
+  });
+});
+
+describe('FloorDetails — өрөөний мөр зөөлөн хаагдана (D94)', () => {
+  it('хаахад агуулга шилжилт дуустал далд (aria-hidden, inert) үлдэж, transitionend-ийн дараа арилна', async () => {
+    const user = userEvent.setup();
+    renderFloor('F07');
+    const kitchen = buildingConfig.areas['F07-H']!;
+    const row = screen.getByRole('button', { name: new RegExp(`^${kitchen.name}`) });
+    await user.click(row);
+    expect(screen.getByRole('region', { name: kitchen.name })).toBeInTheDocument();
+    await user.click(row);
+    expect(row).toHaveAttribute('aria-expanded', 'false');
+    const body = document.getElementById('room-F07-H')!;
+    expect(body).toHaveAttribute('aria-hidden', 'true');
+    expect(body).toHaveAttribute('inert');
+    expect(screen.queryByRole('region', { name: kitchen.name })).toBeNull();
+    fireEvent.transitionEnd(body.parentElement!.parentElement!);
+    expect(document.getElementById('room-F07-H')).toBeNull();
+  });
+
+  it('хөдөлгөөн багасгах үед шууд арилна', async () => {
+    useUiStore.getState().setReducedMotionOverride(true);
+    const user = userEvent.setup();
+    renderFloor('F07');
+    const kitchen = buildingConfig.areas['F07-H']!;
+    const row = screen.getByRole('button', { name: new RegExp(`^${kitchen.name}`) });
+    await user.click(row);
+    await user.click(row);
+    expect(document.getElementById('room-F07-H')).toBeNull();
   });
 });

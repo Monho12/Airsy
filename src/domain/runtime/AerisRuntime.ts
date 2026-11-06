@@ -2,9 +2,11 @@
 // Прототипт `LocalSimulationRuntime`, ирээдүйд `RemoteRuntime` [ИРЭЭДҮЙ] — UI зөвхөн энэ interface-тэй харьцана.
 import type {
   AlertId,
+  AreaId,
   DeviceId,
   DeviceState,
   LiveSnapshot,
+  RoomScenarioId,
   ScenarioId,
   SensorId,
   SimulationSpeed,
@@ -29,6 +31,8 @@ export type AerisCommand =
   | { type: 'simulation/setSpeed'; speed: SimulationSpeed }
   | { type: 'simulation/reset' }
   | { type: 'scenario/start'; scenarioId: ScenarioId }
+  // Өрөөний сценарийн загварыг тухайн бүсэд эхлүүлнэ (С7, D93); зөөлөн шинэчлэлээр (§7.4 C) — бусад сценаритай ижил
+  | { type: 'scenario/startRoom'; scenarioId: RoomScenarioId; areaId: AreaId }
   | { type: 'scenario/stop' }
   | { type: 'emergency/end' }
   | { type: 'control/setAutoMode'; enabled: boolean }

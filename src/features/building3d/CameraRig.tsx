@@ -84,9 +84,15 @@ export function CameraRig({ layout }: { layout: BuildingLayout }) {
   }, [layout]);
 
   // Сонгосон давхарт төвлөрөх (D88): дээрээс ~40° налуу, давхрыг дэлгэцэнд дүүргэх зайнаас; хэрэглэгчийн хэвтээ
-  // чиглэл хадгалагдана. Сонголт цуцлагдахад камер хөдлөхгүй
+  // чиглэл хадгалагдана. Давхрын сонголт цуцлагдахад анхдагч харагдац руу зөөлөн буцна (D94) — эхний mount-д биш
+  const hadFloorRef = useRef(selectedFloorId !== null);
   useEffect(() => {
-    if (selectedFloorId === null) return;
+    const hadFloor = hadFloorRef.current;
+    hadFloorRef.current = selectedFloorId !== null;
+    if (selectedFloorId === null) {
+      if (hadFloor) moveTo(defaultCameraPose(layout));
+      return;
+    }
     const current = readPose();
     const goal = current === null ? null : floorFocusPose(current, layout, selectedFloorId);
     if (goal !== null) moveTo(goal);

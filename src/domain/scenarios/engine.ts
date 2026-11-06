@@ -83,7 +83,7 @@ export function scenarioProgress(scenario: SimulationScenario, elapsedMs: number
     const total = scenario.completion.afterMs;
     return total <= 0 ? 1 : Math.min(1, Math.max(0, elapsedMs / total));
   }
-  const last = lastStepAt(scenario);
+  const last = Math.max(lastStepAt(scenario), scenario.completion.minMs ?? 0);
   if (last <= 0) return 0.9;
   return Math.min(0.9, (0.9 * Math.max(0, elapsedMs)) / last);
 }

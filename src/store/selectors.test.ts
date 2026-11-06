@@ -302,7 +302,12 @@ describe('selectScenarioPanel / selectEmergency (§7.1, §6.9, Phase 6b)', () =>
       ...snapshot,
       simulation: {
         ...snapshot.simulation,
-        activeScenario: { id: 'high-co2', startedAt: snapshot.simTime, progress: 0.426 },
+        activeScenario: {
+          id: 'high-co2',
+          targetAreaId: null,
+          startedAt: snapshot.simTime,
+          progress: 0.426,
+        },
       },
     };
     expect(selectScenarioPanel(active).active).toMatchObject({ id: 'high-co2', percent: 43 });

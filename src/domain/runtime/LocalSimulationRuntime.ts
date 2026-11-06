@@ -38,6 +38,7 @@ import {
 import { appendTrendPoints, createTrendHistory } from '@/domain/history/trendHistory';
 import { floorLabelMn, formatMetricValueMn, mn } from '@/domain/i18n/mn';
 import { scenarioDefinitions } from '@/domain/scenarios/definitions';
+import { createRoomScenario } from '@/domain/scenarios/rooms';
 import { dueSteps, scenarioIncompatibility, scenarioProgress } from '@/domain/scenarios/engine';
 import {
   applyInputAction,
@@ -580,8 +581,25 @@ export class LocalSimulationRuntime implements AerisRuntime {
         return { result: { ok: true }, changed: true };
       }
 
-      case 'scenario/start':
-        return this.startScenario(command.scenarioId, drafts);
+      case 'scenario/start': {
+        const def = scenarioDefinitions[command.scenarioId];
+        if (def === undefined)
+          return reject(mn.scenarios.unknownScenario(String(command.scenarioId)));
+        return this.startScenario(def, drafts);
+      }
+
+      case 'scenario/startRoom': {
+        // Өрөөний сценари (С7, D93): загвар + зорилтот бүс → ердийн сценари шиг (§7.4 B/C)
+        const area = this.config.areas[command.areaId];
+        if (area === undefined) return reject(mn.scenarios.room.unknownArea(command.areaId));
+        const def = createRoomScenario(command.scenarioId, area.id, this.config);
+        if (def === null) {
+          return reject(
+            mn.scenarios.room.notApplicable(mn.scenarios.room.name[command.scenarioId], area.name),
+          );
+        }
+        return this.startScenario(def, drafts);
+      }
 
       case 'scenario/stop': {
         if (this.scenario === null) return OK_UNCHANGED;
@@ -700,9 +718,7 @@ export class LocalSimulationRuntime implements AerisRuntime {
 
   // ---------- Сценари (§7, §9.5-ын 1-р алхам) ----------
 
-  private startScenario(id: SimulationScenario['id'], drafts: SystemEventDraft[]): CommandOutcome {
-    const def = scenarioDefinitions[id];
-    if (def === undefined) return reject(mn.scenarios.unknownScenario(String(id)));
+  private startScenario(def: SimulationScenario, drafts: SystemEventDraft[]): CommandOutcome {
     const incompatible = scenarioIncompatibility(def, this.config);
     if (incompatible !== null) return reject(incompatible);
 
@@ -802,10 +818,11 @@ export class LocalSimulationRuntime implements AerisRuntime {
     const active = this.scenario;
     if (active === null || active.executed < active.def.steps.length) return;
     const { completion } = active.def;
+    const elapsed = this.simTime - active.startedAt;
     const done =
       'afterMs' in completion
-        ? this.simTime - active.startedAt >= completion.afterMs
-        : this.allNormal();
+        ? elapsed >= completion.afterMs
+        : elapsed >= (completion.minMs ?? 0) && this.allNormal();
     if (!done) return;
     drafts.push(
       this.scenarioEvent('SCENARIO_COMPLETED', mn.scenarios.completed(active.def.name), 'scenario'),
@@ -1149,6 +1166,7 @@ export class LocalSimulationRuntime implements AerisRuntime {
     if (active === null) return null;
     return {
       id: active.def.id,
+      targetAreaId: active.def.targetAreaId ?? null,
       startedAt: active.startedAt,
       progress: scenarioProgress(active.def, this.simTime - active.startedAt),
     };

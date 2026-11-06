@@ -8,6 +8,8 @@ export type {
   EventId,
   FloorId,
   ScenarioId,
+  RoomScenarioId,
+  AnyScenarioId,
   SensorId,
   SimTimeMs,
 } from './ids';

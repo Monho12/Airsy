@@ -134,3 +134,20 @@ export function handleSensorNodeClick(
   const areaId = areaIdAt(event.instanceId);
   if (areaId !== null) selectArea(areaId);
 }
+
+/** Сонголтын төлөвийн хэсэг (хоосон талбайн дарааны шийдэлд) */
+interface SelectionState {
+  selectedFloorId: FloorId | null;
+  selectedAreaId: AreaId | null;
+  selectFloor: (floorId: FloorId | null) => void;
+  selectArea: (areaId: AreaId | null) => void;
+}
+
+/**
+ * 3D-ийн хоосон талбайд дарахад сонголтыг алхамаар цуцална: эхлээд бүс/өрөө (давхар хэвээр), дараа нь давхар.
+ * Юу ч сонгогдоогүй бол юу ч хийхгүй. Чирж эргүүлсний дараах дарааг R3F өөрөө шүүнэ (`onPointerMissed` нь зай ≤ 2 px үед л).
+ */
+export function clearSelectionStep(state: SelectionState): void {
+  if (state.selectedAreaId !== null) state.selectArea(null);
+  else if (state.selectedFloorId !== null) state.selectFloor(null);
+}

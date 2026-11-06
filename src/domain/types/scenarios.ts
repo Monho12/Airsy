@@ -1,7 +1,7 @@
 // Сценарийн төрөл (CLAUDE.md §7, §10). `setOccupancy`-ийн `'all'` — тохиргооны бүх бүс (D80).
 import type { OutdoorConditions } from './control';
 import type { SystemEventType } from './events';
-import type { AreaId, FloorId, ScenarioId, SensorId } from './ids';
+import type { AnyScenarioId, AreaId, FloorId, SensorId } from './ids';
 
 export type ScenarioAction =
   | { type: 'setOccupancy'; areaIds: AreaId[] | 'all'; fraction: number; rampMs?: number }
@@ -9,7 +9,8 @@ export type ScenarioAction =
   | {
       type: 'pulseSource';
       areaIds: AreaId[];
-      metric: 'voc' | 'pm25';
+      /** `humidity` (% RH/с) ба `temperature` (°C/с) — өрөөний сценарид (D93) */
+      metric: 'voc' | 'pm25' | 'humidity' | 'temperature';
       rate: number;
       durationMs: number;
     }
@@ -27,13 +28,16 @@ export interface ScenarioStep {
 }
 
 export interface SimulationScenario {
-  id: ScenarioId;
+  id: AnyScenarioId;
+  /** Өрөөний сценарийн зорилтот бүс (С7, D93); тогтмол 8 сценарид байхгүй */
+  targetAreaId?: AreaId;
   name: string;
   description: string;
   startsFrom: 'baseline' | 'current'; // 'current' нь зөвхөн 'recovery'-д
   requiresConfirmation: boolean; // 'fire-emergency'-д true
   steps: ScenarioStep[];
-  completion: { afterMs: number } | { when: 'allNormal' };
+  // `minMs` — «бүгд хэвийн»-ийг үүнээс өмнө шалгахгүй (эх үүсвэр t = 0-д эхэлдэг өрөөний сценари шууд дуусахгүй, D93)
+  completion: { afterMs: number } | { when: 'allNormal'; minMs?: number };
   expected: {
     alerts: string[]; // үүсэх ёстой дохионы түлхүүрүүд
     events: SystemEventType[]; // энэ харьцангуй дарааллаар гарах ёстой

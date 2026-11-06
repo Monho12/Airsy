@@ -1,5 +1,5 @@
 // Сценарийн Монгол бичвэр (CLAUDE.md §7, §8.9). Эзэмшигч: Симуляцийн инженер (§14.3).
-import type { ScenarioId } from '@/domain/types';
+import type { RoomScenarioId, ScenarioId } from '@/domain/types';
 
 export const scenarios = {
   name: {
@@ -145,6 +145,53 @@ export const scenarios = {
     // §8.6: яаралтай байдлын агаарын урсгал нь зөвхөн төхөөрөмжийн төлөвийн жишээ дүрслэл
     visualNote:
       '3D дээр галын давхар улаан, даралттай хөрш давхрууд шар хүрээтэй. Агаарын урсгал нь зөвхөн төхөөрөмжийн төлөвийн жишээ дүрслэл — утааны жинхэнэ тархалт эсвэл даралтын загвар биш.',
+  },
+
+  // ---------- Өрөөний сценари (С7, D93) ----------
+  room: {
+    /** Загварын нэр (өрөөний нэргүй) */
+    name: {
+      'room-meeting': 'Хурал эхэллээ',
+      'room-server-overheat': 'Хөргөлт зогссон',
+      'room-kitchen-cooking': 'Хоол хийж байна',
+      'room-restroom-humidity': 'Чийг ба үнэр өснө',
+      'room-sensor-disconnect': 'CO₂ мэдрэгч салгах',
+    } satisfies Record<RoomScenarioId, string>,
+    description: {
+      'room-meeting':
+        'Өрөө хүнээр дүүрч CO₂ өснө; өрөө давхрын удирдлагад оролцдог тул агааржуулалт нэмэгдэнэ. 3 минутын дараа хурал дуусна.',
+      'room-server-overheat':
+        'Сервер өрөөний хөргөлт 2.5 минут зогсож температур огцом өснө. Техникийн өрөө тул зөвхөн дохио — давхрын сэнс өөрчлөгдөхгүй.',
+      'room-kitchen-cooking':
+        'Хоол хийхэд 2 минутын турш PM2.5, VOC, чийг, дулаан өснө. Техникийн өрөө тул зөвхөн дохио.',
+      'room-restroom-humidity':
+        'Ариун цэврийн өрөөнд 2 минутын турш чийг ба VOC өснө. Техникийн өрөө тул зөвхөн дохио.',
+      'room-sensor-disconnect':
+        'Өрөөний CO₂ мэдрэгч 1 минут салж, дараа нь дахин холбогдоно. Удирдлагад оролцох өрөө бол нөөц горим идэвхжинэ (харалган цэг).',
+    } satisfies Record<RoomScenarioId, string>,
+    /** Идэвхтэй сценарийн бүтэн нэр: «Хоол хийж байна — Гал тогоо, 7-р давхар» */
+    fullName: (templateName: string, areaName: string, floorLabel: string) =>
+      `${templateName} — ${areaName}, ${floorLabel}`,
+    step: {
+      meetingStarts: (areaName: string) => `${areaName}: хурал эхэллээ (ачаалал 100%)`,
+      meetingEnds: (areaName: string) => `${areaName}: хурал дууслаа`,
+      coolingStopped: (areaName: string) => `${areaName}: хөргөлт зогссон`,
+      cooking: (areaName: string) => `${areaName}: хоол хийж байна`,
+      humidity: (areaName: string) => `${areaName}: чийг ба үнэр өснө`,
+      disconnect: (areaName: string) => `${areaName}: CO₂ мэдрэгч салсан`,
+      reconnect: (areaName: string) => `${areaName}: CO₂ мэдрэгч дахин холбогдсон`,
+    },
+    /** «Сонгосон давхар» самбарын өрөөний мөр дахь хэсэг */
+    panel: {
+      heading: 'Энэ өрөөнд сценари',
+      startLabel: (templateName: string, areaName: string) =>
+        `Сценари эхлүүлэх: ${templateName} — ${areaName}`,
+    },
+    /** 3D шошгыг дарахад өрөөг сонгоно (D93) */
+    selectLabel: (areaName: string) => `${areaName} — сонгох`,
+    notApplicable: (templateName: string, areaName: string) =>
+      `«${templateName}» сценари «${areaName}»-д тохирохгүй.`,
+    unknownArea: (id: string) => `Бүс олдсонгүй: ${id}.`,
   },
 
   // ---------- Командын татгалзал ----------

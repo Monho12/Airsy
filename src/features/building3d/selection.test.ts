@@ -9,6 +9,7 @@ import { initialUiState, useUiStore } from '@/store/uiStore';
 import { createBuildingLayout } from './layout';
 import {
   CEILING_SLAB_OPACITY,
+  clearSelectionStep,
   CLICK_DRAG_TOLERANCE_PX,
   DIMMED_SLAB_OPACITY,
   floorLevelOf,
@@ -262,5 +263,18 @@ describe('сонгосон давхрын дээрх давхар — сүүдэ
     expect(slabOverlayOpacity('ghost', true)).toBe(GHOST_SLAB_OPACITY);
     expect(GHOST_SLAB_OPACITY).toBeLessThan(CEILING_SLAB_OPACITY);
     expect(GHOST_SLAB_OPACITY).toBeGreaterThan(0);
+  });
+});
+
+describe('clearSelectionStep — хоосон талбайд дарах', () => {
+  it('эхлээд бүсийг, дараа нь давхрыг цуцална; юу ч сонгоогүй бол өөрчлөлтгүй', () => {
+    useUiStore.getState().selectArea('F07-H');
+    clearSelectionStep(useUiStore.getState());
+    expect(useUiStore.getState()).toMatchObject({ selectedFloorId: 'F07', selectedAreaId: null });
+    clearSelectionStep(useUiStore.getState());
+    expect(useUiStore.getState()).toMatchObject({ selectedFloorId: null, selectedAreaId: null });
+    const before = useUiStore.getState();
+    clearSelectionStep(before);
+    expect(useUiStore.getState()).toBe(before);
   });
 });
