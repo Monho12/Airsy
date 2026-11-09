@@ -107,6 +107,7 @@ export const scenarios = {
     title: 'Сценари',
     listLabel: 'Үзүүлэх сценариуд',
     start: 'Эхлүүлэх',
+    restart: 'Дахин эхлүүлэх',
     startLabel: (name: string) => `Эхлүүлэх: ${name}`,
     stop: 'Зогсоох',
     stopLabel: (name: string) => `Сценарийг зогсоох: ${name}`,

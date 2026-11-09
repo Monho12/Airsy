@@ -84,7 +84,8 @@ function ScenarioRow({
           disabled={item.blockedByEmergency}
           onClick={() => onStart(item)}
         >
-          {text.panel.start}
+          {/* Идэвхтэй сценарийн карт «Дахин эхлүүлэх» (D102) — үйлдэл нь шинэчлээд эхнээс нь эхлүүлэх */}
+          {active ? text.panel.restart : text.panel.start}
         </Button>
       )}
     </li>

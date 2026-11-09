@@ -230,7 +230,10 @@ describe('Dashboard — жишээ snapshot-оор', () => {
     expect(items).toHaveLength(snapshot.events.length);
     const newest = snapshot.events.at(-1)!;
     expect(items[0]).toHaveTextContent(mn.events.type[newest.type]);
-    expect(items[0]).toHaveTextContent(newest.message);
+    // Төрлийн шошгоор эхэлсэн мессежийн давхардал харагдацад хасагдана (D102)
+    expect(items[0]).toHaveTextContent(
+      newest.message.replace(`${mn.events.type[newest.type]}: `, ''),
+    );
     for (const item of items) expect(item.textContent).not.toMatch(/[A-Z]+_[A-Z]+/);
   });
 });

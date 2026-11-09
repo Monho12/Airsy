@@ -19,6 +19,7 @@ import { useLiveStore } from '@/store/liveStore';
 import { RECENT_EVENT_LIMIT, selectFilteredEvents } from '@/store/selectors';
 import { defaultEventFilter, useUiStore, type EventFilter } from '@/store/uiStore';
 
+import { stripTypePrefix } from './stripTypePrefix';
 import './EventTimeline.css';
 
 const text = mn.events;
@@ -119,7 +120,9 @@ export function EventTimeline() {
                     {text.type[event.type]}
                     {event.severity !== 'info' && <StatusBadge status={event.severity} />}
                   </span>
-                  <span className="event-timeline__message">{event.message}</span>
+                  <span className="event-timeline__message">
+                    {stripTypePrefix(event.message, text.type[event.type])}
+                  </span>
                   {/* Удирдлагын шийдвэрийн шалтгаан (FR-C5, §6.2) — мессежээс ялгаатай бол */}
                   {event.reason !== undefined && event.reason !== event.message && (
                     <span className="event-timeline__reason">{event.reason}</span>
