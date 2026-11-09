@@ -40,7 +40,9 @@ export function Building3D({ onFallback, config = defaultBuildingConfig }: Build
   }, [canvas, onFallback]);
 
   return (
-    <div className="building3d" role="img" aria-label={mn.common.building3d.canvasLabel}>
+    // `role="img"` биш `group`: дотор нь өрөөний шошгоны товч (D93) байгаа тул дэлгэц уншигч ба гараас
+    // нуугдах ёсгүй (`img`-ийн хүүхэд элемент presentational болдог; §8.8)
+    <div className="building3d" role="group" aria-label={mn.common.building3d.canvasLabel}>
       <Canvas
         dpr={DPR_RANGE}
         shadows={false}

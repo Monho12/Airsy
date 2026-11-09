@@ -130,6 +130,7 @@ describe('AlertList', () => {
     expect(items()[0]).toHaveTextContent('Шийдэгдсэн r1');
     expect(items()[0]).toHaveTextContent(text.status.resolved);
     expect(within(items()[0]!).queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: text.resolvedTitle })).toBeInTheDocument();
   });
 
   it('runtime байхгүй бол хүлээн авах товч зурахгүй (§8.7)', () => {

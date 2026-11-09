@@ -233,7 +233,9 @@ describe('3D барилга — WebGL байхгүй үеийн орлуулал
     expect(within(building).getByRole('status')).toHaveTextContent(
       mn.common.building3d.fallback['webgl-unavailable'],
     );
-    expect(within(building).queryByRole('img')).not.toBeInTheDocument();
+    expect(
+      within(building).queryByRole('group', { name: mn.common.building3d.canvasLabel }),
+    ).not.toBeInTheDocument();
 
     // Орлуулах харагдац = features/floor-list (FloorList өөрчлөгдөөгүй)
     await user.click(floorOption(7));

@@ -4,7 +4,7 @@
 import { useEffect, useRef, type ComponentType } from 'react';
 
 import { mn } from '@/domain/i18n/mn';
-import { AlertList } from '@/features/alerts';
+import { AlertList, CriticalAlertAnnouncer } from '@/features/alerts';
 import { TrendChart } from '@/features/charts';
 import { DeviceList } from '@/features/devices';
 import { EventTimeline } from '@/features/events';
@@ -100,6 +100,8 @@ export function AppShell() {
         {/* Яаралтай байдлын симуляци идэвхтэй үед л зурагдана (§6.9, §8.7) */}
         <EmergencyBar />
       </div>
+      {/* Шинэ ноцтой дохиог дэлгэц уншигчид мэдэгдэнэ (FR-A5, §8.8) */}
+      <CriticalAlertAnnouncer />
 
       <main className="shell-main">
         {REGION_GROUPS.map((group) => (

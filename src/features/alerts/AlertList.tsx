@@ -136,8 +136,11 @@ export function AlertList() {
         ? text.emptyActive
         : f.noMatch;
 
+  // «Шийдэгдсэн» харагдацад гарчиг нь «Идэвхтэй дохио» биш (Phase 6d-ээс хойшлогдсон, D83-ын 7)
+  const viewTitle = filter.status === 'resolved' ? text.resolvedTitle : title;
+
   return (
-    <Panel title={title} meta={text.shownCount(alerts.length, total)}>
+    <Panel title={viewTitle} meta={text.shownCount(alerts.length, total)}>
       <fieldset className="ui-filter-bar">
         <legend className="visually-hidden">{f.label}</legend>
         <SelectField
