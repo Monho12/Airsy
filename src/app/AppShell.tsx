@@ -14,10 +14,15 @@ import { EmergencyBar, ScenarioPanel } from '@/features/scenarios';
 import { StatusBar } from '@/features/status-bar';
 
 import { Building3DRegion } from './Building3DRegion';
+import { PhoneLayout } from './PhoneLayout';
+import { useMediaQuery } from './useMediaQuery';
 
 import './AppShell.css';
 
 const { common } = mn;
+
+/** Утасны табтай бүтэц (< 768 px, §8.2, D52). CSS-ийн таблетын breakpoint (768 px)-тэй ижил. */
+const PHONE_QUERY = '(max-width: 767px)';
 
 type RegionKey = keyof typeof common.regions;
 
@@ -79,6 +84,7 @@ function useTopHeightVar() {
 
 export function AppShell() {
   const { shellRef, topRef } = useTopHeightVar();
+  const isPhone = useMediaQuery(PHONE_QUERY);
   return (
     <div className="shell" ref={shellRef}>
       <div className="shell-top" ref={topRef}>
@@ -104,20 +110,24 @@ export function AppShell() {
       <CriticalAlertAnnouncer />
 
       <main className="shell-main">
-        {REGION_GROUPS.map((group) => (
-          <div key={group.key} className={`shell-grid shell-grid--${group.key}`}>
-            {group.regions.map((region) => {
-              const Panel = PANELS[region];
-              if (Panel === undefined) return <PlaceholderRegion key={region} region={region} />;
-              // Wrapper нь зөвхөн grid-ийн байрлалыг өгнө; самбар өөрөө region (section) болно
-              return (
-                <div key={region} className={`shell-slot shell-region--${region}`}>
-                  <Panel />
-                </div>
-              );
-            })}
-          </div>
-        ))}
+        {isPhone ? (
+          <PhoneLayout panels={PANELS} />
+        ) : (
+          REGION_GROUPS.map((group) => (
+            <div key={group.key} className={`shell-grid shell-grid--${group.key}`}>
+              {group.regions.map((region) => {
+                const Panel = PANELS[region];
+                if (Panel === undefined) return <PlaceholderRegion key={region} region={region} />;
+                // Wrapper нь зөвхөн grid-ийн байрлалыг өгнө; самбар өөрөө region (section) болно
+                return (
+                  <div key={region} className={`shell-slot shell-region--${region}`}>
+                    <Panel />
+                  </div>
+                );
+              })}
+            </div>
+          ))
+        )}
       </main>
     </div>
   );
