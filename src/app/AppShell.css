@@ -382,3 +382,16 @@
   height: 50vh;
   min-height: 260px;
 }
+
+/* ---------- Самбарын алдааны төлөв (§8.7, Phase 7c) ---------- */
+.panel-error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.panel-error__message {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-13);
+}

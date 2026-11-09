@@ -14,6 +14,7 @@ import { EmergencyBar, ScenarioPanel } from '@/features/scenarios';
 import { StatusBar } from '@/features/status-bar';
 
 import { Building3DRegion } from './Building3DRegion';
+import { PanelErrorBoundary } from './PanelErrorBoundary';
 import { PhoneLayout } from './PhoneLayout';
 import { useMediaQuery } from './useMediaQuery';
 
@@ -121,7 +122,9 @@ export function AppShell() {
                 // Wrapper нь зөвхөн grid-ийн байрлалыг өгнө; самбар өөрөө region (section) болно
                 return (
                   <div key={region} className={`shell-slot shell-region--${region}`}>
-                    <Panel />
+                    <PanelErrorBoundary title={common.regions[region]}>
+                      <Panel />
+                    </PanelErrorBoundary>
                   </div>
                 );
               })}

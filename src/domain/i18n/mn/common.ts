@@ -107,6 +107,11 @@ export const common = {
     invalidSpeed: 'Дэмжигдээгүй хурд.',
     unknownSensor: (sensorId: string) => `Мэдрэгч олдсонгүй: ${sensorId}.`,
   },
+  /** Самбарын error boundary (§8.7, §11.5, Phase 7c) */
+  panelError: {
+    message: 'Энэ хэсгийг харуулахад алдаа гарлаа. Бусад хэсэг хэвийн ажилласаар байна.',
+    retry: 'Дахин оролдох',
+  },
   /** Утасны табтай бүтэц (§8.2, D52, Phase 7b) */
   phoneTabs: {
     label: 'Хэсэг сонгох',

@@ -7,6 +7,7 @@ import { mn } from '@/domain/i18n/mn';
 import { useLiveStore } from '@/store/liveStore';
 
 import { Building3DRegion } from './Building3DRegion';
+import { PanelErrorBoundary } from './PanelErrorBoundary';
 
 const { common } = mn;
 
@@ -104,7 +105,9 @@ export function PhoneLayout({ panels }: { panels: Partial<Record<RegionKey, Comp
             if (Panel === undefined) return null;
             return (
               <div key={region} className={`shell-slot shell-region--${region}`}>
-                <Panel />
+                <PanelErrorBoundary title={common.regions[region]}>
+                  <Panel />
+                </PanelErrorBoundary>
               </div>
             );
           })}
