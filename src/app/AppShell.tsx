@@ -16,6 +16,7 @@ import { StatusBar } from '@/features/status-bar';
 import { Building3DRegion } from './Building3DRegion';
 import { PanelErrorBoundary } from './PanelErrorBoundary';
 import { PhoneLayout } from './PhoneLayout';
+import { useFollowScenarioFloor } from './useFollowScenarioFloor';
 import { useMediaQuery } from './useMediaQuery';
 
 import './AppShell.css';
@@ -86,6 +87,7 @@ function useTopHeightVar() {
 export function AppShell() {
   const { shellRef, topRef } = useTopHeightVar();
   const isPhone = useMediaQuery(PHONE_QUERY);
+  useFollowScenarioFloor();
   return (
     <div className="shell" ref={shellRef}>
       <div className="shell-top" ref={topRef}>

@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { EmptyState, HealthIndicator, MetricValue, Panel, Skeleton } from '@/components/ui';
-import { METRICS } from '@/domain/config/building';
+import { buildingConfig, METRICS } from '@/domain/config/building';
 import { metricSpecs } from '@/domain/config/thresholds';
 import { floorLabelMn, formatMetricValueMn, formatTimeMn, mn } from '@/domain/i18n/mn';
-import type { SensorReading } from '@/domain/types';
+import type { LiveSnapshot, SensorReading } from '@/domain/types';
 import { useLiveStore } from '@/store/liveStore';
 import {
   selectAreaSummary,
@@ -74,6 +74,31 @@ function AreaBody({ readings, connection }: Pick<AreaSummary, 'readings' | 'conn
         ))}
       </div>
     </>
+  );
+}
+
+/**
+ * Гадна цаг агаарын станц (§5.3, D100) — давхар сонгоогүй үед самбар хоосон биш, удирдлагын шийдвэрт нөлөөлдөг
+ * (үнэгүй хөргөлт, гадна агаарын хязгаарлалт §6.3–6.5) гадна нөхцөлийг харуулна. Утга OUT-* мэдрэгчээс шууд.
+ */
+function OutdoorStation({ snapshot }: { snapshot: LiveSnapshot }) {
+  const sensors = buildingConfig.building.outdoorSensorIds
+    .map((id) => buildingConfig.sensors[id])
+    .filter((sensor) => sensor !== undefined);
+  return (
+    <section className="floor-details__area" aria-label={mn.common.outdoorStation}>
+      <h4 className="floor-details__area-name">{mn.common.outdoorStation}</h4>
+      <div className="floor-details__metrics">
+        {sensors.map((sensor) => (
+          <MetricValue
+            key={sensor.id}
+            label={mn.metrics.label[sensor.metric]}
+            reading={snapshot.readings[sensor.id]}
+            decimals={metricSpecs[sensor.metric].decimals}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -180,7 +205,10 @@ export function FloorDetails() {
   if (data === null) {
     return (
       <Panel title={title}>
-        <EmptyState message={mn.common.noFloorSelected} />
+        <div className="floor-details">
+          <EmptyState message={mn.common.noFloorSelected} />
+          <OutdoorStation snapshot={snapshot} />
+        </div>
       </Panel>
     );
   }

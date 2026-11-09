@@ -37,13 +37,38 @@
 
 .scenario-panel__active-head {
   display: flex;
-  justify-content: space-between;
-  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
   font-size: var(--font-size-14);
   font-weight: var(--font-weight-semibold);
 }
 
+/* «Харах» — бичвэр холбоос маягийн товч (accent, surface-1 дээр 9.93:1) */
+.scenario-panel__focus-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent);
+  font: inherit;
+  font-weight: var(--font-weight-medium);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.scenario-panel__focus-link:hover {
+  color: var(--color-accent-strong);
+}
+
+.scenario-panel__focus-link:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
 .scenario-panel__percent {
+  margin-left: auto;
   color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;
 }

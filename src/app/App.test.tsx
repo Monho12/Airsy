@@ -85,6 +85,12 @@ describe('Dashboard — ачаалж буй ба хоосон төлөв (§8.7)
     expect(
       within(region(mn.common.regions.devices)).getByText(mn.common.noFloorSelected),
     ).toBeVisible();
+    // Хоосон биш: гадна цаг агаарын станц (D100)
+    expect(
+      within(region(mn.common.regions.floorDetails)).getByRole('region', {
+        name: mn.common.outdoorStation,
+      }),
+    ).toBeVisible();
   });
 });
 

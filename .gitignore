@@ -24,3 +24,6 @@ Thumbs.db
 
 # Браузерын автомат шалгалтын түр гаралт
 .playwright-mcp/
+
+# impeccable дизайны хэрэгслийн локал архив (шүүмжийн snapshot)
+.impeccable/

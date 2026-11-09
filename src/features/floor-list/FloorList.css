@@ -38,11 +38,11 @@
 }
 
 .floor-list__item {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-1) var(--space-2);
+  /* Нягт мөр (D100): 1-р мөр түвшин | төлөв, 2-р мөр зориулалт, 3-р мөр гол утга — бүх давхарт ижил бүтэц */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px var(--space-2);
   padding: var(--space-2) var(--space-3);
   border: 1px solid transparent;
   border-left-width: 3px;
@@ -62,40 +62,58 @@
   border-color: var(--color-accent);
 }
 
-.floor-list__name {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
 .floor-list__level {
   color: var(--color-text-primary);
   font-weight: var(--font-weight-semibold);
   white-space: nowrap;
 }
 
+.floor-list__status {
+  justify-self: end;
+}
+
+.floor-list__usage,
+.floor-list__metrics {
+  grid-column: 1 / -1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--font-size-12);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .floor-list__usage {
   color: var(--color-text-secondary);
-  font-size: var(--font-size-12);
-  overflow-wrap: anywhere;
-}
-
-.floor-list__status {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-/* Desktop-ийн нарийн баганад (200px) «Өгөгдлийн асуудал» зэрэг урт шошго мөрөөс гарахгүй, ороогдоно */
-.floor-list__status .ui-status {
-  white-space: normal;
 }
 
 .floor-list__alerts {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-12);
+  color: var(--color-text-secondary);
+}
+
+/* Хэвийн бус төлөвийн бичвэр (§8.3 — surface-1/2 дээр бичвэрт шалгагдсан өнгө) */
+.floor-list__state {
+  font-weight: var(--font-weight-medium);
+}
+.floor-list__state--warning {
+  color: var(--color-status-warning);
+}
+.floor-list__state--critical {
+  color: var(--color-status-critical);
+}
+.floor-list__state--offline,
+.floor-list__state--invalid {
+  color: var(--color-text-secondary);
+}
+
+.floor-list__status .ui-status__icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* Гол утга: tabular тоо — давхар хооронд босоо чиглэлд харьцуулахад тэгш */
+.floor-list__metrics {
+  display: flex;
+  gap: var(--space-2);
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
 }

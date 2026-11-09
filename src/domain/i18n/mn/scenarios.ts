@@ -118,6 +118,8 @@ export const scenarios = {
     startsFromCurrent: 'Одоогийн төлөвөөс эхэлнэ',
     recoveryBlocked: 'Яаралтай симуляцийг эхлээд дуусгана уу.',
     emergencyBadge: 'Яаралтай байдал',
+    showFloor: 'Харах',
+    showFloorLabel: (floorLabel: string) => `Харах: ${floorLabel}`,
   },
   confirm: {
     cancel: 'Болих',
