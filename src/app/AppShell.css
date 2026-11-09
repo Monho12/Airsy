@@ -166,6 +166,22 @@
   background: var(--color-surface-2);
 }
 
+/* Хоёрдогч (жишээ нь «Харагдацыг сэргээх», D101) — `.ui-button--secondary`-тэй ижил токен */
+.shell-button--secondary {
+  border-color: var(--color-border-strong);
+  color: var(--color-text-primary);
+}
+
+.shell-button--secondary:hover {
+  border-color: var(--color-text-secondary);
+}
+
+@media (max-width: 767px) {
+  .shell-button {
+    min-height: 36px;
+  }
+}
+
 /* Таблет (768–1279 px): 3D дээд хэсэгт (~55vh), самбарууд доор хоёр баганаар (§8.2) */
 @media (min-width: 768px) {
   .shell-grid {

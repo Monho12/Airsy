@@ -112,3 +112,9 @@
   list-style: none;
   font-size: var(--font-size-13);
 }
+
+@media (max-width: 767px) {
+  .trend-chart__select {
+    min-height: 36px;
+  }
+}

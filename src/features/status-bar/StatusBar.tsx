@@ -28,7 +28,8 @@ export function StatusBar() {
 
   const summary = (
     <dl className="status-bar">
-      <div className="status-bar__item">
+      {/* Барилгын төлөв — header-ийн хамгийн чухал мэдээлэл (D101) */}
+      <div className="status-bar__item status-bar__item--primary">
         <dt>{mn.common.buildingStatus}</dt>
         <dd>
           <HealthIndicator {...data.health} />
@@ -36,7 +37,14 @@ export function StatusBar() {
       </div>
       <div className="status-bar__item">
         <dt>{mn.common.regions.alerts}</dt>
-        <dd>{mn.common.activeAlertCount(data.activeAlertCount)}</dd>
+        {/* Шошго «Идэвхтэй дохио» тул утга нь зөвхөн тоо (давхардалгүй, D101) */}
+        <dd
+          className="status-bar__count"
+          data-has-alerts={data.activeAlertCount > 0}
+          aria-label={mn.common.activeAlertCount(data.activeAlertCount)}
+        >
+          {data.activeAlertCount}
+        </dd>
       </div>
       <div className="status-bar__item">
         <dt>{mn.control.autoModeLabel}</dt>

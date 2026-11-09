@@ -107,6 +107,11 @@ export const common = {
     invalidSpeed: 'Дэмжигдээгүй хурд.',
     unknownSensor: (sensorId: string) => `Мэдрэгч олдсонгүй: ${sensorId}.`,
   },
+  /** Шүүлтийн нээгддэг хэсэг (D101) */
+  filters: {
+    toggle: 'Шүүлт',
+    activeCount: (count: number) => `${count} идэвхтэй`,
+  },
   /** Самбарын error boundary (§8.7, §11.5, Phase 7c) */
   panelError: {
     message: 'Энэ хэсгийг харуулахад алдаа гарлаа. Бусад хэсэг хэвийн ажилласаар байна.',

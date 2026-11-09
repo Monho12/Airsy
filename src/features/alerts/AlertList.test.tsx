@@ -114,6 +114,7 @@ describe('AlertList', () => {
 
   it('ноцтой байдал ба давхраар шүүнэ; тохирохгүй бол мессеж; цэвэрлэх', async () => {
     const { user } = setup();
+    await user.click(screen.getByRole('button', { name: mn.common.filters.toggle }));
     await user.selectOptions(screen.getByLabelText(text.filter.severity), 'warning');
     expect(items()).toHaveLength(1);
     expect(items()[0]).toHaveTextContent('Дохио a2');

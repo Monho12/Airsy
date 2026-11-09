@@ -175,7 +175,7 @@ export function ScenarioPanel() {
                 {text.panel.stop}
               </Button>
             )}
-            <Button className="ui-button--danger" onClick={() => setPending({ kind: 'reset' })}>
+            <Button className="ui-button--secondary" onClick={() => setPending({ kind: 'reset' })}>
               {text.panel.reset}
             </Button>
           </div>

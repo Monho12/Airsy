@@ -293,3 +293,70 @@
   padding: 0;
   border: 0;
 }
+
+/* ---------- Шүүлтийн нээгддэг хэсэг (D101) ---------- */
+.ui-filter-disclosure {
+  margin: 0 0 var(--space-3);
+}
+
+/* Бичвэр маягийн товч — text-secondary surface-1 дээр 8.20:1 (§8.3); идэвхтэй шүүлтийн тоо accent */
+.ui-filter-disclosure__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 28px;
+  padding: var(--space-1) var(--space-2);
+  margin-left: calc(-1 * var(--space-2));
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+}
+
+.ui-filter-disclosure__toggle:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text-primary);
+}
+
+.ui-filter-disclosure__count {
+  color: var(--color-accent);
+}
+
+.ui-filter-disclosure__chevron {
+  transition: transform var(--motion-fast) var(--ease-standard);
+}
+
+.ui-filter-disclosure[data-open='true'] .ui-filter-disclosure__chevron {
+  transform: rotate(180deg);
+}
+
+.ui-filter-disclosure .ui-filter-bar {
+  margin: var(--space-2) 0 0;
+}
+
+/* Хоёрдогч товч: чухал боловч ноцтой биш үйлдэл (жишээ нь «Симуляцийг эхнээс нь», «Харагдацыг сэргээх»).
+   Хүрээ border-strong (чимэглэл), бичвэр text-primary — товч гэдгийг бичвэр ба hover илэрхийлнэ (§8.3). */
+.ui-button--secondary {
+  border-color: var(--color-border-strong);
+  color: var(--color-text-primary);
+}
+
+.ui-button--secondary:hover {
+  border-color: var(--color-text-secondary);
+}
+
+/* Утас (< 768 px): товч ба сонголтын талбар хуруугаар дарахад хангалттай өндөр (≥ 36 px; шүүмжийн P2) */
+@media (max-width: 767px) {
+  .ui-button,
+  .ui-select,
+  .ui-filter-disclosure__toggle {
+    min-height: 36px;
+  }
+}

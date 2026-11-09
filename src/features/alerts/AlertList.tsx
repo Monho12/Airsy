@@ -3,7 +3,15 @@
 // Идэвхтэй `emergency` дохиог хүлээн авах боломжгүй (§4.4) — товч зурахгүй, шалтгааныг бичнэ.
 import { useId, useMemo, useState } from 'react';
 
-import { Button, EmptyState, Panel, SelectField, Skeleton, StatusBadge } from '@/components/ui';
+import {
+  Button,
+  EmptyState,
+  FilterDisclosure,
+  Panel,
+  SelectField,
+  Skeleton,
+  StatusBadge,
+} from '@/components/ui';
 import { buildingConfig, METRICS } from '@/domain/config/building';
 import { floorLabelMn, formatTimeMn, mn } from '@/domain/i18n/mn';
 import type { AerisRuntime } from '@/domain/runtime/AerisRuntime';
@@ -127,7 +135,10 @@ export function AlertList() {
 
   const counts = selectAlertCounts(snapshot);
   const total = filter.status === 'resolved' ? counts.resolved : counts.open;
-  const filtered = filter.severity !== 'all' || filter.floor !== 'all' || filter.metric !== 'all';
+  const activeFilterCount = [filter.severity, filter.floor, filter.metric].filter(
+    (value) => value !== 'all',
+  ).length;
+  const filtered = activeFilterCount > 0;
   const emptyMessage = filtered
     ? f.noMatch
     : filter.status === 'resolved'
@@ -141,6 +152,7 @@ export function AlertList() {
 
   return (
     <Panel title={viewTitle} meta={text.shownCount(alerts.length, total)}>
+      {/* Харагдац (идэвхтэй / шийдэгдсэн) үргэлж харагдана; нарийн шүүлт нээгддэг хэсэгт (D101) */}
       <fieldset className="ui-filter-bar">
         <legend className="visually-hidden">{f.label}</legend>
         <SelectField
@@ -149,28 +161,35 @@ export function AlertList() {
           options={statusOptions}
           onChange={(status) => setFilter({ status })}
         />
-        <SelectField
-          label={f.severity}
-          value={filter.severity}
-          options={severityOptions}
-          onChange={(severity) => setFilter({ severity })}
-        />
-        <SelectField
-          label={f.floor}
-          value={filter.floor}
-          options={floorOptions}
-          onChange={(floor) => setFilter({ floor })}
-        />
-        <SelectField
-          label={f.metric}
-          value={filter.metric}
-          options={metricOptions}
-          onChange={(metric) => setFilter({ metric })}
-        />
         {(filtered || filter.status !== defaultAlertFilter.status) && (
-          <Button onClick={() => setFilter(defaultAlertFilter)}>{f.reset}</Button>
+          <Button className="ui-button--secondary" onClick={() => setFilter(defaultAlertFilter)}>
+            {f.reset}
+          </Button>
         )}
       </fieldset>
+      <FilterDisclosure activeCount={activeFilterCount}>
+        <fieldset className="ui-filter-bar">
+          <legend className="visually-hidden">{f.label}</legend>
+          <SelectField
+            label={f.severity}
+            value={filter.severity}
+            options={severityOptions}
+            onChange={(severity) => setFilter({ severity })}
+          />
+          <SelectField
+            label={f.floor}
+            value={filter.floor}
+            options={floorOptions}
+            onChange={(floor) => setFilter({ floor })}
+          />
+          <SelectField
+            label={f.metric}
+            value={filter.metric}
+            options={metricOptions}
+            onChange={(metric) => setFilter({ metric })}
+          />
+        </fieldset>
+      </FilterDisclosure>
       {alerts.length === 0 ? (
         <EmptyState message={emptyMessage} />
       ) : (

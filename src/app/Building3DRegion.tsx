@@ -61,7 +61,11 @@ export function Building3DRegion({ deferred = false }: { deferred?: boolean }) {
         className="building3d-region"
         // «Харагдацыг сэргээх» (FR-B3, §8.2, §10.3) — зөвхөн 3D горимд; орлуулах харагдацад байхгүй (§8.7)
         meta={
-          <button type="button" className="shell-button" onClick={requestCameraReset}>
+          <button
+            type="button"
+            className="shell-button shell-button--secondary"
+            onClick={requestCameraReset}
+          >
             {mn.common.building3d.resetView}
           </button>
         }

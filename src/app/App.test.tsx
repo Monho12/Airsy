@@ -51,7 +51,10 @@ describe('App shell (smoke)', () => {
 
   it('товч, холбоос, оролт байхгүй — Phase 2-т төлөв өөрчлөх удирдлага хориотой (§8.7, §13)', () => {
     renderWith();
-    expect(screen.queryAllByRole('button')).toHaveLength(0);
+    // Зөвхөн шүүлтийн нээгддэг хэсгийн товч (D101) — локал UI, симуляцид нөлөөлөхгүй
+    expect(
+      screen.queryAllByRole('button').filter((b) => !b.hasAttribute('aria-expanded')),
+    ).toHaveLength(0);
     expect(screen.queryAllByRole('link')).toHaveLength(0);
     expect(screen.queryAllByRole('textbox')).toHaveLength(0);
   });
@@ -103,8 +106,8 @@ describe('Dashboard — жишээ snapshot-оор', () => {
     expect(within(header).getByText(mn.classification.statusLabel.warning)).toBeVisible();
     expect(within(header).getByText(mn.common.dataIssue)).toBeVisible();
     expect(
-      within(header).getByText(mn.common.activeAlertCount(snapshot.alerts.active.length)),
-    ).toBeVisible();
+      within(header).getByLabelText(mn.common.activeAlertCount(snapshot.alerts.active.length)),
+    ).toHaveTextContent(String(snapshot.alerts.active.length));
     expect(within(header).getByText(mn.control.autoModeOn)).toBeVisible();
   });
 

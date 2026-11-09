@@ -60,6 +60,7 @@ describe('EventTimeline', () => {
   it('ангилал ба давхраар шүүнэ; шүүлт өөрчлөгдөхөд эхний хуудас руу буцна', async () => {
     const user = setup(120);
     await user.click(screen.getByRole('button', { name: text.showMore }));
+    await user.click(screen.getByRole('button', { name: mn.common.filters.toggle }));
     await user.selectOptions(screen.getByLabelText(text.filter.category), 'alert');
     expect(rows()).toHaveLength(RECENT_EVENT_LIMIT);
     expect(screen.getByText(text.shown(50, 60))).toBeInTheDocument();
@@ -71,6 +72,10 @@ describe('EventTimeline', () => {
 
   it('тохирох үйл явдал алга бол мессеж, цэвэрлэх товч', async () => {
     const user = setup(4);
+    // Шүүлт анхдагчаар хаалттай (D101)
+    const toggle = screen.getByRole('button', { name: mn.common.filters.toggle });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await user.click(toggle);
     await user.selectOptions(screen.getByLabelText(text.filter.severity), 'critical');
     expect(screen.getByText(text.filter.noMatch)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: text.filter.reset }));
