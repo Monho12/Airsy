@@ -16,6 +16,7 @@ import {
 } from '@/store/selectors';
 import { useUiStore } from '@/store/uiStore';
 
+import { RoomScenarioConfirm } from './RoomScenarioConfirm';
 import { RoomScenarios } from './RoomScenarios';
 import './FloorDetails.css';
 
@@ -225,6 +226,7 @@ export function FloorDetails() {
           </div>
         )}
       </div>
+      <RoomScenarioConfirm />
     </Panel>
   );
 }

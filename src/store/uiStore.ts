@@ -1,7 +1,15 @@
 // UI төлөвийн гэрээ (CLAUDE.md §10.3). Симуляцид хэзээ ч нөлөөлөхгүй — зөвхөн сонголт ба харагдац.
 import { create } from 'zustand';
 
-import type { Alert, AreaId, FloorId, MetricType, Severity, SystemEvent } from '@/domain/types';
+import type {
+  Alert,
+  AreaId,
+  FloorId,
+  MetricType,
+  RoomScenarioId,
+  Severity,
+  SystemEvent,
+} from '@/domain/types';
 
 /**
  * Дохионы шүүлт (FR-A2, Phase 6d, D83). `status: 'open'` = идэвхтэй + хүлээн авсан (анхдагч — ажиллаж буй дохио);
@@ -30,6 +38,12 @@ export const defaultAlertFilter: AlertFilter = {
 
 export const defaultEventFilter: EventFilter = { category: 'all', severity: 'all', floor: 'all' };
 
+/** Баталгаажуулалт хүлээж буй өрөөний сценари (D81, D99) — 3D шошго ба самбар хоёулаа нэг dialog-оор */
+export interface PendingRoomScenario {
+  scenarioId: RoomScenarioId;
+  areaId: AreaId;
+}
+
 export interface UiState {
   selectedFloorId: FloorId | null; // 3D ба давхрын жагсаалт хоёулаа уншиж/бичнэ (FR-B4)
   selectedAreaId: AreaId | null; // үргэлж selectedFloorId-д хамаарна
@@ -39,6 +53,7 @@ export interface UiState {
   cameraResetToken: number; // «Харагдацыг сэргээх» бүрт +1
   alertFilter: AlertFilter; // §10.2: шүүлт нь UI төлөв (D83)
   eventFilter: EventFilter;
+  pendingRoomScenario: PendingRoomScenario | null;
 }
 
 export interface UiActions {
@@ -53,6 +68,8 @@ export interface UiActions {
   /** Шүүлтийн зөвхөн өгсөн талбаруудыг өөрчилнө (D83) */
   setAlertFilter: (patch: Partial<AlertFilter>) => void;
   setEventFilter: (patch: Partial<EventFilter>) => void;
+  /** Өрөөний сценарийн баталгаажуулалтыг нээх (`null` — хаах) */
+  setPendingRoomScenario: (pending: PendingRoomScenario | null) => void;
 }
 
 export type UiStore = UiState & UiActions & { systemReducedMotion: boolean };
@@ -74,6 +91,7 @@ export const initialUiState: UiState & { systemReducedMotion: boolean } = {
   cameraResetToken: 0,
   alertFilter: defaultAlertFilter,
   eventFilter: defaultEventFilter,
+  pendingRoomScenario: null,
 };
 
 export const useUiStore = create<UiStore>()((set) => ({
@@ -111,4 +129,5 @@ export const useUiStore = create<UiStore>()((set) => ({
 
   setAlertFilter: (patch) => set((state) => ({ alertFilter: { ...state.alertFilter, ...patch } })),
   setEventFilter: (patch) => set((state) => ({ eventFilter: { ...state.eventFilter, ...patch } })),
+  setPendingRoomScenario: (pending) => set({ pendingRoomScenario: pending }),
 }));
