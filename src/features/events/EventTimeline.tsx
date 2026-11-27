@@ -3,7 +3,15 @@
 // бүрэн түүхийг хуудаслана). Шүүлт нь `uiStore`-д (§10.2, D83).
 import { useMemo, useState } from 'react';
 
-import { Button, EmptyState, Panel, SelectField, Skeleton, StatusBadge } from '@/components/ui';
+import {
+  Button,
+  EmptyState,
+  FilterDisclosure,
+  Panel,
+  SelectField,
+  Skeleton,
+  StatusBadge,
+} from '@/components/ui';
 import { buildingConfig } from '@/domain/config/building';
 import { floorLabelMn, formatTimeMn, mn } from '@/domain/i18n/mn';
 import type { SystemEvent } from '@/domain/types';
@@ -11,6 +19,7 @@ import { useLiveStore } from '@/store/liveStore';
 import { RECENT_EVENT_LIMIT, selectFilteredEvents } from '@/store/selectors';
 import { defaultEventFilter, useUiStore, type EventFilter } from '@/store/uiStore';
 
+import { stripTypePrefix } from './stripTypePrefix';
 import './EventTimeline.css';
 
 const text = mn.events;
@@ -61,33 +70,43 @@ export function EventTimeline() {
     );
   }
 
-  const filtered = filter.category !== 'all' || filter.severity !== 'all' || filter.floor !== 'all';
+  const activeFilterCount = [filter.category, filter.severity, filter.floor].filter(
+    (value) => value !== 'all',
+  ).length;
+  const filtered = activeFilterCount > 0;
   const visible = events.slice(0, visibleCount);
 
   return (
     <Panel title={title} meta={events.length}>
-      <fieldset className="ui-filter-bar">
-        <legend className="visually-hidden">{f.label}</legend>
-        <SelectField
-          label={f.category}
-          value={filter.category}
-          options={categoryOptions}
-          onChange={(category) => setFilter({ category })}
-        />
-        <SelectField
-          label={f.severity}
-          value={filter.severity}
-          options={severityOptions}
-          onChange={(severity) => setFilter({ severity })}
-        />
-        <SelectField
-          label={f.floor}
-          value={filter.floor}
-          options={floorOptions}
-          onChange={(floor) => setFilter({ floor })}
-        />
-        {filtered && <Button onClick={() => setFilter(defaultEventFilter)}>{f.reset}</Button>}
-      </fieldset>
+      {/* Шүүлт нээгддэг хэсэгт (D101) — түүх өөрөө самбарын гол агуулга */}
+      <FilterDisclosure activeCount={activeFilterCount}>
+        <fieldset className="ui-filter-bar">
+          <legend className="visually-hidden">{f.label}</legend>
+          <SelectField
+            label={f.category}
+            value={filter.category}
+            options={categoryOptions}
+            onChange={(category) => setFilter({ category })}
+          />
+          <SelectField
+            label={f.severity}
+            value={filter.severity}
+            options={severityOptions}
+            onChange={(severity) => setFilter({ severity })}
+          />
+          <SelectField
+            label={f.floor}
+            value={filter.floor}
+            options={floorOptions}
+            onChange={(floor) => setFilter({ floor })}
+          />
+          {filtered && (
+            <Button className="ui-button--secondary" onClick={() => setFilter(defaultEventFilter)}>
+              {f.reset}
+            </Button>
+          )}
+        </fieldset>
+      </FilterDisclosure>
       {visible.length === 0 ? (
         <EmptyState message={filtered ? f.noMatch : text.empty} />
       ) : (
@@ -101,7 +120,9 @@ export function EventTimeline() {
                     {text.type[event.type]}
                     {event.severity !== 'info' && <StatusBadge status={event.severity} />}
                   </span>
-                  <span className="event-timeline__message">{event.message}</span>
+                  <span className="event-timeline__message">
+                    {stripTypePrefix(event.message, text.type[event.type])}
+                  </span>
                   {/* Удирдлагын шийдвэрийн шалтгаан (FR-C5, §6.2) — мессежээс ялгаатай бол */}
                   {event.reason !== undefined && event.reason !== event.message && (
                     <span className="event-timeline__reason">{event.reason}</span>

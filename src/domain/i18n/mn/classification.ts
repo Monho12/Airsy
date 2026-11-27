@@ -23,6 +23,22 @@ export interface ThresholdExplanationInput {
   heldByHysteresis: boolean;
 }
 
+/**
+ * Босгын ойролцоох дугуйлалтын тодорхой бус байдлаас сэргийлнэ (Phase 7d): утга босготой ижил харагдвал
+ * (RH 29.6 → «30%», босго 30) утгыг 1–2 аравтын орноор нэмж харуулна («29.6%»). Ангилал өөрчлөгдөхгүй — дугуйлаагүй
+ * утгаар хийгддэг (§5.6), зөвхөн бичвэр.
+ */
+function valueDecimals(value: number, references: number[], decimals: number, unit: MetricUnit) {
+  for (let d = decimals; d <= decimals + 2; d += 1) {
+    const shown = formatMetricValueMn(value, unit, d);
+    const clash = references.some(
+      (ref) => ref !== value && formatMetricValueMn(ref, unit, decimals) === shown,
+    );
+    if (!clash) return d;
+  }
+  return decimals + 2;
+}
+
 export const classification = {
   /** Төлөвийн шошго (§8.9-ийн нэр томьёо) — UI-д үргэлж тэмдэгтэй хамт (§8.3) */
   statusLabel: {
@@ -48,7 +64,13 @@ export const classification = {
   /** Босгын тайлбар, жишээ нь «CO₂ 1,240 ppm байна. Анхааруулах босго (1,000 ppm)-оос өндөр.» */
   threshold(input: ThresholdExplanationInput): string {
     const fmt = (n: number) => formatMetricValueMn(n, input.unit, input.decimals);
-    const head = `${metrics.shortLabel[input.metric]} ${fmt(input.value)} байна.`;
+    const references = input.heldByHysteresis ? [input.enter, input.exit] : [input.enter];
+    const shownValue = formatMetricValueMn(
+      input.value,
+      input.unit,
+      valueDecimals(input.value, references, input.decimals, input.unit),
+    );
+    const head = `${metrics.shortLabel[input.metric]} ${shownValue} байна.`;
     const { title, word } = levelLabel[input.level];
     const lowWord = input.side === 'low' ? ' доод' : '';
     if (!input.heldByHysteresis) {

@@ -3,10 +3,11 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { buildingConfig } from '@/domain/config/building';
-import { floorLabelMn, mn } from '@/domain/i18n/mn';
+import { floorLabelMn, formatMetricValueMn, formatNumberMn, mn } from '@/domain/i18n/mn';
 import { applySnapshot } from '@/store/adapter';
 import { initialLiveState, useLiveStore } from '@/store/liveStore';
 import { createMockSnapshot } from '@/store/mockSnapshot';
+import { selectFloorSummary } from '@/store/selectors';
 import { initialUiState, useUiStore } from '@/store/uiStore';
 
 import { FloorList } from './FloorList';
@@ -116,5 +117,21 @@ describe('FloorList — гүйлгэх жагсаалт', () => {
     act(() => useUiStore.getState().selectFloor('F03'));
     expect(option(3)).toHaveAttribute('aria-selected', 'true');
     expect(revealed.at(-1)).toEqual({ element: option(3), options: { block: 'nearest' } });
+  });
+});
+
+describe('FloorList — нягт мөр (D100)', () => {
+  it('мөр бүрт CO₂ ба температурын давхрын хамгийн их утга; зөв хэмжилтгүй бол «Өгөгдөлгүй»', () => {
+    const snapshot = createMockSnapshot();
+    const summary = selectFloorSummary(snapshot, 'F07')!;
+    renderList();
+    const row = option(7);
+    expect(row).toHaveTextContent(`CO₂ ${formatNumberMn(summary.aggregates.co2!.max, 0)}`);
+    expect(row).toHaveTextContent(
+      formatMetricValueMn(summary.aggregates.temperature!.max, '°C', 1),
+    );
+    expect(row).not.toHaveTextContent(/CO₂ 0(?!\d)/);
+    // Нягт төлөвийн тэмдэг: бичвэр дэлгэц уншигчид хэвээр (§8.3)
+    expect(row).toHaveTextContent(mn.classification.statusLabel.normal);
   });
 });

@@ -107,6 +107,7 @@ export const scenarios = {
     title: 'Сценари',
     listLabel: 'Үзүүлэх сценариуд',
     start: 'Эхлүүлэх',
+    restart: 'Дахин эхлүүлэх',
     startLabel: (name: string) => `Эхлүүлэх: ${name}`,
     stop: 'Зогсоох',
     stopLabel: (name: string) => `Сценарийг зогсоох: ${name}`,
@@ -118,6 +119,8 @@ export const scenarios = {
     startsFromCurrent: 'Одоогийн төлөвөөс эхэлнэ',
     recoveryBlocked: 'Яаралтай симуляцийг эхлээд дуусгана уу.',
     emergencyBadge: 'Яаралтай байдал',
+    showFloor: 'Харах',
+    showFloorLabel: (floorLabel: string) => `Харах: ${floorLabel}`,
   },
   confirm: {
     cancel: 'Болих',

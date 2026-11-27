@@ -17,6 +17,8 @@ import { formatMetricValueMn, formatNumberMn, formatTimeMn, mn } from '@/domain/
 import type { MetricType, TrendPoint } from '@/domain/types';
 import type { TrendChartData } from '@/store/selectors';
 
+import { niceTicks } from './niceTicks';
+
 const text = mn.common.trends;
 const CHART_HEIGHT = 220;
 
@@ -72,6 +74,8 @@ export default function TrendPlot({
         />
         <YAxis
           domain={data.domain ?? ['auto', 'auto']}
+          // Тэнхлэгийн тэмдэглэгээ дугуй тоогоор (674, 764… биш; D102)
+          ticks={data.domain === null ? undefined : niceTicks(data.domain[0], data.domain[1])}
           allowDataOverflow
           width={56}
           tickFormatter={(value: number) => formatNumberMn(value, spec.decimals)}

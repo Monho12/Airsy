@@ -13,6 +13,7 @@ import { fanLevelOrder } from '@/domain/config/control';
 import { useLiveStore } from '@/store/liveStore';
 import { useUiStore } from '@/store/uiStore';
 
+import { useAmbientFrame } from './useAmbientFrame';
 import { useCeilingClipPlanes } from './useCeilingClip';
 
 import { fanAngularSpeed } from './animationData';
@@ -241,7 +242,8 @@ export function DeviceModels({
   }, [fans, dampers, colors, invalidate, reducedMotion]);
 
   // Анимаци (FR-B8): хөдөлгөөн багасгах үед ажиллахгүй — сэнс эргэлгүй төлөвөө харуулна (§8.5)
-  useFrame((state, delta) => {
+  const requestAmbientFrame = useAmbientFrame();
+  useFrame((_, delta) => {
     const blades = bladeRef.current;
     const louvers = louverRef.current;
     if (reducedMotion || blades === null || louvers === null) return;
@@ -268,7 +270,7 @@ export function DeviceModels({
     if (!moving) return;
     blades.instanceMatrix.needsUpdate = true;
     louvers.instanceMatrix.needsUpdate = true;
-    state.invalidate(); // `frameloop="demand"` — дараагийн frame
+    requestAmbientFrame(); // `frameloop="demand"` — дараагийн frame, ~30 fps-ээр (D104)
   });
 
   // instance-ийн тоо үүсгэх үед тогтдог — давхрын тоо өөрчлөгдвөл `key`-ээр дахин үүсгэнэ

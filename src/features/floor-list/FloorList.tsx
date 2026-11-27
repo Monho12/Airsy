@@ -4,11 +4,12 @@
 // Жагсаалт өөрөө босоо гүйлгэлттэй (FloorList.css); сонгосон мөрийг үргэлж харагдах хэсэгт байлгана.
 import { useEffect, useId, useMemo, useRef, type KeyboardEvent } from 'react';
 
-import { EmptyState, HealthIndicator, Panel, Skeleton } from '@/components/ui';
-import { floorLabelMn, mn } from '@/domain/i18n/mn';
-import type { FloorId } from '@/domain/types';
+import { EmptyState, Panel, Skeleton, StatusBadge } from '@/components/ui';
+import { metricSpecs } from '@/domain/config/thresholds';
+import { floorLabelMn, formatMetricValueMn, formatNumberMn, mn } from '@/domain/i18n/mn';
+import type { FloorId, FloorMetricAggregate, MetricType } from '@/domain/types';
 import { useLiveStore } from '@/store/liveStore';
-import { selectFloorList } from '@/store/selectors';
+import { selectFloorList, type FloorSummary } from '@/store/selectors';
 import { useUiStore } from '@/store/uiStore';
 
 import './FloorList.css';
@@ -17,6 +18,31 @@ import './FloorList.css';
 function revealOption(element: HTMLElement | undefined) {
   // jsdom-д scrollIntoView байхгүй тул нөхцөлтэй дуудна
   element?.scrollIntoView?.({ block: 'nearest' });
+}
+
+/** Мөрөнд харуулах гол утга (D100): агааржуулалтын үзүүлэлт CO₂ ба температур — давхрын хамгийн их (§5.6) */
+const ROW_METRICS: readonly MetricType[] = ['co2', 'temperature'];
+
+function rowMetricText(metric: MetricType, aggregate: FloorMetricAggregate | undefined): string {
+  const { unit, decimals } = metricSpecs[metric];
+  // Зөв хэмжилтгүй бол «Өгөгдөлгүй» — хэзээ ч 0 биш (FR-M5)
+  if (aggregate === undefined) return `${mn.metrics.shortLabel[metric]}: ${mn.common.noData}`;
+  // Температурын нэгж (°C) өөрөө тодорхой тул нягт мөрөнд шошгогүй
+  if (metric === 'temperature') return formatMetricValueMn(aggregate.max, unit, decimals);
+  // Нарийн баганад ppm-ийг орхино — «CO₂ 704» (бүтэн утга нэгжтэй нь «Сонгосон давхар»-т)
+  return `${mn.metrics.shortLabel[metric]} ${formatNumberMn(aggregate.max, decimals)}`;
+}
+
+function FloorRowMetrics({ aggregates }: { aggregates: FloorSummary['aggregates'] }) {
+  return (
+    <span className="floor-list__metrics">
+      {ROW_METRICS.map((metric) => (
+        <span key={metric} className="floor-list__metric">
+          {rowMetricText(metric, aggregates[metric])}
+        </span>
+      ))}
+    </span>
+  );
 }
 
 export function FloorList() {
@@ -97,8 +123,16 @@ export function FloorList() {
       </p>
       <ul className="floor-list" role="listbox" aria-label={title} aria-describedby={hintId}>
         {floors.map((summary, index) => {
-          const { floor, health, activeAlertCount } = summary;
+          const { floor, health, activeAlertCount, aggregates } = summary;
           const selected = floor.id === selectedFloorId;
+          const shown = health.worstValid ?? health.worst;
+          const statusWord =
+            shown === 'normal'
+              ? health.hasDataIssue
+                ? mn.common.dataIssue
+                : null
+              : mn.classification.statusLabel[shown];
+          const statusTone = shown === 'normal' ? 'offline' : shown;
           return (
             <li
               key={floor.id}
@@ -115,18 +149,29 @@ export function FloorList() {
               onClick={() => selectFloor(floor.id)}
               onKeyDown={(event) => onKeyDown(event, index, floor.id)}
             >
-              <span className="floor-list__name">
-                <span className="floor-list__level">{floorLabelMn(floor.level)}</span>
-                <span className="floor-list__usage">{floor.name}</span>
-              </span>
+              {/* Нягт мөр (D100): түвшин + төлөв · зориулалт · гол утга — давхрыг дарахгүйгээр харьцуулна */}
+              <span className="floor-list__level">{floorLabelMn(floor.level)}</span>
               <span className="floor-list__status">
-                <HealthIndicator {...health} />
+                {/* Нэг л тэмдэг — өгөгдлийн асуудлыг доорх мөрөнд бичвэрээр (нарийн багана) */}
+                <StatusBadge status={shown} compact />
+              </span>
+              <span className="floor-list__usage" title={floor.name}>
+                {/* Хэвийн бус үед төлөвийн бичвэр зориулалтын өмнө (тэмдэг дээр нь — зөвхөн тэмдэг биш) */}
+                {statusWord !== null && (
+                  <span className={`floor-list__state floor-list__state--${statusTone}`}>
+                    {statusWord}
+                    {' · '}
+                  </span>
+                )}
+                {floor.name}
                 {activeAlertCount > 0 && (
                   <span className="floor-list__alerts">
+                    {' · '}
                     {mn.common.floorAlertCount(activeAlertCount)}
                   </span>
                 )}
               </span>
+              <FloorRowMetrics aggregates={aggregates} />
             </li>
           );
         })}

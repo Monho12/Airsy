@@ -300,6 +300,9 @@ export interface ActiveScenarioView {
   name: string;
   /** 0–100, бүхэл хувь */
   percent: number;
+  /** Сценари өөрчилдөг давхар (харуулахад, D100); бүх барилгад (S1, S8) `null` */
+  focusFloorId: FloorId | null;
+  focusFloorLabel: string | null;
 }
 
 export interface EmergencyView {
@@ -353,11 +356,54 @@ export function selectScenarioPanel(
           targetAreaId: running.targetAreaId,
           name: activeScenarioName(running.id, running.targetAreaId, config),
           percent: Math.round(Math.min(1, Math.max(0, running.progress)) * 100),
+          ...focusFloorView(scenarioFocusFloorId(running.id, running.targetAreaId, config), config),
         };
   return { items, active, emergency };
 }
 
 const isRoomScenarioId = (id: AnyScenarioId): id is RoomScenarioId => id.startsWith('room-');
+
+/** Бүсийн ID-аас давхрын ID (§5.2: `{floorId}-{үсэг}`) */
+const floorOfAreaId = (areaId: AreaId): FloorId => areaId.slice(0, areaId.lastIndexOf('-'));
+
+/**
+ * Сценарийн «гол» давхар (D100): алхмуудад анх дурдагдсан давхар (дулаан, ачаалал, импульс, яаралтай байдал, мэдрэгч);
+ * өрөөний сценарид зорилтот бүсийн давхар. Барилгын хэмжээний сценарид (S1, S8) `null`. Тохиргоонд байхгүй бол `null`.
+ */
+export function scenarioFocusFloorId(
+  id: AnyScenarioId,
+  targetAreaId: AreaId | null = null,
+  config: BuildingConfig = buildingConfig,
+): FloorId | null {
+  let floorId: FloorId | null = null;
+  if (isRoomScenarioId(id)) {
+    floorId = targetAreaId === null ? null : floorOfAreaId(targetAreaId);
+  } else {
+    for (const { action } of scenarioDefinitions[id].steps) {
+      if (action.type === 'setHeatGain') floorId = action.floorIds[0] ?? null;
+      else if (action.type === 'startEmergency') floorId = action.fireFloorId;
+      else if (
+        (action.type === 'setOccupancy' || action.type === 'pulseSource') &&
+        action.areaIds !== 'all'
+      )
+        floorId = action.areaIds[0] === undefined ? null : floorOfAreaId(action.areaIds[0]);
+      else if (action.type === 'disconnectSensor' && action.sensorIds[0] !== undefined) {
+        const sensor = config.sensors[action.sensorIds[0]];
+        floorId = sensor?.floorId ?? null;
+      }
+      if (floorId !== null) break;
+    }
+  }
+  return floorId !== null && config.floors[floorId] !== undefined ? floorId : null;
+}
+
+function focusFloorView(floorId: FloorId | null, config: BuildingConfig) {
+  const floor = floorId === null ? undefined : config.floors[floorId];
+  return {
+    focusFloorId: floor === undefined ? null : floor.id,
+    focusFloorLabel: floor === undefined ? null : floorLabelMn(floor.level),
+  };
+}
 
 /** Идэвхтэй сценарийн нэр; өрөөний сценарид «Загвар — Өрөө, N-р давхар» (С7, D93) */
 function activeScenarioName(

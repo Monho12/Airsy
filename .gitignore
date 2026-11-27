@@ -24,3 +24,10 @@ Thumbs.db
 
 # Браузерын автомат шалгалтын түр гаралт
 .playwright-mcp/
+
+# impeccable дизайны хэрэгслийн локал архив (шүүмжийн snapshot)
+.impeccable/
+
+# Cloudflare Wrangler-ийн локал түр файл ба нууц хувьсагч (D105)
+.wrangler/
+.dev.vars

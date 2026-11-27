@@ -35,6 +35,7 @@ import {
 } from './animationData';
 import { emergencyFloorRole } from './emergencyData';
 import { isAboveSelected } from './selection';
+import { useAmbientFrame } from './useAmbientFrame';
 import type { BuildingLayout } from './layout';
 import type { SceneColors } from './sceneColors';
 
@@ -218,6 +219,7 @@ export function Airflow({
   // Uniform-ийг mesh-ийн ref-ээр өөрчилнө (hook-ийн утгыг шууд өөрчлөхгүй — react-hooks/immutability)
   const meshRef = useRef<Mesh>(null);
 
+  const requestAmbientFrame = useAmbientFrame();
   useFrame((state, delta) => {
     const mesh = meshRef.current;
     if (mesh === null) return;
@@ -249,8 +251,8 @@ export function Airflow({
     });
     (u.uResolution!.value as Vector2).set(state.size.width, state.size.height);
     u.uReduced!.value = reducedMotion ? 1 : 0;
-    // Долгион гүйж байвал дараагийн frame-ийг хүснэ
-    if (moving) state.invalidate();
+    // Долгион гүйж байвал дараагийн frame-ийг хүснэ — ~30 fps-ээр (D104)
+    if (moving) requestAmbientFrame();
   });
 
   return (

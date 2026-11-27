@@ -13,6 +13,7 @@ import {
   selectFloorList,
   selectFloorSummary,
   selectOutdoorConditions,
+  scenarioFocusFloorId,
   selectRecentEvents,
   selectScenarioPanel,
   selectStatusBar,
@@ -390,5 +391,40 @@ describe('Хандлагын график (FR-T1, §5.6, Phase 6c)', () => {
     expect(data.domain![0]).toBeLessThan(19);
     expect(data.domain![1]).toBeGreaterThan(26);
     expect(data.bands.map((b) => b.level).sort()).toEqual(['warning', 'warning']);
+  });
+});
+
+describe('scenarioFocusFloorId (D100)', () => {
+  it('сценарийн алхмаас гол давхрыг олно', () => {
+    expect(scenarioFocusFloorId('elevated-temperature')).toBe('F12');
+    expect(scenarioFocusFloorId('high-co2')).toBe('F02');
+    expect(scenarioFocusFloorId('voc-cleaning')).toBe('F06');
+    expect(scenarioFocusFloorId('poor-outdoor-air')).toBe('F02');
+    expect(scenarioFocusFloorId('fire-emergency')).toBe('F08');
+    expect(scenarioFocusFloorId('sensor-disconnection')).toBe('F04');
+  });
+
+  it('барилгын хэмжээний сценарид null; өрөөний сценарид бүсийн давхар', () => {
+    expect(scenarioFocusFloorId('normal-operation')).toBeNull();
+    expect(scenarioFocusFloorId('recovery')).toBeNull();
+    expect(scenarioFocusFloorId('room-meeting', 'F07-C')).toBe('F07');
+  });
+
+  it('идэвхтэй сценарийн мөрөнд давхрын нэр', () => {
+    const base = createMockSnapshot();
+    const active = selectScenarioPanel({
+      ...base,
+      simulation: {
+        ...base.simulation,
+        activeScenario: {
+          id: 'high-co2',
+          targetAreaId: null,
+          startedAt: base.simTime,
+          progress: 0,
+        },
+      },
+    }).active;
+    expect(active?.focusFloorId).toBe('F02');
+    expect(active?.focusFloorLabel).toBe('2-р давхар');
   });
 });

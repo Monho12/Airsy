@@ -23,14 +23,24 @@ interface StatusBadgeProps {
   status: HealthStatus;
   /** Шошгыг өөрчлөх шаардлагатай бол (жишээ нь дохионы ноцтой байдал); анхдагч нь төлөвийн шошго */
   label?: string;
+  /**
+   * Нягт: зөвхөн тэмдэг харагдана (хэлбэр нь төлөв бүрт өөр — зөвхөн өнгө биш, §8.3), шошго дэлгэц уншигчид ба
+   * tooltip-д. Нарийн баганад (давхрын жагсаалт, D100).
+   */
+  compact?: boolean;
 }
 
-export function StatusBadge({ status, label }: StatusBadgeProps) {
+export function StatusBadge({ status, label, compact = false }: StatusBadgeProps) {
   const Icon = ICONS[status];
+  const text = label ?? mn.classification.statusLabel[status];
   return (
-    <span className={`ui-status ui-status--${status}`} data-status={status}>
+    <span
+      className={`ui-status ui-status--${status}`}
+      data-status={status}
+      title={compact ? text : undefined}
+    >
       <Icon className="ui-status__icon" aria-hidden="true" focusable="false" />
-      <span>{label ?? mn.classification.statusLabel[status]}</span>
+      <span className={compact ? 'visually-hidden' : undefined}>{text}</span>
     </span>
   );
 }
@@ -44,12 +54,17 @@ interface HealthIndicatorProps {
 }
 
 /** Бүс/давхар/барилгын төлөв: нэг холболтгүй мэдрэгч жинхэнэ анхааруулгыг далдлахгүй (§5.6). */
-export function HealthIndicator({ worstValid, worst, hasDataIssue }: HealthIndicatorProps) {
+export function HealthIndicator({
+  worstValid,
+  worst,
+  hasDataIssue,
+  compact = false,
+}: HealthIndicatorProps & { compact?: boolean }) {
   return (
     <span className="ui-health">
-      <StatusBadge status={worstValid ?? worst} />
+      <StatusBadge status={worstValid ?? worst} compact={compact} />
       {hasDataIssue && worstValid !== null && (
-        <StatusBadge status="offline" label={mn.common.dataIssue} />
+        <StatusBadge status="offline" label={mn.common.dataIssue} compact={compact} />
       )}
     </span>
   );

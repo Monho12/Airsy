@@ -58,6 +58,9 @@ export const alerts = {
     return `${fireFloorLabel}-т галын дохиоллын сигнал (симуляци). Сургалтын жишээ стратеги идэвхтэй.`;
   },
 
+  /** «Шийдэгдсэн» харагдацын самбарын гарчиг (D83-ын 7) */
+  resolvedTitle: 'Шийдэгдсэн дохио',
+
   /** Хоосон төлөв (§8.7) */
   emptyActive: 'Идэвхтэй дохио алга — бүх давхар хэвийн.',
 
@@ -91,4 +94,11 @@ export const alerts = {
   raisedAt: 'Үүссэн',
   emergencyAckNote:
     'Идэвхтэй үед хүлээн авах боломжгүй — яаралтай симуляцийг дуусгахад шийдэгдэнэ.',
+
+  /** Шинэ ноцтой дохиог дэлгэц уншигчид мэдэгдэх (FR-A5, §8.8, Phase 7) */
+  criticalAnnouncement(titles: readonly string[]): string {
+    return titles.length === 1
+      ? `Шинэ ноцтой дохио: ${titles[0]}.`
+      : `${titles.length} шинэ ноцтой дохио: ${titles.join('; ')}.`;
+  },
 } as const;

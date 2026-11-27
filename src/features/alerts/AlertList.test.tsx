@@ -114,6 +114,7 @@ describe('AlertList', () => {
 
   it('ноцтой байдал ба давхраар шүүнэ; тохирохгүй бол мессеж; цэвэрлэх', async () => {
     const { user } = setup();
+    await user.click(screen.getByRole('button', { name: mn.common.filters.toggle }));
     await user.selectOptions(screen.getByLabelText(text.filter.severity), 'warning');
     expect(items()).toHaveLength(1);
     expect(items()[0]).toHaveTextContent('Дохио a2');
@@ -130,6 +131,7 @@ describe('AlertList', () => {
     expect(items()[0]).toHaveTextContent('Шийдэгдсэн r1');
     expect(items()[0]).toHaveTextContent(text.status.resolved);
     expect(within(items()[0]!).queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: text.resolvedTitle })).toBeInTheDocument();
   });
 
   it('runtime байхгүй бол хүлээн авах товч зурахгүй (§8.7)', () => {

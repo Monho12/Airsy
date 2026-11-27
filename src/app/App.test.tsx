@@ -51,7 +51,10 @@ describe('App shell (smoke)', () => {
 
   it('товч, холбоос, оролт байхгүй — Phase 2-т төлөв өөрчлөх удирдлага хориотой (§8.7, §13)', () => {
     renderWith();
-    expect(screen.queryAllByRole('button')).toHaveLength(0);
+    // Зөвхөн шүүлтийн нээгддэг хэсгийн товч (D101) — локал UI, симуляцид нөлөөлөхгүй
+    expect(
+      screen.queryAllByRole('button').filter((b) => !b.hasAttribute('aria-expanded')),
+    ).toHaveLength(0);
     expect(screen.queryAllByRole('link')).toHaveLength(0);
     expect(screen.queryAllByRole('textbox')).toHaveLength(0);
   });
@@ -85,6 +88,12 @@ describe('Dashboard — ачаалж буй ба хоосон төлөв (§8.7)
     expect(
       within(region(mn.common.regions.devices)).getByText(mn.common.noFloorSelected),
     ).toBeVisible();
+    // Хоосон биш: гадна цаг агаарын станц (D100)
+    expect(
+      within(region(mn.common.regions.floorDetails)).getByRole('region', {
+        name: mn.common.outdoorStation,
+      }),
+    ).toBeVisible();
   });
 });
 
@@ -97,8 +106,8 @@ describe('Dashboard — жишээ snapshot-оор', () => {
     expect(within(header).getByText(mn.classification.statusLabel.warning)).toBeVisible();
     expect(within(header).getByText(mn.common.dataIssue)).toBeVisible();
     expect(
-      within(header).getByText(mn.common.activeAlertCount(snapshot.alerts.active.length)),
-    ).toBeVisible();
+      within(header).getByLabelText(mn.common.activeAlertCount(snapshot.alerts.active.length)),
+    ).toHaveTextContent(String(snapshot.alerts.active.length));
     expect(within(header).getByText(mn.control.autoModeOn)).toBeVisible();
   });
 
@@ -221,7 +230,10 @@ describe('Dashboard — жишээ snapshot-оор', () => {
     expect(items).toHaveLength(snapshot.events.length);
     const newest = snapshot.events.at(-1)!;
     expect(items[0]).toHaveTextContent(mn.events.type[newest.type]);
-    expect(items[0]).toHaveTextContent(newest.message);
+    // Төрлийн шошгоор эхэлсэн мессежийн давхардал харагдацад хасагдана (D102)
+    expect(items[0]).toHaveTextContent(
+      newest.message.replace(`${mn.events.type[newest.type]}: `, ''),
+    );
     for (const item of items) expect(item.textContent).not.toMatch(/[A-Z]+_[A-Z]+/);
   });
 });
@@ -233,7 +245,9 @@ describe('3D барилга — WebGL байхгүй үеийн орлуулал
     expect(within(building).getByRole('status')).toHaveTextContent(
       mn.common.building3d.fallback['webgl-unavailable'],
     );
-    expect(within(building).queryByRole('img')).not.toBeInTheDocument();
+    expect(
+      within(building).queryByRole('group', { name: mn.common.building3d.canvasLabel }),
+    ).not.toBeInTheDocument();
 
     // Орлуулах харагдац = features/floor-list (FloorList өөрчлөгдөөгүй)
     await user.click(floorOption(7));

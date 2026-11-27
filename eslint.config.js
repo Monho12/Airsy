@@ -190,7 +190,7 @@ const restrictedGlobal = (name) => ({
 });
 
 export default defineConfig([
-  globalIgnores(['dist/', 'coverage/', 'node_modules/']),
+  globalIgnores(['dist/', 'coverage/', 'node_modules/', '**/.wrangler/']),
 
   js.configs.recommended,
   tseslint.configs.recommended,

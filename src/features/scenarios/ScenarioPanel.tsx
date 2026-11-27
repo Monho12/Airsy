@@ -10,6 +10,7 @@ import type { ScenarioId } from '@/domain/types';
 import { useLiveStore } from '@/store/liveStore';
 import { useRuntime } from '@/store/runtime';
 import { selectScenarioPanel, type ScenarioItem, type ScenarioPanelData } from '@/store/selectors';
+import { useUiStore } from '@/store/uiStore';
 
 import './Scenarios.css';
 
@@ -83,7 +84,8 @@ function ScenarioRow({
           disabled={item.blockedByEmergency}
           onClick={() => onStart(item)}
         >
-          {text.panel.start}
+          {/* Идэвхтэй сценарийн карт «Дахин эхлүүлэх» (D102) — үйлдэл нь шинэчлээд эхнээс нь эхлүүлэх */}
+          {active ? text.panel.restart : text.panel.start}
         </Button>
       )}
     </li>
@@ -96,6 +98,8 @@ export function ScenarioPanel() {
   const data = useMemo(() => (snapshot ? selectScenarioPanel(snapshot) : null), [snapshot]);
   const [pending, setPending] = useState<Pending>(null);
   const [error, setError] = useState<string | null>(null);
+  const selectFloor = useUiStore((state) => state.selectFloor);
+  const selectedFloorId = useUiStore((state) => state.selectedFloorId);
 
   if (data === null) {
     return (
@@ -130,6 +134,19 @@ export function ScenarioPanel() {
           <div className="scenario-panel__active">
             <div className="scenario-panel__active-head">
               <span className="scenario-panel__active-name">{data.active.name}</span>
+              {/* Гол давхар (D100): нэр нь давхрыг агуулсан тул оператор өөр давхарт байхад л «Харах» холбоос */}
+              {data.active.focusFloorId !== null &&
+                data.active.focusFloorLabel !== null &&
+                selectedFloorId !== data.active.focusFloorId && (
+                  <button
+                    type="button"
+                    className="scenario-panel__focus-link"
+                    aria-label={text.panel.showFloorLabel(data.active.focusFloorLabel)}
+                    onClick={() => selectFloor(data.active!.focusFloorId)}
+                  >
+                    {text.panel.showFloor}
+                  </button>
+                )}
               <span className="scenario-panel__percent">
                 {text.panel.progressValue(data.active.percent)}
               </span>
@@ -159,7 +176,7 @@ export function ScenarioPanel() {
                 {text.panel.stop}
               </Button>
             )}
-            <Button className="ui-button--danger" onClick={() => setPending({ kind: 'reset' })}>
+            <Button className="ui-button--secondary" onClick={() => setPending({ kind: 'reset' })}>
               {text.panel.reset}
             </Button>
           </div>

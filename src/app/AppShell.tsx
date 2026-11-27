@@ -4,20 +4,28 @@
 import { useEffect, useRef, type ComponentType } from 'react';
 
 import { mn } from '@/domain/i18n/mn';
-import { AlertList } from '@/features/alerts';
+import { AlertList, CriticalAlertAnnouncer } from '@/features/alerts';
 import { TrendChart } from '@/features/charts';
 import { DeviceList } from '@/features/devices';
 import { EventTimeline } from '@/features/events';
 import { FloorDetails } from '@/features/floor-details';
 import { FloorList } from '@/features/floor-list';
 import { EmergencyBar, ScenarioPanel } from '@/features/scenarios';
+import { ServerStatus } from '@/features/server-status';
 import { StatusBar } from '@/features/status-bar';
 
 import { Building3DRegion } from './Building3DRegion';
+import { PanelErrorBoundary } from './PanelErrorBoundary';
+import { PhoneLayout } from './PhoneLayout';
+import { useFollowScenarioFloor } from './useFollowScenarioFloor';
+import { useMediaQuery } from './useMediaQuery';
 
 import './AppShell.css';
 
 const { common } = mn;
+
+/** Утасны табтай бүтэц (< 768 px, §8.2, D52). CSS-ийн таблетын breakpoint (768 px)-тэй ижил. */
+const PHONE_QUERY = '(max-width: 767px)';
 
 type RegionKey = keyof typeof common.regions;
 
@@ -79,6 +87,8 @@ function useTopHeightVar() {
 
 export function AppShell() {
   const { shellRef, topRef } = useTopHeightVar();
+  const isPhone = useMediaQuery(PHONE_QUERY);
+  useFollowScenarioFloor();
   return (
     <div className="shell" ref={shellRef}>
       <div className="shell-top" ref={topRef}>
@@ -91,6 +101,8 @@ export function AppShell() {
             <span className="shell-header__building">{common.buildingName}</span>
           </h1>
           <StatusBar />
+          {/* Backend (Cloudflare Worker)-тэй холбогдсон эсэх — REST API-аас (D105) */}
+          <ServerStatus />
           <p className="sim-badge">
             <span className="sim-badge__dot" aria-hidden="true" />
             {common.simulationBadge}
@@ -100,22 +112,30 @@ export function AppShell() {
         {/* Яаралтай байдлын симуляци идэвхтэй үед л зурагдана (§6.9, §8.7) */}
         <EmergencyBar />
       </div>
+      {/* Шинэ ноцтой дохиог дэлгэц уншигчид мэдэгдэнэ (FR-A5, §8.8) */}
+      <CriticalAlertAnnouncer />
 
       <main className="shell-main">
-        {REGION_GROUPS.map((group) => (
-          <div key={group.key} className={`shell-grid shell-grid--${group.key}`}>
-            {group.regions.map((region) => {
-              const Panel = PANELS[region];
-              if (Panel === undefined) return <PlaceholderRegion key={region} region={region} />;
-              // Wrapper нь зөвхөн grid-ийн байрлалыг өгнө; самбар өөрөө region (section) болно
-              return (
-                <div key={region} className={`shell-slot shell-region--${region}`}>
-                  <Panel />
-                </div>
-              );
-            })}
-          </div>
-        ))}
+        {isPhone ? (
+          <PhoneLayout panels={PANELS} />
+        ) : (
+          REGION_GROUPS.map((group) => (
+            <div key={group.key} className={`shell-grid shell-grid--${group.key}`}>
+              {group.regions.map((region) => {
+                const Panel = PANELS[region];
+                if (Panel === undefined) return <PlaceholderRegion key={region} region={region} />;
+                // Wrapper нь зөвхөн grid-ийн байрлалыг өгнө; самбар өөрөө region (section) болно
+                return (
+                  <div key={region} className={`shell-slot shell-region--${region}`}>
+                    <PanelErrorBoundary title={common.regions[region]}>
+                      <Panel />
+                    </PanelErrorBoundary>
+                  </div>
+                );
+              })}
+            </div>
+          ))
+        )}
       </main>
     </div>
   );

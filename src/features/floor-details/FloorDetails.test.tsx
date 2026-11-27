@@ -215,6 +215,29 @@ describe('FloorDetails — өрөөний сценари (С7, D93)', () => {
     expect(dispatch).not.toHaveBeenCalled();
   });
 
+  it('3D шошгоноос тавьсан баталгаажуулалт (pendingRoomScenario) самбарт dialog нээж, «Эхлүүлэх» илгээнэ (D99)', async () => {
+    const dispatch = withRuntime();
+    const user = userEvent.setup();
+    renderFloor('F12');
+    act(() =>
+      useUiStore
+        .getState()
+        .setPendingRoomScenario({ scenarioId: 'room-restroom-humidity', areaId: 'F12-G' }),
+    );
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveTextContent(room.name['room-restroom-humidity']);
+    await user.click(
+      within(dialog).getByRole('button', { name: mn.scenarios.confirm.confirmStart }),
+    );
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'scenario/startRoom',
+      scenarioId: 'room-restroom-humidity',
+      areaId: 'F12-G',
+    });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(useUiStore.getState().pendingRoomScenario).toBeNull();
+  });
+
   it('3D-д өрөө сонгогдоход (selectArea) мөр нь задарна; нээлттэй оффист сценари товч байхгүй', () => {
     withRuntime();
     renderFloor('F07');

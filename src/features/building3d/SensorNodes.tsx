@@ -7,13 +7,15 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Color, Object3D, Vector3, type Camera, type InstancedMesh } from 'three';
 
-import { HealthIndicator, MetricValue } from '@/components/ui';
+import { Button, HealthIndicator, MetricValue } from '@/components/ui';
 import { METRICS, type BuildingConfig } from '@/domain/config/building';
 import { metricSpecs } from '@/domain/config/thresholds';
 import { floorLabelMn, mn } from '@/domain/i18n/mn';
 import type { AreaId, LiveSnapshot } from '@/domain/types';
 import { useLiveStore } from '@/store/liveStore';
-import { selectAreaSummary } from '@/store/selectors';
+import { requestRoomScenario } from '@/store/roomScenarios';
+import { useRuntime } from '@/store/runtime';
+import { selectAreaSummary, selectRoomScenarioOptions } from '@/store/selectors';
 import { useUiStore } from '@/store/uiStore';
 
 import { fadeStep } from './fade';
@@ -37,15 +39,73 @@ const scratchObject = new Object3D();
 const scratchColor = new Color();
 const scratchVector = new Vector3();
 
+/**
+ * Сонгосон өрөөний шошгон доторх сценарийн товчнууд (С7, D99) — доош гүйлгэж самбар хайхгүйгээр шууд эхлүүлнэ.
+ * Баталгаажуулалт хэрэгтэй бол dialog «Сонгосон давхар» самбарт нээгдэнэ (`RoomScenarioConfirm`).
+ */
+function RoomScenarioActions({
+  areaId,
+  areaName,
+  snapshot,
+  config,
+}: {
+  areaId: AreaId;
+  areaName: string;
+  snapshot: LiveSnapshot;
+  config: BuildingConfig;
+}) {
+  const runtime = useRuntime();
+  const [error, setError] = useState<string | null>(null);
+  const options = selectRoomScenarioOptions(snapshot, areaId, config);
+  // Runtime байхгүй бол удирдлага зурахгүй (§8.7)
+  if (runtime === null || options.length === 0) return null;
+  const text = mn.scenarios.room.panel;
+  return (
+    <div
+      className="sensor-label__actions"
+      role="group"
+      aria-label={text.heading}
+      // Шошгоны дарах үйлдэл canvas руу дамжиж сонголтыг цуцлахгүй (D93-ын хоосон талбайн дараа)
+      onPointerDown={(event) => event.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
+    >
+      <p className="sensor-label__actions-heading">{text.heading}</p>
+      {options.map((option) => (
+        <Button
+          key={option.id}
+          aria-label={text.startLabel(option.name, areaName)}
+          aria-pressed={option.active}
+          title={option.description}
+          onClick={() => {
+            void requestRoomScenario(runtime, snapshot, option.id, areaId).then((result) => {
+              if (result !== null) setError(result.ok ? null : result.reason);
+            });
+          }}
+        >
+          {option.name}
+        </Button>
+      ))}
+      {error !== null && (
+        <p className="sensor-label__actions-error" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function SensorNodeLabel({
   areaId,
   snapshot,
   config,
+  withActions,
   onResize,
 }: {
   areaId: AreaId;
   snapshot: LiveSnapshot;
   config: BuildingConfig;
+  /** Сонгосон (hover биш) шошгонд л товч (D99) */
+  withActions: boolean;
   /** Шошгын бодит хэмжээ (px) — canvas дотор багтаах байрлалд */
   onResize: (size: Size) => void;
 }) {
@@ -82,6 +142,14 @@ function SensorNodeLabel({
           />
         ))}
       </div>
+      {withActions && (
+        <RoomScenarioActions
+          areaId={areaId}
+          areaName={summary.area.name}
+          snapshot={snapshot}
+          config={config}
+        />
+      )}
     </div>
   );
 }
@@ -94,10 +162,12 @@ function NodeLabel({
   node,
   snapshot,
   config,
+  withActions,
 }: {
   node: SensorNodeLayout;
   snapshot: LiveSnapshot;
   config: BuildingConfig;
+  withActions: boolean;
 }) {
   const invalidate = useThree((state) => state.invalidate);
   const sizeRef = useRef<Size>({ width: 0, height: 0 });
@@ -132,6 +202,7 @@ function NodeLabel({
         areaId={node.areaId}
         snapshot={snapshot}
         config={config}
+        withActions={withActions}
         onResize={handleResize}
       />
     </Html>
@@ -284,7 +355,13 @@ export function SensorNodes({
 
       {snapshot !== null && labelNode !== undefined && (
         // key: өөр бүс рүү шилжихэд шошгыг шинээр хэмжинэ
-        <NodeLabel key={labelNode.areaId} node={labelNode} snapshot={snapshot} config={config} />
+        <NodeLabel
+          key={labelNode.areaId}
+          node={labelNode}
+          snapshot={snapshot}
+          config={config}
+          withActions={labelNode.areaId === selectedAreaId}
+        />
       )}
     </group>
   );
