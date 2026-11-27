@@ -137,4 +137,13 @@ export const common = {
     events: 'Үйл явдлын түүх',
     scenarios: 'Сценари',
   },
+  /** Backend (Cloudflare Worker, D105)-тэй холболтын тэмдэг — header-т */
+  server: {
+    loading: 'Сервер: шалгаж байна…',
+    online: (floorCount: number) => `Сервер: холбогдсон · ${floorCount} давхар`,
+    offline: 'Сервер: холболтгүй',
+    /** Холбогдсон үеийн tooltip: серверээс ирсэн барилгын нэр */
+    onlineTitle: (name: string) => `REST API-аас авсан: ${name}`,
+    offlineTitle: 'API Worker ажиллахгүй байна. Симуляци браузерт ажилласаар.',
+  },
 } as const;

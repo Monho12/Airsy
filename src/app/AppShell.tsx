@@ -11,6 +11,7 @@ import { EventTimeline } from '@/features/events';
 import { FloorDetails } from '@/features/floor-details';
 import { FloorList } from '@/features/floor-list';
 import { EmergencyBar, ScenarioPanel } from '@/features/scenarios';
+import { ServerStatus } from '@/features/server-status';
 import { StatusBar } from '@/features/status-bar';
 
 import { Building3DRegion } from './Building3DRegion';
@@ -100,6 +101,8 @@ export function AppShell() {
             <span className="shell-header__building">{common.buildingName}</span>
           </h1>
           <StatusBar />
+          {/* Backend (Cloudflare Worker)-тэй холбогдсон эсэх — REST API-аас (D105) */}
+          <ServerStatus />
           <p className="sim-badge">
             <span className="sim-badge__dot" aria-hidden="true" />
             {common.simulationBadge}

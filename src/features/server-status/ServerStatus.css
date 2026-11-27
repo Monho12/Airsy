@@ -1,0 +1,25 @@
+/* Сервертэй холболтын тэмдэг (D105). Өнгө tokens.css-ээс; утга нь бичвэрт (§8.3). */
+.server-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-12);
+  white-space: nowrap;
+}
+
+.server-status__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+}
+
+.server-status[data-state='online'] .server-status__dot {
+  background: var(--color-status-normal);
+}
+
+.server-status[data-state='offline'] .server-status__dot {
+  background: var(--color-status-offline);
+}

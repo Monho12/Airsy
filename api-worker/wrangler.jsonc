@@ -1,0 +1,11 @@
+// AERIS API Worker-ийн тохиргоо (D105). Зөвхөн JSON буцаадаг API — HTML-гүй.
+{
+  "name": "aeris-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-29",
+  "vars": {
+    // CORS: энэ origin-уудаас ирсэн хүсэлтэд л хариуг браузер уншихыг зөвшөөрнө (таслалаар).
+    // Deploy хийсний дараа frontend-ийн production хаягийг энд нэмнэ.
+    "FRONTEND_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173",
+  },
+}
