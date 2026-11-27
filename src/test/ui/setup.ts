@@ -4,6 +4,12 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, vi } from 'vitest';
 
+import { setBuildingConfig } from '@/store/buildingConfig';
+import { buildingConfig } from '@/test/domain/building';
+
+// Апп-д барилгын өгөгдөл серверээс ирдэг (D106); тестэд backend-ийн ижил өгөгдлийг шууд тавина.
+setBuildingConfig(buildingConfig);
+
 // Тест жинхэнэ сүлжээ рүү хэзээ ч явахгүй: анхдагч `fetch` хэзээ ч хариулахгүй (D105-ийн ServerStatus
 // «шалгаж байна» төлөвтөө үлдэнэ). Сүлжээ шалгах тест өөрөө `vi.stubGlobal('fetch', …)` хийнэ.
 beforeEach(() => {

@@ -1,7 +1,7 @@
 // Яаралтай байдлын 3D тодруулгын давхрын үүрэг (§6.9, §7.2 S6, D83).
 import { describe, expect, it } from 'vitest';
 
-import { buildingConfig, createBuildingConfig } from '@/domain/config/building';
+import { buildingConfig, createBuildingConfig } from '@/test/domain/building';
 
 import { emergencyFloorRole } from './emergencyData';
 

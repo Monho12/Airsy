@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { buildingConfig } from '@/domain/config/building';
+import { buildingConfig } from '@/test/domain/building';
 import { formatTimeMn, mn } from '@/domain/i18n/mn';
 import type { AerisCommand, AerisRuntime, CommandResult } from '@/domain/runtime/AerisRuntime';
 import type { LiveSnapshot, SensorReading } from '@/domain/types';

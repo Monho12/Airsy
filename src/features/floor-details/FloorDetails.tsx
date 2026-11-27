@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { EmptyState, HealthIndicator, MetricValue, Panel, Skeleton } from '@/components/ui';
-import { buildingConfig, METRICS } from '@/domain/config/building';
+import { METRICS } from '@/domain/config/building';
 import { metricSpecs } from '@/domain/config/thresholds';
 import { floorLabelMn, formatMetricValueMn, formatTimeMn, mn } from '@/domain/i18n/mn';
 import type { LiveSnapshot, SensorReading } from '@/domain/types';
+import { getBuildingConfig } from '@/store/buildingConfig';
 import { useLiveStore } from '@/store/liveStore';
 import {
   selectAreaSummary,
@@ -82,8 +83,9 @@ function AreaBody({ readings, connection }: Pick<AreaSummary, 'readings' | 'conn
  * (үнэгүй хөргөлт, гадна агаарын хязгаарлалт §6.3–6.5) гадна нөхцөлийг харуулна. Утга OUT-* мэдрэгчээс шууд.
  */
 function OutdoorStation({ snapshot }: { snapshot: LiveSnapshot }) {
-  const sensors = buildingConfig.building.outdoorSensorIds
-    .map((id) => buildingConfig.sensors[id])
+  const config = getBuildingConfig();
+  const sensors = config.building.outdoorSensorIds
+    .map((id) => config.sensors[id])
     .filter((sensor) => sensor !== undefined);
   return (
     <section className="floor-details__area" aria-label={mn.common.outdoorStation}>

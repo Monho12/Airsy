@@ -12,10 +12,11 @@ import {
   Skeleton,
   StatusBadge,
 } from '@/components/ui';
-import { buildingConfig, METRICS } from '@/domain/config/building';
+import { METRICS } from '@/domain/config/building';
 import { floorLabelMn, formatTimeMn, mn } from '@/domain/i18n/mn';
 import type { AerisRuntime } from '@/domain/runtime/AerisRuntime';
 import type { Alert } from '@/domain/types';
+import { getBuildingConfig } from '@/store/buildingConfig';
 import { useLiveStore } from '@/store/liveStore';
 import { useRuntime } from '@/store/runtime';
 import { selectAlertCounts, selectFilteredAlerts } from '@/store/selectors';
@@ -43,14 +44,18 @@ const metricOptions: { value: AlertFilter['metric']; label: string }[] = [
 ];
 
 // Давхар дээрээс доош (давхрын жагсаалттай ижил дараалал)
-const floorOptions: { value: AlertFilter['floor']; label: string }[] = [
-  { value: 'all', label: f.all },
-  { value: 'building', label: f.building },
-  ...[...buildingConfig.building.floorIds].reverse().map((floorId) => ({
-    value: floorId,
-    label: floorLabelMn(buildingConfig.floors[floorId]?.level ?? 0),
-  })),
-];
+/** Давхрын шүүлтийн сонголтууд — серверээс ирсэн тохиргооноос (D106), тиймээс модулийн түвшинд биш */
+function floorOptions(): { value: AlertFilter['floor']; label: string }[] {
+  const config = getBuildingConfig();
+  return [
+    { value: 'all', label: f.all },
+    { value: 'building', label: f.building },
+    ...[...config.building.floorIds].reverse().map((floorId) => ({
+      value: floorId,
+      label: floorLabelMn(config.floors[floorId]?.level ?? 0),
+    })),
+  ];
+}
 
 function AlertItem({ alert, runtime }: { alert: Alert; runtime: AerisRuntime | null }) {
   const messageId = useId();
@@ -179,7 +184,7 @@ export function AlertList() {
           <SelectField
             label={f.floor}
             value={filter.floor}
-            options={floorOptions}
+            options={floorOptions()}
             onChange={(floor) => setFilter({ floor })}
           />
           <SelectField

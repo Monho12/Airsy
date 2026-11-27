@@ -2,7 +2,7 @@
 // `vi`-ийн fake timer-ээр (§9.3-ын 3-р дүрэм).
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { buildingConfig } from '@/domain/config/building';
+import { buildingConfig } from '@/test/domain/building';
 import { baselineDeviceStates } from '@/domain/config/control';
 import { bufferLimits, sensorNoiseAmplitude, simulationConfig } from '@/domain/config/simulation';
 import { timingThresholds } from '@/domain/config/thresholds';
@@ -19,8 +19,8 @@ afterEach(() => {
 });
 
 /** Эхэлсэн runtime ба publish-ийн бүртгэл */
-function started(options?: ConstructorParameters<typeof LocalSimulationRuntime>[0]) {
-  const runtime = new LocalSimulationRuntime(options);
+function started(options?: Partial<ConstructorParameters<typeof LocalSimulationRuntime>[0]>) {
+  const runtime = new LocalSimulationRuntime({ config: buildingConfig, ...options });
   const published: LiveSnapshot[] = [];
   runtime.subscribe((snapshot) => published.push(snapshot));
   runtime.start();
@@ -30,7 +30,7 @@ function started(options?: ConstructorParameters<typeof LocalSimulationRuntime>[
 const eventTypes = (snapshot: LiveSnapshot) => snapshot.events.map((e) => e.type);
 
 describe('эхлэл (D73, §12.4)', () => {
-  const snapshot = new LocalSimulationRuntime().getSnapshot();
+  const snapshot = new LocalSimulationRuntime({ config: buildingConfig }).getSnapshot();
 
   it('schemaVersion 1, startTime, ажиллаж буй, 1×, анхдагч seed, идэвхтэй сценаригүй', () => {
     expect(snapshot.schemaVersion).toBe(1);
@@ -66,7 +66,7 @@ describe('эхлэл (D73, §12.4)', () => {
 
 describe('S1-ийн суурь ажиллагаа (§7.2)', () => {
   it('10 минутын (600 алхам) дараа дохио, шинэ үйл явдалгүй; утга S1-ийн мужид (± шуугиан)', () => {
-    const runtime = new LocalSimulationRuntime();
+    const runtime = new LocalSimulationRuntime({ config: buildingConfig });
     runtime.advance(600);
     const snapshot = runtime.getSnapshot();
     expect(snapshot.simTime).toBe(simulationConfig.startTime + 600 * STEP);
@@ -111,8 +111,8 @@ describe('давтагдах байдал (§11.1, D69)', () => {
   });
 
   it('өөр seed → өөр шуугиан', () => {
-    const a = new LocalSimulationRuntime();
-    const b = new LocalSimulationRuntime({ seed: 1 });
+    const a = new LocalSimulationRuntime({ config: buildingConfig });
+    const b = new LocalSimulationRuntime({ config: buildingConfig, seed: 1 });
     a.advance(5);
     b.advance(5);
     expect(a.getSnapshot().readings['F07-A-co2']!.value).not.toBe(
@@ -123,7 +123,7 @@ describe('давтагдах байдал (§11.1, D69)', () => {
 
 describe('structural sharing (§11.2)', () => {
   it('төхөөрөмж, удирдлага, дохио, үйл явдал өөрчлөгдөөгүй бол ижил лавлагаа; шийдвэр алхам бүрт шинэ', () => {
-    const runtime = new LocalSimulationRuntime();
+    const runtime = new LocalSimulationRuntime({ config: buildingConfig });
     runtime.advance(1);
     const a = runtime.getSnapshot();
     runtime.advance(1);
@@ -141,7 +141,7 @@ describe('structural sharing (§11.2)', () => {
   });
 
   it(`хандлагын цуваа ${bufferLimits.trendPointsPerSeries} цэгээр хязгаартай`, () => {
-    const runtime = new LocalSimulationRuntime();
+    const runtime = new LocalSimulationRuntime({ config: buildingConfig });
     runtime.advance(bufferLimits.trendPointsPerSeries + 20);
     expect(runtime.getSnapshot().history['F07']!.co2).toHaveLength(
       bufferLimits.trendPointsPerSeries,
@@ -151,7 +151,7 @@ describe('structural sharing (§11.2)', () => {
 
 describe('командын гэрээ (§9.4.1)', () => {
   it('start()-аас өмнө ба stop()-ийн дараа татгалзана, үйл явдалгүй', async () => {
-    const runtime = new LocalSimulationRuntime();
+    const runtime = new LocalSimulationRuntime({ config: buildingConfig });
     expect(await runtime.dispatch({ type: 'simulation/pause' })).toEqual({
       ok: false,
       reason: mn.common.runtime.notRunning,
@@ -222,7 +222,7 @@ describe('командын гэрээ (§9.4.1)', () => {
   });
 
   it('listener дотроос дуудсан dispatch дараагийн цэвэрлэгээнд орно', async () => {
-    const runtime = new LocalSimulationRuntime();
+    const runtime = new LocalSimulationRuntime({ config: buildingConfig });
     let nested: Promise<unknown> | null = null;
     const seen: LiveSnapshot['simulation'][] = [];
     runtime.subscribe((snapshot) => {
@@ -395,7 +395,7 @@ describe('мэдрэгчийн эвдрэл → дохио (FR-S5, §9.4.1, D72)
 describe('timer (D70, §11.1)', () => {
   it('start() давтан дуудахад ганц timer; stop() устгана', () => {
     vi.useFakeTimers();
-    const runtime = new LocalSimulationRuntime();
+    const runtime = new LocalSimulationRuntime({ config: buildingConfig });
     runtime.start();
     runtime.start();
     expect(vi.getTimerCount()).toBe(1);
@@ -469,7 +469,7 @@ describe('timer (D70, §11.1)', () => {
 
 describe('удирдлага ба командууд (Phase 5, §6.7, §9.5-ын 6–6b, D78)', () => {
   it('суурь төлөвт 10× хурдаар 10 минут (600 алхам) — төхөөрөмжийн өөрчлөлт ба дохио үгүй', () => {
-    const runtime = new LocalSimulationRuntime();
+    const runtime = new LocalSimulationRuntime({ config: buildingConfig });
     runtime.advance(600);
     const snapshot = runtime.getSnapshot();
     expect(eventTypes(snapshot)).toEqual(['SIMULATION_STARTED']);

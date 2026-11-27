@@ -30,6 +30,8 @@ const elements = [
   { type: 'styles', pattern: 'src/styles' },
   { type: 'test-domain', pattern: 'src/test/domain' },
   { type: 'test-ui', pattern: 'src/test/ui' },
+  // Backend-ийн барилгын өгөгдөл (D106) — апп-ын код хэзээ ч импортлохгүй; зөвхөн src/test/domain-ийн fixture
+  { type: 'backend', pattern: 'api-worker/src' },
 ];
 
 // Элементэд хамаарахгүй ч зөвшөөрөгдсөн цорын ганц хоёр файл (баримтжуулсан үл хамаарал, §9.3):
@@ -126,10 +128,10 @@ const policies = [
     ],
   },
 
-  // src/test/domain/** → зөвхөн domain/** ба vitest
+  // src/test/domain/** → зөвхөн domain/** ба vitest; барилгын fixture-д backend-ийн өгөгдөл (D106)
   {
     from: { element: { type: 'test-domain' } },
-    allow: [...toElements(...DOMAIN), ...toExternal('vitest')],
+    allow: [...toElements(...DOMAIN, 'backend'), ...toExternal('vitest')],
   },
 
   // src/test/ui/** → domain/**, store, components/ui, src/test/domain/**, vitest, @testing-library/*

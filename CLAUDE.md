@@ -266,8 +266,9 @@ AERIS бол **симуляци**. Эхний хувилбарын бүх утг
 
 ### 5.1 Барилга: «AERIS Tower» (зохиомол)
 
-Зохиомол 12 давхар холимог зориулалттай оффисын барилга. Барилгын бүх өгөгдөл тохиргоонд
-(`src/domain/config/building.ts`) байна, 3D эсвэл UI компонент дотор хэзээ ч биш.
+Зохиомол 12 давхар холимог зориулалттай оффисын барилга. Барилгын бүх өгөгдөл **зөвхөн backend-д**
+(`api-worker/src/buildingData.ts`, D106) байна; frontend эхлэхдээ `GET /api/config`-оос авна. 3D эсвэл UI компонент
+дотор хэзээ ч биш. ID-ийн дүрэм ба `BuildingConfig` төрөл `src/domain/config/building.ts`-д.
 
 | Давхрын ID | Түвшин | Нэр / зориулалт | А бүс | Б бүс | Тэмдэглэл |
 |------------|------:|-----------------|-------|-------|-----------|
@@ -300,7 +301,7 @@ AERIS бол **симуляци**. Эхний хувилбарын бүх утг
   y-ээр тухайн давхрын шалнаас хэмжигдэнэ. Давхрын жинхэнэ өндрийг 3D код `level`-ээс тооцно.
 - **Cutaway тал (тогтмол):** нүүрний **урд-баруун** дөрөвний нэг (`x > 0` ба `z > 0`) хасагдсан/маш тунгалаг; анхдагч камер
   тэр талаас харна.
-- **Агааржуулалтын байрлал нь тохиргооны өгөгдөл** (`src/domain/config/building.ts`), 3D компонентод хатуу бичихгүй (§10):
+- **Агааржуулалтын байрлал нь тохиргооны өгөгдөл** (`api-worker/src/buildingData.ts`, D106), 3D компонентод хатуу бичихгүй (§10):
   - `Building.shafts` — оруулах ба гаргах босоо сувгийн x/z байрлал (дээвэр хүртэл).
   - `Floor.ventilation` — `supplyPoints`, `exhaustPoints`, `devicePositions` (SF/EF/OAD-ийн загвар), `airflowPaths`
     (оруулахаас гаргах руу чиглэсэн waypoint-ийн жагсаалт).
@@ -315,7 +316,7 @@ AERIS бол **симуляци**. Эхний хувилбарын бүх утг
 ### 5.1.2 Прототипийн тоон утга (D50)
 
 > ⚠️ **Доорх бүх утга прототипийн таамаг** — жинхэнэ барилгын хэмжилт, зураг төсөл эсвэл стандартын утга **биш**.
-> Үзүүлэлт уншигдахуйц, сценарийн нөлөө харагдахуйц байхаар сонгосон. `src/domain/config/building.ts`-д байх бөгөөд
+> Үзүүлэлт уншигдахуйц, сценарийн нөлөө харагдахуйц байхаар сонгосон. `api-worker/src/buildingData.ts`-д (D106) байх бөгөөд
 > Phase 3/4-т тааруулж болно (өөрчлөлтийг Хавсралт B-д бүртгэнэ).
 
 **Барилга** (§5.1.1-ийн координат: метр, эх цэг нь суурийн төв, Y дээш, Z урагш):
@@ -1453,7 +1454,7 @@ WebSocket-оор snapshot хүлээн авдаг `RemoteRuntime` нь UI-г ө�
    └─ test/                      ← тестийн туслах (domain тест эх кодын хажууд *.test.ts байж болно)
       ├─ domain/                 ← domain тестийн fixture, builder (зөвхөн domain + vitest)
       └─ ui/                     ← UI тестийн setup (jest-dom), render туслах, store fixture
-api-worker/                      ← Cloudflare Worker: энгийн REST API backend (D105); src/domain/config-ийг дахин ашиглана
+api-worker/                      ← Cloudflare Worker: REST API backend (D105); барилгын БҮХ өгөгдөл энд (buildingData.ts, D106)
 tooling/                         ← архитектурын давхаргаас гадуурх хэрэгслийн тест (node): lint-ийн хил, токены контраст
    └─ fixtures/boundaries/       ← lint-ийн хилийн тестийн зорилтот файлууд (src-ийн бүтцийг давтана; апп импортлохгүй)
 ```
@@ -1479,7 +1480,7 @@ tooling/                         ← архитектурын давхаргаа
    | `src/main.tsx` | бүгд (`LocalSimulationRuntime`-ийг үүсгэх цорын ганц газар) | — |
    | Domain тест `src/domain/**/*.test.ts` | `domain/**`, `vitest`, `src/test/domain/**` | React, `@testing-library/*`, Zustand, `store`, `components`, `features`, `app`, `src/test/ui/**` |
    | Бусад тест `**/*.test.ts(x)` | тухайн давхаргын зөвшөөрөгдсөн импорт **дээр нь** `vitest`, `@testing-library/*`, `src/test/domain/**`, `src/test/ui/**` | тухайн давхаргын бусад хориг (жишээ нь `components/ui` тест `features` импортлохгүй) |
-   | `src/test/domain/**` (domain fixture, builder) | `domain/**`, `vitest` | React, `@testing-library/*`, Zustand, `store`, `components`, `features`, `app`, `src/test/ui/**` |
+   | `src/test/domain/**` (domain fixture, builder) | `domain/**`, `vitest`; барилгын fixture-д `api-worker/src/**` (D106) | React, `@testing-library/*`, Zustand, `store`, `components`, `features`, `app`, `src/test/ui/**` |
    | `src/test/ui/**` (setup, render туслах, store fixture) | `domain/**`, `store/**`, `components/ui/**`, `src/test/domain/**`, `vitest`, `@testing-library/*` | `features`, `app` |
    | `tooling/**/*.test.ts` (lint, токены контраст) | `vitest`, `eslint`, Node-ийн модуль; `src/`-ийн файлыг **импортлохгүй** (зөвхөн `fs`-ээр уншиж болно; lint `no-restricted-imports`) | — (boundaries-ийн давхаргад хамаарахгүй) |
 
@@ -3167,3 +3168,4 @@ interface-ийн зөрчлийг шийднэ.
 | D95 | 2026-11-06 | **Phase 6.6 батлагдсан; 6.5 ба 6.6 `main`-д** (хөгжүүлэгч, 2026-11-06). D93 (өрөөний сценари, хоосон талбайд дарж цуцлах) ба D94 (зөөлөн шилжилт)-ийг одоогийн байдлаар нь хүлээн авав. `phase-6-5-room-sensors` ба `phase-6-6-room-scenarios` салбаруудыг push хийж, `main`-д дараалан merge commit-оор (`--no-ff`) нэгтгэв (Phase 6-тай ижил арга; `gh` CLI алга тул PR-гүй, local merge). Phase 7 тусдаа зөвшөөрөл шаардана (§14.6-15). | §14.6-15, §14.8. | PR-ээр (`gh` суугаагүй). |
 | D90 | 2026-11-05 | **Phase 6 батлагдсан** (хөгжүүлэгч, 2026-11-05). 6a–6h-ийг одоогийн байдлаар нь хүлээн авав (D80–D88; commit `5cee717`, `273e4ba` хүртэл). Хөгжүүлэгч бодит laptop дээр 8 сценарийг ажиллуулж, 3D (өрөө, лифт, EXIT, сонгосон давхрын харагдац, агаарын урсгал) хурдан (fps) ажиллаж буйг, гар удирдлагаар сэнсийг нэмэхэд утга буурч буйг шалгав. Дараагийн алхам — С6 (өрөө бүрт мэдрэгч, D89); Phase 7 тусдаа зөвшөөрөл шаардана (§14.6-15). | §14.6-15, §12.3-6. | — |
 | D105 | 2026-11-27 | **Backend-ийг «ирээдүй» гэсэн хязгаарыг хасав** (хөгжүүлэгч, 2026-11-27; хичээлийн даалгавар). D1, D61-ийг хэсэгчлэн орлоно: энгийн backend — Cloudflare Worker (`api-worker/`), REST API (JSON); frontend нь static хэвээр `fetch`-ээр өгөгдөл авна. Эхний алхам зөвхөн унших endpoint. Симуляци браузерт хэвээр (§1.3). Өгөгдлийн сан, нэвтрэлт, WebSocket, MQTT ирээдүйд хэвээр. | Хичээлийн 9-р долоо хоногийн даалгавар (Worker + REST API); хөгжүүлэгчийн шийдвэр. | Node.js сервер (татгалзсан: хичээл Cloudflare Worker заасан); симуляцийг сервер рүү зөөх (татгалзсан: хэт том). |
+| D106 | 2026-11-27 | **Барилгын өгөгдөл зөвхөн backend-д** (хөгжүүлэгч, 2026-11-27: «frontend дээр барилгын өгөгдөл байхгүй, зөвхөн backend-ээс дуудна»; өгөгдлийн байршлыг хөгжүүлэгч сонгосон). (1) `createBuildingConfig` ба бүх хүснэгт (давхар, бүс, өрөө, суурь утга, 3D байрлал) `src/domain/config/building.ts`-ээс `api-worker/src/buildingData.ts` руу; `src/`-д зөвхөн ID-ийн дүрэм, `METRICS`, `OUTDOOR_BASELINE` (симуляцийн гадна параметр), `BuildingConfig` төрөл. (2) Worker `GET /api/config` — бүтэн `BuildingConfig` JSON (~126 KB). (3) `main.tsx` эхлээд config татаж (`StartupScreen`: ачаалж байна / «Дахин оролдох»), `store/buildingConfig.ts`-д тавиад дараа нь runtime ба UI-г эхлүүлнэ; компонент ба selector `getBuildingConfig()`-оор уншина. `LocalSimulationRuntime`-д `config` заавал (анхдагч байхгүй). (4) Хамгийн бага хэлбэрийн шалгалт (`isBuildingConfig`); бүрэн schema §15.3-д хэвээр. (5) Тест backend-ийн үүсгэгчийг `src/test/domain/building.ts`-ээр; ESLint-д `backend` элемент — зөвхөн `test-domain` импортолно. Генераторын тест `api-worker/src/buildingData.test.ts` (Vitest-ийн `api` project). Production bundle-д барилгын өгөгдөл байхгүйг build-ээр шалгав. **Үр дагавар:** Worker ажиллахгүй бол апп эхлэхгүй (симуляци ч) — танилцуулгын өмнө Worker асаах/deploy хийх (§12.4). | Хичээлийн даалгавар: static frontend өгөгдлөө backend-ээс REST API-аар авна. | `src/`-д үлдээж lint-ээр хориглох (хөгжүүлэгч татгалзсан); сервер унтарвал локал хуулбар руу буцах (татгалзсан: хүсэлттэй зөрчилдөнө). |

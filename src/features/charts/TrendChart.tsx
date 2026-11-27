@@ -5,10 +5,11 @@
 import { lazy, Suspense, useId, useMemo, useState } from 'react';
 
 import { EmptyState, Panel, Skeleton, StatusBadge } from '@/components/ui';
-import { buildingConfig, METRICS } from '@/domain/config/building';
+import { METRICS } from '@/domain/config/building';
 import { metricSpecs } from '@/domain/config/thresholds';
 import { floorLabelMn, formatMetricValueMn, mn } from '@/domain/i18n/mn';
 import type { MetricType, TrendPoint } from '@/domain/types';
+import { getBuildingConfig } from '@/store/buildingConfig';
 import { useLiveStore } from '@/store/liveStore';
 import { selectTrendChart, selectTrendPoints } from '@/store/selectors';
 import { useUiStore } from '@/store/uiStore';
@@ -49,7 +50,7 @@ export function TrendChart() {
 
   const spec = metricSpecs[metric];
   const format = (value: number) => formatMetricValueMn(value, spec.unit, spec.decimals);
-  const floor = floorId === null ? undefined : buildingConfig.floors[floorId];
+  const floor = floorId === null ? undefined : getBuildingConfig().floors[floorId];
   const floorLabel = floor === undefined ? null : floorLabelMn(floor.level);
   const summaryValue = (value: number | null) => (value === null ? text.noValue : format(value));
 

@@ -7,6 +7,6 @@ export type Building3DFallbackReason = 'webgl-unavailable' | 'context-lost' | 'r
 export interface Building3DProps {
   /** 3D зурагдах боломжгүй болоход дуудна. `building3d` өөрөө орлуулах UI зурахгүй (§8.6). */
   onFallback: (reason: Building3DFallbackReason) => void;
-  /** Барилгын тохиргоо (анхдагч `buildingConfig`; 6/12/20 давхрыг шалгахад, FR-B1, D57) */
+  /** Барилгын тохиргоо (анхдагч — серверээс ачаалсан тохиргоо, D106; 6/12/20 давхрыг шалгахад, FR-B1, D57) */
   config?: BuildingConfig;
 }

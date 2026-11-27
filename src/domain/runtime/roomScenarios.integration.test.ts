@@ -2,7 +2,7 @@
 // гаргаж, эх үүсвэр зогссоны дараа «бүгд хэвийн» болоод дуусна; техникийн өрөөний сценари давхрын сэнсийг өөрчлөхгүй.
 import { describe, expect, it } from 'vitest';
 
-import { buildingConfig } from '@/domain/config/building';
+import { buildingConfig } from '@/test/domain/building';
 import { mn } from '@/domain/i18n/mn';
 import { createRoomScenario } from '@/domain/scenarios/rooms';
 import type { LiveSnapshot, RoomScenarioId, SystemEvent } from '@/domain/types';
@@ -10,7 +10,7 @@ import type { LiveSnapshot, RoomScenarioId, SystemEvent } from '@/domain/types';
 import { LocalSimulationRuntime } from './LocalSimulationRuntime';
 
 async function paused() {
-  const runtime = new LocalSimulationRuntime();
+  const runtime = new LocalSimulationRuntime({ config: buildingConfig });
   runtime.start();
   await runtime.dispatch({ type: 'simulation/pause' });
   runtime.advance(3);

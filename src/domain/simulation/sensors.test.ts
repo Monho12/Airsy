@@ -1,7 +1,7 @@
 // Мэдрэгчийн утга, холболт, эвдрэл (§5.3–5.6, §9.4.1, FR-M5, FR-S5, D69).
 import { describe, expect, it } from 'vitest';
 
-import { buildingConfig } from '@/domain/config/building';
+import { buildingConfig } from '@/test/domain/building';
 import { sensorNoiseAmplitude, simulationConfig } from '@/domain/config/simulation';
 import { metricSpecs, timingThresholds } from '@/domain/config/thresholds';
 import { mn } from '@/domain/i18n/mn';

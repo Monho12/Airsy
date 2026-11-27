@@ -2,7 +2,7 @@ import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { buildingConfig } from '@/domain/config/building';
+import { buildingConfig } from '@/test/domain/building';
 import { floorLabelMn, formatMetricValueMn, formatNumberMn, mn } from '@/domain/i18n/mn';
 import { applySnapshot } from '@/store/adapter';
 import { initialLiveState, useLiveStore } from '@/store/liveStore';

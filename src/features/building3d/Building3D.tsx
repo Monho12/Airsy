@@ -5,8 +5,8 @@
 import { Canvas } from '@react-three/fiber';
 import { useEffect, useMemo, useState } from 'react';
 
-import { buildingConfig as defaultBuildingConfig } from '@/domain/config/building';
 import { mn } from '@/domain/i18n/mn';
+import { getBuildingConfig } from '@/store/buildingConfig';
 import { useUiStore } from '@/store/uiStore';
 
 import { Airflow } from './Airflow';
@@ -25,7 +25,7 @@ import './Building3D.css';
 /** Pixel ratio-ийн хязгаар (§11.3) */
 const DPR_RANGE: [number, number] = [1, 1.75];
 
-export function Building3D({ onFallback, config = defaultBuildingConfig }: Building3DProps) {
+export function Building3D({ onFallback, config = getBuildingConfig() }: Building3DProps) {
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const [colors] = useState(readSceneColors);
   const layout = useMemo(() => createBuildingLayout(config), [config]);

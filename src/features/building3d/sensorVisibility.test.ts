@@ -2,7 +2,7 @@
 // зангилааны төв хүртэлх хэрчмийг layout-ийн хатуу эзэлхүүн (давхрын хавтан, дээвэр, core) огтлох эсэхээр шалгана.
 import { describe, expect, it } from 'vitest';
 
-import { buildingConfig } from '@/domain/config/building';
+import { buildingConfig } from '@/test/domain/building';
 import type { Vec3 } from '@/domain/types';
 
 import { defaultCameraPose, floorFocusPose } from './cameraMath';

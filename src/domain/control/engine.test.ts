@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { createBuildingConfig, deviceIdOf } from '@/domain/config/building';
+import { deviceIdOf } from '@/domain/config/building';
+import { createBuildingConfig } from '@/test/domain/building';
 import { baselineDeviceStates, controlConfig } from '@/domain/config/control';
 import { simulationConfig } from '@/domain/config/simulation';
 import { timingThresholds } from '@/domain/config/thresholds';

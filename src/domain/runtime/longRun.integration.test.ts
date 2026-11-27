@@ -3,7 +3,7 @@
 // идэвхтэй дохионы тоо төгсгөлд суурь руу буцахыг шалгана. Дэлгэцгүй — timer-гүйгээр `advance`-аар.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { buildingConfig } from '@/domain/config/building';
+import { buildingConfig } from '@/test/domain/building';
 import { bufferLimits } from '@/domain/config/simulation';
 import type { LiveSnapshot, ScenarioId } from '@/domain/types';
 
@@ -48,7 +48,7 @@ function expectBounded(snapshot: LiveSnapshot) {
 
 describe('урт ажиллагаа (§11.4)', () => {
   it(`${ROUNDS} удаа бүх сценари (${ROUNDS * SEQUENCE.length * STEPS_PER_SCENARIO} алхам): buffer-ууд хязгаартай`, async () => {
-    const runtime = new LocalSimulationRuntime();
+    const runtime = new LocalSimulationRuntime({ config: buildingConfig });
     runtime.start();
     let maxActiveAlerts = 0;
     let lastSeq = 0;

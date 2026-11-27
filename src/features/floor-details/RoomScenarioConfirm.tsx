@@ -4,8 +4,8 @@
 import { useState } from 'react';
 
 import { Button, Dialog } from '@/components/ui';
-import { buildingConfig } from '@/domain/config/building';
 import { mn } from '@/domain/i18n/mn';
+import { getBuildingConfig } from '@/store/buildingConfig';
 import { useLiveStore } from '@/store/liveStore';
 import { startRoomScenario } from '@/store/roomScenarios';
 import { useRuntime } from '@/store/runtime';
@@ -22,7 +22,7 @@ export function RoomScenarioConfirm() {
   const [error, setError] = useState<string | null>(null);
 
   if (pending === null || snapshot === null || runtime === null) return null;
-  const area = buildingConfig.areas[pending.areaId];
+  const area = getBuildingConfig().areas[pending.areaId];
   if (area === undefined) return null;
   const panel = selectScenarioPanel(snapshot);
   const close = () => {

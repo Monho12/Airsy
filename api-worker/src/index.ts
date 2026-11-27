@@ -1,14 +1,14 @@
 // AERIS API Worker — Cloudflare Worker дээрх энгийн REST API (D105).
 // Static frontend өгөгдлөө эндээс `fetch`-ээр авна. Worker зөвхөн JSON буцаана, HTML хэзээ ч биш.
-// Барилгын өгөгдлийг frontend-тэй ИЖИЛ тохиргооноос (src/domain/config) авна — хуулбар байхгүй.
-import { buildingConfig } from '../../src/domain/config/building';
+// Барилгын бүх өгөгдөл ЗӨВХӨН энд (buildingData.ts) байна — frontend өөрөө барилгын өгөгдөлгүй (D106).
+import { buildingConfig } from './buildingData';
 
 interface Env {
   /** Зөвшөөрсөн frontend-ийн origin-ууд, таслалаар тусгаарласан (wrangler.jsonc → vars) */
   FRONTEND_ORIGINS: string;
 }
 
-/** GET /api/building-ийн хариу. Хэлбэр нь frontend-ийн `features/server-status/api.ts`-тэй ижил. */
+/** GET /api/building-ийн хариу — товч мэдээлэл (header-ийн холболтын тэмдэгт). Хэлбэр нь `src/features/server-status/api.ts`-тэй ижил. */
 function createBuildingSummary() {
   const { building, floors } = buildingConfig;
   return {
@@ -33,6 +33,8 @@ function createBuildingSummary() {
 
 // Тохиргоо өөрчлөгддөггүй тул нэг л удаа тооцно
 const BUILDING_SUMMARY = createBuildingSummary();
+// Бүтэн тохиргоог нэг удаа JSON болгоно (~ хэдэн зуун KB) — хүсэлт бүрт дахин тооцохгүй
+const BUILDING_CONFIG_JSON = JSON.stringify(buildingConfig);
 
 /** Хүсэлтийн Origin зөвшөөрөгдсөн бол түүнийг буцаана, үгүй бол null */
 function allowedOrigin(request: Request, env: Env): string | null {
@@ -55,9 +57,13 @@ function corsHeaders(origin: string | null): Headers {
 }
 
 function json(body: unknown, status: number, origin: string | null): Response {
+  return jsonText(JSON.stringify(body), status, origin);
+}
+
+function jsonText(text: string, status: number, origin: string | null): Response {
   const headers = corsHeaders(origin);
   headers.set('Content-Type', 'application/json; charset=utf-8');
-  return new Response(JSON.stringify(body), { status, headers });
+  return new Response(text, { status, headers });
 }
 
 export default {
@@ -80,6 +86,9 @@ export default {
         return json({ ok: true }, 200, origin);
       case '/api/building':
         return json(BUILDING_SUMMARY, 200, origin);
+      // Барилгын бүтэн тохиргоо: давхар, бүс, өрөө, мэдрэгч, төхөөрөмж, 3D байрлал (BuildingConfig, §10)
+      case '/api/config':
+        return jsonText(BUILDING_CONFIG_JSON, 200, origin);
       default:
         return json({ error: 'Not found' }, 404, origin);
     }

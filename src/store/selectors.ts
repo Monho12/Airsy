@@ -7,12 +7,13 @@ import {
   summarizeHealth,
 } from '@/domain/classification';
 import type { HealthSummary } from '@/domain/classification';
-import { buildingConfig, METRICS, type BuildingConfig } from '@/domain/config/building';
+import { METRICS, type BuildingConfig } from '@/domain/config/building';
 import { indoorThresholds, outdoorAirThresholds } from '@/domain/config/thresholds';
 import { floorLabelMn, mn } from '@/domain/i18n/mn';
 import { scenarioDefinitions, scenarioOrder } from '@/domain/scenarios/definitions';
 import { roomScenarioIdsFor } from '@/domain/scenarios/rooms';
 
+import { getBuildingConfig } from './buildingConfig';
 import type { AlertFilter, EventFilter } from './uiStore';
 import type {
   Alert,
@@ -43,7 +44,7 @@ type OutdoorMetric = Exclude<keyof OutdoorConditions, 'co2'>;
 /** Гадна нөхцөл — OUT-* утгаас (snapshot-д давхардуулахгүй, §10). Зөв хэмжилтгүй талбар `null` (хэзээ ч 0 биш). */
 export function selectOutdoorConditions(
   snapshot: LiveSnapshot,
-  config: BuildingConfig = buildingConfig,
+  config: BuildingConfig = getBuildingConfig(),
 ): OutdoorConditions {
   const valueOf = (metric: OutdoorMetric): number | null => {
     const sensorId = config.building.outdoorSensorIds.find(
@@ -66,7 +67,7 @@ export function selectOutdoorConditions(
 export function selectAreaReadings(
   snapshot: LiveSnapshot,
   areaId: AreaId,
-  config: BuildingConfig = buildingConfig,
+  config: BuildingConfig = getBuildingConfig(),
 ): Partial<Record<MetricType, SensorReading>> {
   const result: Partial<Record<MetricType, SensorReading>> = {};
   for (const sensor of Object.values(config.sensors)) {
@@ -154,7 +155,7 @@ function summarizeAreaConnection(
 export function selectAreaSummary(
   snapshot: LiveSnapshot,
   areaId: AreaId,
-  config: BuildingConfig = buildingConfig,
+  config: BuildingConfig = getBuildingConfig(),
 ): AreaSummary | undefined {
   const area = config.areas[areaId];
   if (area === undefined) return undefined;
@@ -185,7 +186,7 @@ export interface FloorSummary {
 export function selectFloorSummary(
   snapshot: LiveSnapshot,
   floorId: FloorId,
-  config: BuildingConfig = buildingConfig,
+  config: BuildingConfig = getBuildingConfig(),
 ): FloorSummary | undefined {
   const floor = config.floors[floorId];
   if (floor === undefined) return undefined;
@@ -216,7 +217,7 @@ export function selectFloorSummary(
 /** Давхрын жагсаалт — барилгын дарааллаар (доороос → дээш). UI харуулахдаа эргүүлж болно. */
 export function selectFloorList(
   snapshot: LiveSnapshot,
-  config: BuildingConfig = buildingConfig,
+  config: BuildingConfig = getBuildingConfig(),
 ): FloorSummary[] {
   return config.building.floorIds
     .map((floorId) => selectFloorSummary(snapshot, floorId, config))
@@ -232,7 +233,7 @@ export interface StatusBarData {
 
 export function selectStatusBar(
   snapshot: LiveSnapshot,
-  config: BuildingConfig = buildingConfig,
+  config: BuildingConfig = getBuildingConfig(),
 ): StatusBarData {
   const indoor = Object.values(config.sensors)
     .filter((sensor) => sensor.location === 'indoor')
@@ -249,7 +250,7 @@ export function selectStatusBar(
 export function selectFloorDevices(
   snapshot: LiveSnapshot,
   floorId: FloorId,
-  config: BuildingConfig = buildingConfig,
+  config: BuildingConfig = getBuildingConfig(),
 ): VentilationDevice[] {
   const floor = config.floors[floorId];
   if (floor === undefined) return [];
@@ -319,7 +320,7 @@ export interface ScenarioPanelData {
 /** Яаралтай байдал (`ControlState.emergency`) — идэвхгүй бол `null` */
 export function selectEmergency(
   snapshot: LiveSnapshot,
-  config: BuildingConfig = buildingConfig,
+  config: BuildingConfig = getBuildingConfig(),
 ): EmergencyView | null {
   const emergency = snapshot.control.emergency;
   if (emergency === null) return null;
@@ -333,7 +334,7 @@ export function selectEmergency(
 /** Сценарийн самбарын өгөгдөл: §7.2-ын дарааллаар 8 сценари, идэвхтэй сценарийн явц, яаралтай байдал. */
 export function selectScenarioPanel(
   snapshot: LiveSnapshot,
-  config: BuildingConfig = buildingConfig,
+  config: BuildingConfig = getBuildingConfig(),
 ): ScenarioPanelData {
   const emergency = selectEmergency(snapshot, config);
   const items = scenarioOrder.map((id): ScenarioItem => {
@@ -373,7 +374,7 @@ const floorOfAreaId = (areaId: AreaId): FloorId => areaId.slice(0, areaId.lastIn
 export function scenarioFocusFloorId(
   id: AnyScenarioId,
   targetAreaId: AreaId | null = null,
-  config: BuildingConfig = buildingConfig,
+  config: BuildingConfig = getBuildingConfig(),
 ): FloorId | null {
   let floorId: FloorId | null = null;
   if (isRoomScenarioId(id)) {
@@ -436,7 +437,7 @@ export interface RoomScenarioOption {
 export function selectRoomScenarioOptions(
   snapshot: LiveSnapshot,
   areaId: AreaId,
-  config: BuildingConfig = buildingConfig,
+  config: BuildingConfig = getBuildingConfig(),
 ): RoomScenarioOption[] {
   const area = config.areas[areaId];
   if (area === undefined) return [];

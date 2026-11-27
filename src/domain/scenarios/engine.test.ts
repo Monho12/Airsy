@@ -1,7 +1,7 @@
 // Сценарийн engine-ийн туслахууд ба тодорхойлолтын бүрэн бүтэн байдал (CLAUDE.md §5.1, §7.1, §7.2, D18).
 import { describe, expect, it } from 'vitest';
 
-import { buildingConfig, createBuildingConfig } from '@/domain/config/building';
+import { buildingConfig, createBuildingConfig } from '@/test/domain/building';
 import { floorLabelMn, mn } from '@/domain/i18n/mn';
 import type { ScenarioId } from '@/domain/types';
 

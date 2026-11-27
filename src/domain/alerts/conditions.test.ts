@@ -1,7 +1,7 @@
 // Дохионы нөхцөл (§4.4, §5.2, D72) ба §12.2: «1000-ын орчимд ±5 ppm хэлбэлзэх утга давтан үйл явдал үүсгэхгүй».
 import { describe, expect, it } from 'vitest';
 
-import { buildingConfig, createBuildingConfig } from '@/domain/config/building';
+import { buildingConfig, createBuildingConfig } from '@/test/domain/building';
 import { indoorThresholds } from '@/domain/config/thresholds';
 import { mn } from '@/domain/i18n/mn';
 import { LocalSimulationRuntime } from '@/domain/runtime/LocalSimulationRuntime';
@@ -17,7 +17,7 @@ import type { SensorReading } from '@/domain/types';
 import { buildAlertConditions } from './conditions';
 import { createAlertEvaluatorState, evaluateAlerts } from './evaluator';
 
-const baseline = new LocalSimulationRuntime().getSnapshot();
+const baseline = new LocalSimulationRuntime({ config: buildingConfig }).getSnapshot();
 const index = indexFloorSensors(buildingConfig);
 const now = baseline.simTime;
 

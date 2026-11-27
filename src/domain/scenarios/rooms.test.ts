@@ -1,7 +1,7 @@
 // Өрөөний сценарийн загвар (С7, D93): аль өрөөнд аль загвар, тохирохгүй үед null, гал/утаа өрөөнөөс байхгүй.
 import { describe, expect, it } from 'vitest';
 
-import { buildingConfig } from '@/domain/config/building';
+import { buildingConfig } from '@/test/domain/building';
 
 import { createRoomScenario, roomScenarioIdsFor } from './rooms';
 

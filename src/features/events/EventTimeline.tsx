@@ -12,9 +12,9 @@ import {
   Skeleton,
   StatusBadge,
 } from '@/components/ui';
-import { buildingConfig } from '@/domain/config/building';
 import { floorLabelMn, formatTimeMn, mn } from '@/domain/i18n/mn';
 import type { SystemEvent } from '@/domain/types';
+import { getBuildingConfig } from '@/store/buildingConfig';
 import { useLiveStore } from '@/store/liveStore';
 import { RECENT_EVENT_LIMIT, selectFilteredEvents } from '@/store/selectors';
 import { defaultEventFilter, useUiStore, type EventFilter } from '@/store/uiStore';
@@ -41,13 +41,17 @@ const severityOptions: { value: EventFilter['severity']; label: string }[] = [
   })),
 ];
 
-const floorOptions: { value: EventFilter['floor']; label: string }[] = [
-  { value: 'all', label: f.all },
-  ...[...buildingConfig.building.floorIds].reverse().map((floorId) => ({
-    value: floorId,
-    label: floorLabelMn(buildingConfig.floors[floorId]?.level ?? 0),
-  })),
-];
+/** Давхрын шүүлтийн сонголтууд — серверээс ирсэн тохиргооноос (D106), тиймээс модулийн түвшинд биш */
+function floorOptions(): { value: EventFilter['floor']; label: string }[] {
+  const config = getBuildingConfig();
+  return [
+    { value: 'all', label: f.all },
+    ...[...config.building.floorIds].reverse().map((floorId) => ({
+      value: floorId,
+      label: floorLabelMn(config.floors[floorId]?.level ?? 0),
+    })),
+  ];
+}
 
 export function EventTimeline() {
   const snapshot = useLiveStore((state) => state.snapshot);
@@ -97,7 +101,7 @@ export function EventTimeline() {
           <SelectField
             label={f.floor}
             value={filter.floor}
-            options={floorOptions}
+            options={floorOptions()}
             onChange={(floor) => setFilter({ floor })}
           />
           {filtered && (

@@ -2,7 +2,7 @@
 // хязгаарлалт (D68-ийн 5, 6). Хүлээгдэх утгыг тохиргооноос тооцно (§5.5) — тоог зориуд бэхэлсэн газарт тэмдэглэв.
 import { describe, expect, it } from 'vitest';
 
-import { buildingConfig } from '@/domain/config/building';
+import { buildingConfig } from '@/test/domain/building';
 import { baselineDeviceStates } from '@/domain/config/control';
 import { simulationModel } from '@/domain/config/simulation';
 import type { Area, DeviceKind, DeviceState, MetricType } from '@/domain/types';

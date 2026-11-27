@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildingConfig } from '@/domain/config/building';
+import { buildingConfig } from '@/test/domain/building';
 import type { Alert, LiveSnapshot, SystemEvent } from '@/domain/types';
 
 import { createMockSnapshot, MOCK_SAMPLE } from './mockSnapshot';

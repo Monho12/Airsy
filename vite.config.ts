@@ -36,6 +36,15 @@ export default defineConfig({
       {
         extends: true,
         test: {
+          // Backend (Cloudflare Worker)-ийн барилгын өгөгдлийн тест (D106)
+          name: 'api',
+          include: ['api-worker/src/**/*.test.ts'],
+          environment: 'node',
+        },
+      },
+      {
+        extends: true,
+        test: {
           name: 'tooling',
           include: ['tooling/**/*.test.ts'],
           exclude: ['tooling/fixtures/**'],

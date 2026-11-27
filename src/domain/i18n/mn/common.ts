@@ -145,5 +145,13 @@ export const common = {
     /** Холбогдсон үеийн tooltip: серверээс ирсэн барилгын нэр */
     onlineTitle: (name: string) => `REST API-аас авсан: ${name}`,
     offlineTitle: 'API Worker ажиллахгүй байна. Симуляци браузерт ажилласаар.',
+    /** Апп эхлэхэд: барилгын өгөгдөл зөвхөн серверт (D106) */
+    startupLoading: 'Барилгын өгөгдлийг серверээс ачаалж байна…',
+    startupErrorTitle: 'Сервертэй холбогдож чадсангүй',
+    startupErrorBody:
+      'Барилгын өгөгдөл зөвхөн backend-д (API Worker) байдаг. Worker ажиллаж байгаа эсэхийг шалгаад дахин оролдоно уу.',
+    startupErrorHint:
+      'API: https://aeris-api.oorgilmojo.workers.dev (өөр хаяг бол .env.local-ийн VITE_API_URL)',
+    retry: 'Дахин оролдох',
   },
 } as const;

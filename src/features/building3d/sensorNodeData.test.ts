@@ -1,7 +1,7 @@
 // Мэдрэгчийн зангилааны байрлал, instance → бүс, төлөв (§5.3, §5.6, §8.6, FR-B5). WebGL-гүй.
 import { describe, expect, it } from 'vitest';
 
-import { buildingConfig, createBuildingConfig } from '@/domain/config/building';
+import { buildingConfig, createBuildingConfig } from '@/test/domain/building';
 import { createMockSnapshot, MOCK_SAMPLE } from '@/store/mockSnapshot';
 
 import { createBuildingLayout } from './layout';

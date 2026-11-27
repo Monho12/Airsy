@@ -13,10 +13,7 @@ import {
   type AlertEvaluatorState,
   type AlertTransition,
 } from '@/domain/alerts/evaluator';
-import {
-  buildingConfig as defaultBuildingConfig,
-  type BuildingConfig,
-} from '@/domain/config/building';
+import type { BuildingConfig } from '@/domain/config/building';
 import { baselineDeviceStates, controlConfig } from '@/domain/config/control';
 import { applyDeviceCommand } from '@/domain/control/applyDeviceCommand';
 import {
@@ -97,8 +94,8 @@ import type {
 import type { AerisCommand, AerisRuntime, CommandResult } from './AerisRuntime';
 
 export interface LocalSimulationRuntimeOptions {
-  /** Барилгын тохиргоо (анхдагч 12 давхар) */
-  config?: BuildingConfig;
+  /** Барилгын тохиргоо — backend-ийн `GET /api/config`-оос (D106; анхдагч байхгүй) */
+  config: BuildingConfig;
   /** PRNG-ийн seed (анхдагч `simulationConfig.defaultSeed`, D69) */
   seed?: number;
 }
@@ -193,10 +190,7 @@ export class LocalSimulationRuntime implements AerisRuntime {
   private alertsView: LiveSnapshot['alerts'] = { active: [], recentResolved: [] };
   private simulationView: LiveSnapshot['simulation'];
 
-  constructor({
-    config = defaultBuildingConfig,
-    seed = simulationConfig.defaultSeed,
-  }: LocalSimulationRuntimeOptions = {}) {
+  constructor({ config, seed = simulationConfig.defaultSeed }: LocalSimulationRuntimeOptions) {
     this.config = config;
     this.seed = seed;
     this.rng = createRng(seed);

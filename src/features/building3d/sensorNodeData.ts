@@ -1,10 +1,8 @@
 // Мэдрэгчийн зангилаа (CLAUDE.md §5.3, §8.6, FR-B5): бүс бүрийн 5 мэдрэгч → бүсийн тэмдгийн байрлалд НЭГ зангилаа.
 // Байрлал нь `Area.markerPosition`-оос (давхрын шалнаас, §5.1.1), төлөв нь snapshot-оос — өгөгдлийг давхардуулахгүй.
-import {
-  buildingConfig as defaultBuildingConfig,
-  type BuildingConfig,
-} from '@/domain/config/building';
+import type { BuildingConfig } from '@/domain/config/building';
 import type { AreaId, FloorId, HealthStatus, LiveSnapshot, Vec3 } from '@/domain/types';
+import { getBuildingConfig } from '@/store/buildingConfig';
 import { selectAreaSummary } from '@/store/selectors';
 
 import type { BuildingLayout } from './layout';
@@ -75,7 +73,7 @@ export interface SensorNodeStatus {
 export function sensorNodeStatuses(
   snapshot: LiveSnapshot | null,
   nodes: readonly SensorNodeLayout[],
-  config: BuildingConfig = defaultBuildingConfig,
+  config: BuildingConfig = getBuildingConfig(),
 ): SensorNodeStatus[] {
   return nodes.map(({ areaId }) => {
     const summary = snapshot === null ? undefined : selectAreaSummary(snapshot, areaId, config);

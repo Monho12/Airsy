@@ -3,7 +3,7 @@
 // Бүрэн deterministic: санамсаргүй тоо, `Date.now()` байхгүй; бүх хугацаа `simulationConfig.startTime`-аас тогтмол офсетоор.
 // Ангиллыг гараар бичихгүй — жинхэнэ `classifyReading`-ээр (runtime-тай ижил зам).
 import { classifyReading } from '@/domain/classification';
-import { buildingConfig, OUTDOOR_BASELINE, type BuildingConfig } from '@/domain/config/building';
+import { OUTDOOR_BASELINE, type BuildingConfig } from '@/domain/config/building';
 import { simulationConfig } from '@/domain/config/simulation';
 import { indoorThresholds, metricSpecs, timingThresholds } from '@/domain/config/thresholds';
 import { floorLabelMn, mn } from '@/domain/i18n/mn';
@@ -21,6 +21,8 @@ import type {
   TrendHistory,
   VentilationDevice,
 } from '@/domain/types';
+
+import { getBuildingConfig } from './buildingConfig';
 
 /** Симуляцийн нэг алхам (§11.1: dt = 1000 ms) */
 const STEP_MS = 1000;
@@ -103,7 +105,7 @@ function offlineReading(
 }
 
 /** Тохиргооноос тогтмол жишээ snapshot үүсгэнэ. Ижил оролтоор үргэлж ижил үр дүн. */
-export function createMockSnapshot(config: BuildingConfig = buildingConfig): LiveSnapshot {
+export function createMockSnapshot(config: BuildingConfig = getBuildingConfig()): LiveSnapshot {
   const startTime = simulationConfig.startTime;
   const simTime = startTime + MOCK_OFFSETS.simTimeAfterStartMs;
   const disconnectedAt = simTime - MOCK_OFFSETS.disconnectBeforeMs;

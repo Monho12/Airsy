@@ -3,7 +3,7 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createBuildingConfig } from '@/domain/config/building';
+import { createBuildingConfig } from '@/test/domain/building';
 import { mn } from '@/domain/i18n/mn';
 
 import type { Building3DProps } from './types';

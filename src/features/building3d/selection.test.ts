@@ -3,7 +3,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { buildingConfig } from '@/domain/config/building';
+import { buildingConfig } from '@/test/domain/building';
 import { initialUiState, useUiStore } from '@/store/uiStore';
 
 import { createBuildingLayout } from './layout';

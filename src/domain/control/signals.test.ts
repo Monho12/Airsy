@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createAlertEvaluatorState, evaluateAlerts } from '@/domain/alerts/evaluator';
-import { createBuildingConfig } from '@/domain/config/building';
+import { createBuildingConfig } from '@/test/domain/building';
 import type { ControlState } from '@/domain/types';
 
 import { controlSignalConditions } from './signals';

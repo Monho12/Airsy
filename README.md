@@ -6,7 +6,8 @@ AERIS бол олон давхар барилгын агааржуулалт б�
 гаргана.
 
 > ⚠️ **Энэ бол симуляци.** Бүх мэдрэгчийн утга браузер дотор үүснэ. Жинхэнэ мэдрэгч, төхөөрөмж байхгүй.
-> Энгийн backend (Cloudflare Worker) зөвхөн барилгын мэдээллийг REST API-аар өгнө.
+> Барилгын бүх өгөгдөл (давхар, өрөө, мэдрэгч, 3D байрлал) зөвхөн backend-д (Cloudflare Worker) байна — frontend
+> эхлэхдээ REST API-аас авна. **Worker ажиллаагүй бол апп эхлэхгүй.**
 > AERIS нь баталгаажсан барилгын удирдлагын систем биш, гал болон амь насны аюулгүй байдлын систем ч биш.
 
 Репозиторийн нэр `Airsy`, бүтээгдэхүүний нэр **AERIS**. Advanced Web Development хичээлийн төсөл. UI бүхэлдээ
@@ -34,8 +35,10 @@ AERIS бол олон давхар барилгын агааржуулалт б�
 
 ```bash
 npm ci          # dependency-г lock файлаар суулгана
-npm run dev     # хөгжүүлэлтийн сервер → http://localhost:5173
+npm run dev     # frontend → http://localhost:5173 (өгөгдлийг deploy хийсэн Worker-ээс авна)
 ```
+
+Backend: `https://aeris-api.oorgilmojo.workers.dev` (Cloudflare Worker).
 
 | Скрипт                 | Үүрэг                                           |
 | ---------------------- | ----------------------------------------------- |
@@ -49,21 +52,26 @@ npm run dev     # хөгжүүлэлтийн сервер → http://localhost:5
 
 ### Backend (Cloudflare Worker, REST API)
 
-Frontend static хэвээр; барилгын мэдээллийг `api-worker/`-ийн Worker-ээс `fetch`-ээр авна. Header-т «Сервер:
-холбогдсон · 12 давхар» гэж харагдана. Worker ажиллахгүй бол «Сервер: холболтгүй» — симуляци хэвийн ажилласаар.
+Frontend static, барилгын өгөгдөлгүй. Эхлэхдээ `GET /api/config`-оос барилгын бүх тохиргоог авч, дараа нь л
+симуляци ба 3D асна. Worker ажиллахгүй бол «Сервертэй холбогдож чадсангүй · Дахин оролдох» дэлгэц гарна. Header-т
+«Сервер: холбогдсон · 12 давхар» гэж харагдана. Өгөгдөл: `api-worker/src/buildingData.ts`.
+
+Frontend анхдагчаар deploy хийсэн Worker-ийг (`https://aeris-api.oorgilmojo.workers.dev`) ашиглана. Worker-ийн
+кодыг өөрчилсний дараа:
 
 ```bash
-npm --prefix api-worker install   # wrangler-ийг суулгана (нэг удаа)
-npm run dev:api                   # Worker → http://127.0.0.1:8787
-npm run dev                       # өөр терминалд frontend → http://localhost:5173
+npm --prefix api-worker install       # wrangler-ийг суулгана (нэг удаа)
+npm --prefix api-worker run deploy    # Cloudflare руу байршуулна
 ```
+
+Локалд турших бол `npm run dev:api` (→ http://127.0.0.1:8787) ажиллуулж, `.env.local`-д
+`VITE_API_URL=http://127.0.0.1:8787` гэж бичнэ.
 
 | Endpoint            | Хариу                                                      |
 | ------------------- | ---------------------------------------------------------- |
 | `GET /api/health`   | `{ "ok": true }`                                           |
 | `GET /api/building` | Барилгын нэр, давхрын тоо, давхар бүрийн нэр ба бүсийн тоо |
-
-Өөр хаяг дээрх API-г ашиглах бол `.env.local`-д `VITE_API_URL=https://…` гэж бичнэ.
+| `GET /api/config`   | Барилгын бүтэн тохиргоо: давхар, бүс, өрөө, мэдрэгч, 3D    |
 
 Хамгийн сайн нь WebGL2-той Chrome эсвэл Edge-ийн сүүлийн хувилбар. WebGL байхгүй бол 3D-ийн оронд 2D давхрын
 жагсаалт харагдана.

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { buildingConfig, OUTDOOR_BASELINE } from '@/domain/config/building';
+import { OUTDOOR_BASELINE } from '@/domain/config/building';
+import { buildingConfig } from '@/test/domain/building';
 import { simulationConfig } from '@/domain/config/simulation';
 import { indoorThresholds, timingThresholds } from '@/domain/config/thresholds';
 

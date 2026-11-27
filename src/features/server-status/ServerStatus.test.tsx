@@ -4,7 +4,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { mn } from '@/domain/i18n/mn';
 
-import { API_URL, fetchBuildingInfo, type BuildingInfo } from './api';
+import { buildingConfig } from '@/test/domain/building';
+
+import { API_URL, fetchBuildingConfig, fetchBuildingInfo, type BuildingInfo } from './api';
 import { ServerStatus } from './ServerStatus';
 
 const text = mn.common.server;
@@ -54,5 +56,33 @@ describe('fetchBuildingInfo', () => {
       vi.fn(async () => new Response('{}', { status: 500 })),
     );
     await expect(fetchBuildingInfo()).rejects.toThrow('HTTP 500');
+  });
+});
+
+describe('fetchBuildingConfig (D106)', () => {
+  it('GET /api/config-оос барилгын бүтэн тохиргоог авна', async () => {
+    // Worker-ийн хариутай яг ижил: JSON болгоод буцааж задална
+    const fetchMock = vi.fn(async () => Response.json(JSON.parse(JSON.stringify(buildingConfig))));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(fetchBuildingConfig()).resolves.toEqual(buildingConfig);
+    expect(fetchMock).toHaveBeenCalledWith(`${API_URL}/api/config`, expect.anything());
+  });
+
+  it('буруу хэлбэртэй хариуг хүлээж авахгүй (симуляци буруу өгөгдлөөр эхлэхгүй)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json({ building: { floorIds: [] } })),
+    );
+    await expect(fetchBuildingConfig()).rejects.toThrow();
+  });
+
+  it('сервер ажиллахгүй бол throw хийнэ', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('Failed to fetch');
+      }),
+    );
+    await expect(fetchBuildingConfig()).rejects.toThrow('Failed to fetch');
   });
 });

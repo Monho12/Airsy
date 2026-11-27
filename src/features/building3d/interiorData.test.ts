@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildingConfig, createBuildingConfig } from '@/domain/config/building';
+import { buildingConfig, createBuildingConfig } from '@/test/domain/building';
 
 import {
   coreFaceLines,

@@ -1,7 +1,7 @@
 // Тохиргоо → 3D layout (FR-B1, §5.1, §5.1.1, §5.1.2). Хүлээгдэх утгыг тохиргооноос авна (хуулсан тоо биш, §5.5).
 import { describe, expect, it } from 'vitest';
 
-import { buildingConfig, createBuildingConfig } from '@/domain/config/building';
+import { buildingConfig, createBuildingConfig } from '@/test/domain/building';
 
 import {
   CAMERA_DIRECTION,

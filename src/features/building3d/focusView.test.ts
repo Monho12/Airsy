@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildingConfig } from '@/domain/config/building';
+import { buildingConfig } from '@/test/domain/building';
 
 import { selectedCeilingY, splitShaftBoxes } from './focusView';
 import { createBuildingLayout } from './layout';

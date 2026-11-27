@@ -1,7 +1,7 @@
 // Сценарийн оролт (CLAUDE.md §5.8, §7.1, §10 `ScenarioAction`).
 import { describe, expect, it } from 'vitest';
 
-import { buildingConfig } from '@/domain/config/building';
+import { buildingConfig } from '@/test/domain/building';
 import { baselineOutdoor } from '@/domain/simulation/environment';
 
 import {

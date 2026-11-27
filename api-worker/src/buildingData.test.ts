@@ -2,14 +2,16 @@ import { describe, expect, it } from 'vitest';
 
 import { classifyReading } from '@/domain/classification';
 
-import {
-  METRICS,
-  buildingConfig,
-  createBuildingConfig,
-  DIRECTOR_FLOOR_LEVEL,
-  OUTDOOR_METRICS,
-} from './building';
-import { indoorThresholds } from './thresholds';
+import { METRICS, OUTDOOR_METRICS } from '@/domain/config/building';
+import { indoorThresholds } from '@/domain/config/thresholds';
+
+import { buildingConfig, createBuildingConfig, DIRECTOR_FLOOR_LEVEL } from './buildingData';
+
+describe('GET /api/config-ийн хариу (D106)', () => {
+  it('BuildingConfig нь JSON-оор алдагдалгүй дамжина (функц, undefined, Map байхгүй)', () => {
+    expect(JSON.parse(JSON.stringify(buildingConfig))).toEqual(buildingConfig);
+  });
+});
 
 describe('createBuildingConfig (§5.1, §5.2, FR-B1)', () => {
   it('анхдагч 12 давхар: F01–F12, 90 бүс (лобби 2 + 11 × 8, D89), 450 дотоод + 3 гадна мэдрэгч, 36 төхөөрөмж', () => {

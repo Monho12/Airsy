@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { buildingConfig } from '@/domain/config/building';
+import { buildingConfig } from '@/test/domain/building';
 import { metricSpecs } from '@/domain/config/thresholds';
 import { floorLabelMn, formatMetricValueMn, mn } from '@/domain/i18n/mn';
 import type { Alert, LiveSnapshot } from '@/domain/types';

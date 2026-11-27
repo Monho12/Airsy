@@ -2,16 +2,17 @@
 // Runtime-ийг түр зогсоож, алхмыг `advance()`-ээр гараар урагшлуулна (timer-ээс хамаарахгүй).
 import { describe, expect, it } from 'vitest';
 
-import { createBuildingConfig } from '@/domain/config/building';
+import { createBuildingConfig } from '@/test/domain/building';
 import { simulationConfig } from '@/domain/config/simulation';
 import { mn } from '@/domain/i18n/mn';
 import { scenarioDefinitions } from '@/domain/scenarios/definitions';
 import type { LiveSnapshot, ScenarioId, SystemEvent } from '@/domain/types';
 
 import { LocalSimulationRuntime } from './LocalSimulationRuntime';
+import { buildingConfig } from '@/test/domain/building';
 
-async function paused(options?: ConstructorParameters<typeof LocalSimulationRuntime>[0]) {
-  const runtime = new LocalSimulationRuntime(options);
+async function paused(options?: Partial<ConstructorParameters<typeof LocalSimulationRuntime>[0]>) {
+  const runtime = new LocalSimulationRuntime({ config: buildingConfig, ...options });
   runtime.start();
   await runtime.dispatch({ type: 'simulation/pause' });
   runtime.advance(3);

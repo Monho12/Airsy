@@ -1,7 +1,7 @@
 // Төхөөрөмжийн загварын байрлал ба төлөвийн дүрслэл (§5.7, §8.6, FR-B6). WebGL-гүй.
 import { describe, expect, it } from 'vitest';
 
-import { buildingConfig, createBuildingConfig } from '@/domain/config/building';
+import { buildingConfig, createBuildingConfig } from '@/test/domain/building';
 import { damperOutdoorFraction, fanLevelOrder } from '@/domain/config/control';
 import type { DeviceState, LiveSnapshot } from '@/domain/types';
 import { createMockSnapshot } from '@/store/mockSnapshot';
