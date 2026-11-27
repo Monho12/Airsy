@@ -74,6 +74,8 @@ export default {
 
     const { pathname } = new URL(request.url);
     switch (pathname) {
+      case '/api':
+        return json({ message: 'AERIS API Worker' }, 200, origin);
       case '/api/health':
         return json({ ok: true }, 200, origin);
       case '/api/building':
